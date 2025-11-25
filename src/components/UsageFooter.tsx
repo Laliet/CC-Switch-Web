@@ -11,7 +11,10 @@ interface UsageFooterProps {
   appId: AppId;
   usageEnabled: boolean; // 是否启用了用量查询
   isCurrent: boolean; // 是否为当前激活的供应商
+  backupProviderId?: string | null; // 备用供应商 ID，用于自动故障切换
+  onAutoFailover?: (targetId: string) => void; // 自动故障切换回调
   inline?: boolean; // 是否内联显示（在按钮左侧）
+  autoTokenApplied?: boolean; // 是否已自动应用前端注入的 API/CSRF Token
 }
 
 const UsageFooter: React.FC<UsageFooterProps> = ({
@@ -23,6 +26,7 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
   backupProviderId = null,
   onAutoFailover,
   inline = false,
+  autoTokenApplied = false,
 }) => {
   const { t } = useTranslation();
 
@@ -137,6 +141,10 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
   // 无数据时不显示
   if (usageDataList.length === 0) return null;
 
+  const autoTokenApplied =
+    typeof window !== "undefined" &&
+    Boolean((window as any).__CC_SWITCH_TOKENS__?.apiToken);
+
   // 内联模式：仅显示第一个套餐的核心数据（分上下两行）
   if (inline) {
     const firstUsage = usageDataList[0];
@@ -158,6 +166,11 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
       <div className="flex flex-col gap-1 text-xs flex-shrink-0">
         {/* 第一行：刷新时间 + 刷新按钮 */}
         <div className="flex items-center gap-2 justify-end">
+          {autoTokenApplied && (
+            <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:ring-emerald-800">
+              {t("usage.autoToken")}
+            </span>
+          )}
           {/* 上次查询时间 */}
           {lastQueriedAt && (
             <span className="text-[10px] text-gray-400 dark:text-gray-500 flex items-center gap-1">
@@ -231,6 +244,11 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
           {t("usage.planUsage")}
         </span>
         <div className="flex items-center gap-2">
+          {autoTokenApplied && (
+            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:ring-emerald-800">
+              {t("usage.autoToken")}
+            </span>
+          )}
           {/* 自动查询时间提示 */}
           {lastQueriedAt && (
             <span className="text-[10px] text-gray-400 dark:text-gray-500 flex items-center gap-1">

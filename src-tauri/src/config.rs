@@ -5,20 +5,42 @@ use std::path::{Path, PathBuf};
 
 use crate::error::AppError;
 
+/// 获取用户主目录。
+///
+/// 在 Windows 上，`dirs::home_dir()` 使用 Windows API 而非环境变量，
+/// 导致测试无法通过设置 HOME/USERPROFILE 来隔离。此函数在 Windows 上
+/// 优先检查环境变量，以支持测试隔离。
+pub fn get_home_dir() -> Option<PathBuf> {
+    // 在 Windows 上优先检查环境变量（用于测试隔离）
+    #[cfg(windows)]
+    {
+        if let Ok(home) = std::env::var("HOME") {
+            if !home.is_empty() {
+                return Some(PathBuf::from(home));
+            }
+        }
+        if let Ok(userprofile) = std::env::var("USERPROFILE") {
+            if !userprofile.is_empty() {
+                return Some(PathBuf::from(userprofile));
+            }
+        }
+    }
+
+    dirs::home_dir()
+}
+
 /// 获取 Claude Code 配置目录路径
 pub fn get_claude_config_dir() -> PathBuf {
     if let Some(custom) = crate::settings::get_claude_override_dir() {
         return custom;
     }
 
-    dirs::home_dir()
-        .expect("无法获取用户主目录")
-        .join(".claude")
+    get_home_dir().expect("无法获取用户主目录").join(".claude")
 }
 
 /// 默认 Claude MCP 配置文件路径 (~/.claude.json)
 pub fn get_default_claude_mcp_path() -> PathBuf {
-    dirs::home_dir()
+    get_home_dir()
         .expect("无法获取用户主目录")
         .join(".claude.json")
 }
@@ -68,7 +90,7 @@ pub fn get_app_config_dir() -> PathBuf {
         return custom;
     }
 
-    dirs::home_dir()
+    get_home_dir()
         .expect("无法获取用户主目录")
         .join(".cc-switch")
 }

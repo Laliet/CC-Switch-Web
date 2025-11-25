@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use crate::app_config::AppType;
 use crate::codex_config::get_codex_auth_path;
-use crate::config::get_claude_settings_path;
+use crate::config::{get_claude_settings_path, get_home_dir};
 use crate::error::AppError;
 use crate::gemini_config::get_gemini_dir;
 
@@ -30,7 +30,7 @@ fn get_base_dir_with_fallback(
     primary_path
         .parent()
         .map(|p| p.to_path_buf())
-        .or_else(|| dirs::home_dir().map(|h| h.join(fallback_dir)))
+        .or_else(|| get_home_dir().map(|h| h.join(fallback_dir)))
         .ok_or_else(|| {
             AppError::localized(
                 "home_dir_not_found",

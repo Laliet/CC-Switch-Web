@@ -28,6 +28,29 @@ export function isWeb(): boolean {
   return typeof window === "undefined" || !(window as any).__TAURI__;
 }
 
+declare global {
+  interface Window {
+    __CC_SWITCH_TOKENS__?: {
+      apiToken: string;
+      csrfToken: string;
+      __noticeShown?: boolean;
+    };
+  }
+}
+
+function getAutoTokens() {
+  if (typeof window === "undefined") return undefined;
+  const tokens = window.__CC_SWITCH_TOKENS__;
+  if (tokens?.apiToken && tokens?.csrfToken) {
+    if (!tokens.__noticeShown) {
+      console.info("cc-switch: 已自动应用内置 API Token 与 CSRF Token");
+      tokens.__noticeShown = true;
+    }
+    return { apiToken: tokens.apiToken, csrfToken: tokens.csrfToken };
+  }
+  return undefined;
+}
+
 export function commandToEndpoint(
   cmd: string,
   args: CommandArgs = {},
@@ -478,6 +501,11 @@ export async function invoke<T>(
 
   const endpoint = commandToEndpoint(cmd, args);
   const headers: Record<string, string> = { Accept: "application/json" };
+  const tokens = getAutoTokens();
+  if (tokens) {
+    headers["Authorization"] = `Bearer ${tokens.apiToken}`;
+    headers["X-CSRF-Token"] = tokens.csrfToken;
+  }
   const init: RequestInit = {
     method: endpoint.method,
     credentials: "include",

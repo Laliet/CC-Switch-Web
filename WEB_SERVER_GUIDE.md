@@ -61,6 +61,35 @@ CORS_ALLOW_CREDENTIALS=true \
 
 ---
 
+## 安全与认证（生产必读）
+
+- **强制设置凭证**：部署前请设置环境变量：
+  - `WEB_API_TOKEN=<随机长 token>`：服务端 Bearer Token（默认等同于密码，不建议沿用）。
+  - `WEB_CSRF_TOKEN=<随机短 token>`：前端请求需在非 GET/HEAD 请求头携带 `X-CSRF-Token`。
+- **自动生成**：若上述环境变量缺失，服务会自动生成随机 Token 写入 `~/.cc-switch/web_env`，并在前端注入 `window.__CC_SWITCH_TOKENS__`，无须手工输入即可完成认证。
+- **前端提示**：界面会显示“已自动应用凭证”徽标，表示前端已自动携带 Authorization/CSRF 头，无需额外操作。
+- **HTTPS 反代**：建议用 Nginx/Caddy/Cloudflare 等做 TLS 终止，把 cc-switch-server 放在反代后面。
+- **HSTS**：默认开启 `Strict-Transport-Security`，如需关闭可设 `ENABLE_HSTS=false`。
+- **裸 HTTP 风险**：若必须在无 TLS 的公网监听，需显式设置 `ALLOW_HTTP_BASIC_OVER_HTTP=1` 表示接受风险；否则请保持在内网/回环地址。
+- **跨域**：默认同源，若确需跨域，使用 `CORS_ALLOW_ORIGINS=https://foo.com,https://bar.com`（不要使用 `*`）。
+
+运行示例（反代模式，含凭证）：
+
+```bash
+WEB_API_TOKEN="$(openssl rand -hex 32)" \
+WEB_CSRF_TOKEN="$(openssl rand -hex 16)" \
+HOST=127.0.0.1 PORT=3000 ./target/release/cc-switch-server
+```
+
+前端在非 GET/HEAD 请求中需要附带：
+
+```
+Authorization: Bearer <WEB_API_TOKEN>
+X-CSRF-Token: <WEB_CSRF_TOKEN>
+```
+
+---
+
 ## 架构说明
 
 ```

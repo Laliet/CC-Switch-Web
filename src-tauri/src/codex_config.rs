@@ -2,7 +2,8 @@
 use std::path::PathBuf;
 
 use crate::config::{
-    atomic_write, delete_file, sanitize_provider_name, write_json_file, write_text_file,
+    atomic_write, delete_file, get_home_dir, sanitize_provider_name, write_json_file,
+    write_text_file,
 };
 use crate::error::AppError;
 use serde_json::Value;
@@ -15,7 +16,7 @@ pub fn get_codex_config_dir() -> PathBuf {
         return custom;
     }
 
-    dirs::home_dir().expect("无法获取用户主目录").join(".codex")
+    get_home_dir().expect("无法获取用户主目录").join(".codex")
 }
 
 /// 获取 Codex auth.json 路径

@@ -354,6 +354,7 @@
     "queryFailed": "Query failed",
     "refreshUsage": "Refresh usage",
     "planUsage": "Plan usage",
+    "autoToken": "Auto-token applied",
     "invalid": "Expired",
     "total": "Total:",
     "used": "Used:",

@@ -7,6 +7,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tokio::time::timeout;
 
+use crate::config::get_home_dir;
 use crate::error::format_skill_error;
 
 /// 技能对象
@@ -135,7 +136,7 @@ impl SkillService {
     }
 
     fn get_install_dir() -> Result<PathBuf> {
-        let home = dirs::home_dir().context(format_skill_error(
+        let home = get_home_dir().context(format_skill_error(
             "GET_HOME_DIR_FAILED",
             &[],
             Some("checkPermission"),

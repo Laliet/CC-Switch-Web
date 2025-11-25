@@ -4,7 +4,10 @@ use std::path::PathBuf;
 use std::sync::{OnceLock, RwLock};
 use tauri_plugin_store::StoreExt;
 
-use crate::{config::atomic_write, error::AppError};
+use crate::{
+    config::{atomic_write, get_home_dir},
+    error::AppError,
+};
 
 /// Store 中的键名
 const STORE_KEY_APP_CONFIG_DIR: &str = "app_config_dir_override";
@@ -121,15 +124,15 @@ pub fn set_app_config_dir_to_store(
 /// 解析路径，支持 ~ 开头的相对路径
 fn resolve_path(raw: &str) -> PathBuf {
     if raw == "~" {
-        if let Some(home) = dirs::home_dir() {
+        if let Some(home) = get_home_dir() {
             return home;
         }
     } else if let Some(stripped) = raw.strip_prefix("~/") {
-        if let Some(home) = dirs::home_dir() {
+        if let Some(home) = get_home_dir() {
             return home.join(stripped);
         }
     } else if let Some(stripped) = raw.strip_prefix("~\\") {
-        if let Some(home) = dirs::home_dir() {
+        if let Some(home) = get_home_dir() {
             return home.join(stripped);
         }
     }
@@ -148,7 +151,7 @@ pub fn migrate_app_config_dir_from_settings(app: &tauri::AppHandle) -> Result<()
 }
 
 fn store_path() -> Option<PathBuf> {
-    let home = dirs::home_dir()?;
+    let home = get_home_dir()?;
     Some(home.join(".cc-switch").join("app_paths.json"))
 }
 

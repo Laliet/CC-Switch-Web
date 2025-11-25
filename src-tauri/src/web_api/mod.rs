@@ -22,7 +22,10 @@ use rust_embed::RustEmbed;
 use std::sync::Arc as StdArc;
 use tower_http::{cors::CorsLayer, validate_request::ValidateRequestHeaderLayer};
 
-use crate::{config::atomic_write, store::AppState};
+use crate::{
+    config::{atomic_write, get_home_dir},
+    store::AppState,
+};
 
 pub mod handlers;
 pub mod routes;
@@ -307,7 +310,7 @@ async fn add_hsts_header(
 }
 
 fn token_store_path() -> Option<PathBuf> {
-    dirs::home_dir().map(|home| home.join(".cc-switch").join("web_env"))
+    get_home_dir().map(|home| home.join(".cc-switch").join("web_env"))
 }
 
 fn load_or_generate_tokens() -> WebTokens {

@@ -1,7 +1,10 @@
 use std::fs;
 use std::path::PathBuf;
 
-use crate::{config::atomic_write, error::AppError};
+use crate::{
+    config::{atomic_write, get_home_dir},
+    error::AppError,
+};
 
 const CLAUDE_DIR: &str = ".claude";
 const CLAUDE_CONFIG_FILE: &str = "config.json";
@@ -11,7 +14,7 @@ fn claude_dir() -> Result<PathBuf, AppError> {
     if let Some(dir) = crate::settings::get_claude_override_dir() {
         return Ok(dir);
     }
-    let home = dirs::home_dir().ok_or_else(|| AppError::Config("无法获取用户主目录".into()))?;
+    let home = get_home_dir().ok_or_else(|| AppError::Config("无法获取用户主目录".into()))?;
     Ok(home.join(CLAUDE_DIR))
 }
 

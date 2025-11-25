@@ -4,7 +4,10 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::{OnceLock, RwLock};
 
-use crate::{config::atomic_write, error::AppError};
+use crate::{
+    config::{atomic_write, get_home_dir},
+    error::AppError,
+};
 
 /// 自定义端点配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -88,7 +91,7 @@ impl AppSettings {
     fn settings_path() -> PathBuf {
         // settings.json 必须使用固定路径，不能被 app_config_dir 覆盖
         // 否则会造成循环依赖：读取 settings 需要知道路径，但路径在 settings 中
-        dirs::home_dir()
+        get_home_dir()
             .expect("无法获取用户主目录")
             .join(".cc-switch")
             .join("settings.json")
@@ -169,15 +172,15 @@ fn settings_store() -> &'static RwLock<AppSettings> {
 
 fn resolve_override_path(raw: &str) -> PathBuf {
     if raw == "~" {
-        if let Some(home) = dirs::home_dir() {
+        if let Some(home) = get_home_dir() {
             return home;
         }
     } else if let Some(stripped) = raw.strip_prefix("~/") {
-        if let Some(home) = dirs::home_dir() {
+        if let Some(home) = get_home_dir() {
             return home.join(stripped);
         }
     } else if let Some(stripped) = raw.strip_prefix("~\\") {
-        if let Some(home) = dirs::home_dir() {
+        if let Some(home) = get_home_dir() {
             return home.join(stripped);
         }
     }

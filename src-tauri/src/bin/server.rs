@@ -18,6 +18,7 @@ use rand::{seq::SliceRandom, thread_rng};
 use tokio::{net::TcpListener, signal};
 
 use cc_switch_lib::{
+    get_home_dir,
     store::AppState,
     web_api::{create_router, SharedState},
 };
@@ -27,7 +28,7 @@ fn init_logger() {
 }
 
 fn password_file_path() -> io::Result<PathBuf> {
-    let home_dir = dirs::home_dir().ok_or_else(|| {
+    let home_dir = get_home_dir().ok_or_else(|| {
         io::Error::new(
             io::ErrorKind::NotFound,
             "Unable to locate home directory for web password",

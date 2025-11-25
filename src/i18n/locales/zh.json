@@ -354,6 +354,7 @@
     "queryFailed": "查询失败",
     "refreshUsage": "刷新用量",
     "planUsage": "套餐用量",
+    "autoToken": "已自动应用凭证",
     "invalid": "已失效",
     "total": "总：",
     "used": "已使用：",

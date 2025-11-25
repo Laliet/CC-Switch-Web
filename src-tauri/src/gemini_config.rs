@@ -1,4 +1,4 @@
-use crate::config::write_text_file;
+use crate::config::{get_home_dir, write_text_file};
 use crate::error::AppError;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -11,9 +11,7 @@ pub fn get_gemini_dir() -> PathBuf {
         return custom;
     }
 
-    dirs::home_dir()
-        .expect("无法获取用户主目录")
-        .join(".gemini")
+    get_home_dir().expect("无法获取用户主目录").join(".gemini")
 }
 
 /// 获取 Gemini .env 文件路径
