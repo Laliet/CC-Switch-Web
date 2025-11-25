@@ -1,61 +1,25 @@
-<div align="center">
-
-# cc-switch-web — All-in-One Assistant for Claude Code, Codex & Gemini CLI (Web/Headless)
-
-[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/farion1231/cc-switch/releases)
-[![Trending](https://img.shields.io/badge/🔥_TypeScript_Trending-Daily%20%7C%20Weekly%20%7C%20Monthly-ff6b6b.svg)](https://github.com/trending/typescript)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](https://github.com/farion1231/cc-switch/releases)
-[![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%202-orange.svg)](https://tauri.app/)
-[![Downloads](https://img.shields.io/endpoint?url=https://api.pinstudios.net/api/badges/downloads/farion1231/cc-switch/total)](https://github.com/farion1231/cc-switch/releases/latest)
-
-<a href="https://trendshift.io/repositories/15372" target="_blank"><img src="https://trendshift.io/api/badge/repositories/15372" alt="farion1231%2Fcc-switch | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+# cc-switch-web — Web/Headless Assistant for Claude Code, Codex & Gemini CLI
 
 English | [中文](README_ZH.md) | [Changelog](CHANGELOG.md)
 
-Web/server edition for managing and switching provider configurations & MCP for Claude Code, Codex, and Gemini.
+cc-switch-web is a second-development fork of the original **cc-switch** desktop app, rebuilt for web/server and headless environments. It keeps unified provider/MCP/skills/prompt management, adds safer web defaults, and focuses on cloud compatibility.
 
-</div>
-
-## ❤️Sponsor
-
-![Zhipu GLM](assets/partners/banners/glm-en.jpg)
-
-This project is sponsored by Z.ai, supporting us with their GLM CODING PLAN.
-
-GLM CODING PLAN is a subscription service designed for AI coding, starting at just $3/month. It provides access to their flagship GLM-4.6 model across 10+ popular AI coding tools (Claude Code, Cline, Roo Code, etc.), offering developers top-tier, fast, and stable coding experiences.
-
-Get 10% OFF the GLM CODING PLAN with [this link](https://z.ai/subscribe?ic=8JVLJQFSKB)!
-
----
-
-<table>
-<tr>
-<td width="180"><img src="assets/partners/logos/packycode.png" alt="PackyCode" width="150"></td>
-<td>Thanks to PackyCode for sponsoring this project! PackyCode is a reliable and efficient API relay service provider, offering relay services for Claude Code, Codex, Gemini, and more. PackyCode provides special discounts for our software users: register using <a href="https://www.packyapi.com/register?aff=cc-switch">this link</a> and enter the "cc-switch" promo code during recharge to get 10% off.</td>
-</tr>
-</table>
-
-## Screenshots
-
-## Why cc-switch-web (vs cc-switch desktop)
-
-- Cloud/headless ready: run as a web server anywhere, no GUI required.
-- Compatibility first: unified API for Claude Code, Codex, and Gemini over HTTP.
-- More presets: extra MCP/skill/provider templates.
-- Safer defaults: generated Basic Auth password; same-origin only unless CORS is explicitly allowed.
-- Local control: configurable `HOST`/`PORT`, easy to reverse-proxy with TLS.
-- Smarter failover: backup provider auto-switch when a relay/vendor goes down.
+## Why cc-switch-web (vs desktop)
+- Cloud/headless ready: run as a web server, no GUI needed.
+- Unified HTTP API for Claude Code, Codex, Gemini.
+- Rich presets: extra MCP/skill/provider templates.
+- Safer defaults: generated Basic Auth password; same-origin unless CORS is explicitly allowed.
+- Configurable `HOST`/`PORT` for reverse proxies/TLS.
+- Backup auto-failover: switch to a backup provider when relays fail.
 
 ## Highlights
-
-- Provider switching for Claude Code / Codex / Gemini with live sync.
+- Provider switching with live sync (Claude/Codex/Gemini).
 - Unified MCP management (import/export across clients).
 - Skills marketplace with repo scanning and one-click install.
 - Prompt management with CodeMirror editor.
 - Import/export with backups; directory overrides for WSL/cloud sync.
 
 ## Quick Start (Web)
-
 ```bash
 pnpm install
 pnpm build:web
@@ -63,320 +27,56 @@ cd src-tauri
 cargo build --release --features web-server --bin cc-switch-server
 HOST=0.0.0.0 PORT=3000 ./target/release/cc-switch-server
 ```
-
 - Login: `admin` / password in `~/.cc-switch/web_password` (auto-generated).
 - CORS: same-origin by default; set `CORS_ALLOW_ORIGINS` (optional `CORS_ALLOW_CREDENTIALS=true`) to allow cross-origin.
-- File/dir pickers are not available in web mode—enter paths manually.
+- Web mode does not support native file/directory pickers—enter paths manually.
 
 ## Screenshots
-
 | Skills marketplace | Prompt editor | Advanced settings |
 | :--: | :--: | :--: |
 | ![Skills](assets/screenshots/web-skills.png) | ![Prompt](assets/screenshots/web-prompt.png) | ![Settings](assets/screenshots/web-settings.png) |
 
 *(Place your screenshots at the above paths.)*
 
-### Current Version: v0.1.0 | [Full Changelog](CHANGELOG.md)
-
-### Web Server Notes
-
-- Web mode does not support native file/directory pickers (those APIs return 501); enter paths manually.
-- Default is same-origin only; for cross-origin access set `CORS_ALLOW_ORIGINS` (optionally `CORS_ALLOW_CREDENTIALS=true`). See `WEB_SERVER_GUIDE.md`.
-
-## Download & Installation
-
-### System Requirements
-
-- **Windows**: Windows 10 and above
-- **macOS**: macOS 10.15 (Catalina) and above
-- **Linux**: Ubuntu 22.04+ / Debian 11+ / Fedora 34+ and other mainstream distributions
-
-### Windows Users
-
-Download the latest `CC-Switch-v{version}-Windows.msi` installer or `CC-Switch-v{version}-Windows-Portable.zip` portable version from the [Releases](../../releases) page.
-
-### macOS Users
-
-**Method 1: Install via Homebrew (Recommended)**
-
-```bash
-brew tap farion1231/ccswitch
-brew install --cask cc-switch
-```
-
-Update:
-
-```bash
-brew upgrade --cask cc-switch
-```
-
-**Method 2: Manual Download**
-
-Download `CC-Switch-v{version}-macOS.zip` from the [Releases](../../releases) page and extract to use.
-
-> **Note**: Since the author doesn't have an Apple Developer account, you may see an "unidentified developer" warning on first launch. Please close it first, then go to "System Settings" → "Privacy & Security" → click "Open Anyway", and you'll be able to open it normally afterwards.
-
-### ArchLinux 用户
-
-**Install via paru (Recommended)**
-
-```bash
-paru -S cc-switch-bin
-```
-
-### Linux Users
-
-Download the latest `CC-Switch-v{version}-Linux.deb` package or `CC-Switch-v{version}-Linux.AppImage` from the [Releases](../../releases) page.
-
-## Quick Start
-
-### Basic Usage
-
-1. **Add Provider**: Click "Add Provider" → Choose preset or create custom configuration
-2. **Switch Provider**:
-   - Main UI: Select provider → Click "Enable"
-   - System Tray: Click provider name directly (instant effect)
-3. **Takes Effect**: Restart your terminal or Claude Code / Codex / Gemini clients to apply changes
-4. **Back to Official**: Select the "Official Login" preset (Claude/Codex) or "Google Official" preset (Gemini), restart the corresponding client, then follow its login/OAuth flow
-
-### MCP Management
-
-- **Location**: Click "MCP" button in top-right corner
-- **Add Server**: Use built-in templates (mcp-fetch, mcp-filesystem) or custom config
-- **Enable/Disable**: Toggle switches to control which servers sync to live config
-- **Sync**: Enabled servers auto-sync to `~/.claude.json` (Claude) or `~/.codex/config.toml` (Codex)
-
-### Configuration Files
-
-**Claude Code**
-
-- Live config: `~/.claude/settings.json` (or `claude.json`)
-- API key field: `env.ANTHROPIC_AUTH_TOKEN` or `env.ANTHROPIC_API_KEY`
-- MCP servers: `~/.claude.json` → `mcpServers`
-
-**Codex**
-
-- Live config: `~/.codex/auth.json` (required) + `config.toml` (optional)
-- API key field: `OPENAI_API_KEY` in `auth.json`
-- MCP servers: `~/.codex/config.toml` → `[mcp_servers]` tables
-
-**Gemini**
-
-- Live config: `~/.gemini/.env` (API key) + `~/.gemini/settings.json` (auth type for quick switching)
-- API key field: `GEMINI_API_KEY` inside `.env`
-- Tray quick switch: each provider switch rewrites `~/.gemini/.env` so the Gemini CLI picks up the new credentials immediately
-
-**CC Switch Storage**
-
-- Main config (SSOT): `~/.cc-switch/config.json`
-- Settings: `~/.cc-switch/settings.json`
-- Backups: `~/.cc-switch/backups/` (auto-rotate, keep 10)
-
-### Cloud Sync Setup
-
-1. Go to Settings → "Custom Configuration Directory"
-2. Choose your cloud sync folder (Dropbox, OneDrive, iCloud, etc.)
-3. Restart app to apply
-4. Repeat on other devices to enable cross-device sync
-
-> **Note**: First launch auto-imports existing Claude/Codex configs as default provider.
-
-## Architecture Overview
-
-### Design Principles
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Frontend (React + TS)                    │
-│  ┌─────────────┐  ┌──────────────┐  ┌──────────────────┐    │
-│  │ Components  │  │    Hooks     │  │  TanStack Query  │    │
-│  │   (UI)      │──│ (Bus. Logic) │──│   (Cache/Sync)   │    │
-│  └─────────────┘  └──────────────┘  └──────────────────┘    │
-└────────────────────────┬────────────────────────────────────┘
-                         │ Tauri IPC
-┌────────────────────────▼────────────────────────────────────┐
-│                  Backend (Tauri + Rust)                     │
-│  ┌─────────────┐  ┌──────────────┐  ┌──────────────────┐    │
-│  │  Commands   │  │   Services   │  │  Models/Config   │    │
-│  │ (API Layer) │──│ (Bus. Layer) │──│     (Data)       │    │
-│  └─────────────┘  └──────────────┘  └──────────────────┘    │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**Core Design Patterns**
-
-- **SSOT** (Single Source of Truth): All provider configs stored in `~/.cc-switch/config.json`
-- **Dual-way Sync**: Write to live files on switch, backfill from live when editing active provider
-- **Atomic Writes**: Temp file + rename pattern prevents config corruption
-- **Concurrency Safe**: RwLock with scoped guards avoids deadlocks
-- **Layered Architecture**: Clear separation (Commands → Services → Models)
-
-**Key Components**
-
-- **ProviderService**: Provider CRUD, switching, backfill, sorting
-- **McpService**: MCP server management, import/export, live file sync
-- **ConfigService**: Config import/export, backup rotation
-- **SpeedtestService**: API endpoint latency measurement
-
-**v3.6 Refactoring**
-
-- Backend: 5-phase refactoring (error handling → command split → tests → services → concurrency)
-- Frontend: 4-stage refactoring (test infra → hooks → components → cleanup)
-- Testing: 100% hooks coverage + integration tests (vitest + MSW)
-
-## Development
-
-### Environment Requirements
-
-- Node.js 18+
-- pnpm 8+
-- Rust 1.85+
-- Tauri CLI 2.8+
-
-### Development Commands
-
-```bash
-# Install dependencies
-pnpm install
-
-# Dev mode (hot reload)
-pnpm dev
-
-# Type check
-pnpm typecheck
-
-# Format code
-pnpm format
-
-# Check code format
-pnpm format:check
-
-# Run frontend unit tests
-pnpm test:unit
-
-# Run tests in watch mode (recommended for development)
-pnpm test:unit:watch
-
-# Build application
-pnpm build
-
-# Build debug version
-pnpm tauri build --debug
-```
-
-### Rust Backend Development
-
-```bash
-cd src-tauri
-
-# Format Rust code
-cargo fmt
-
-# Run clippy checks
-cargo clippy
-
-# Run backend tests
-cargo test
-
-# Run specific tests
-cargo test test_name
-
-# Run tests with test-hooks feature
-cargo test --features test-hooks
-```
-
-### Testing Guide (v3.6 New)
-
-**Frontend Testing**:
-
-- Uses **vitest** as test framework
-- Uses **MSW (Mock Service Worker)** to mock Tauri API calls
-- Uses **@testing-library/react** for component testing
-
-**Test Coverage**:
-
-- Hooks unit tests (100% coverage)
-  - `useProviderActions` - Provider operations
-  - `useMcpActions` - MCP management
-  - `useSettings` series - Settings management
-  - `useImportExport` - Import/export
-- Integration tests
-  - App main application flow
-  - SettingsDialog complete interaction
-  - MCP panel functionality
-
-**Running Tests**:
-
-```bash
-# Run all tests
-pnpm test:unit
-
-# Watch mode (auto re-run)
-pnpm test:unit:watch
-
-# With coverage report
-pnpm test:unit --coverage
-```
+## Web Server Notes
+- File/dir pickers return 501 in web mode; use manual paths.
+- Same-origin by default; use `CORS_ALLOW_ORIGINS` (+ `CORS_ALLOW_CREDENTIALS=true` if needed) for cross-origin.
+
+## Project Structure (key parts)
+- `src/` React/TypeScript frontend
+- `src-tauri/` Rust backend (Tauri/web-server)
+- `src-tauri/src/web_api/` Axum HTTP API for web mode
+- `dist-web/` Built web assets (not committed)
+- `tests/` Bash + MSW + Vitest tests
+
+## Usage (common commands)
+- Dev (desktop renderer): `pnpm dev:renderer`
+- Build web assets: `pnpm build:web`
+- Run web server: `HOST=0.0.0.0 PORT=3000 ./src-tauri/target/release/cc-switch-server`
+- Build server: `cd src-tauri && cargo build --release --features web-server --bin cc-switch-server`
+- Full test suite (bash APIs): `bash tests/run-all.sh` (needs running server & curl/jq)
 
 ## Tech Stack
+- Frontend: React 18, TypeScript, Vite, Tailwind, TanStack Query, Radix UI, CodeMirror
+- Backend: Rust, Axum, Tauri (for shared logic), tower-http
+- Tooling: pnpm, Vitest, MSW, Bash + curl/jq for API tests
 
-**Frontend**: React 18 · TypeScript · Vite · TailwindCSS 4 · TanStack Query v5 · react-i18next · react-hook-form · zod · shadcn/ui · @dnd-kit
-
-**Backend**: Tauri 2.8 · Rust · serde · tokio · thiserror · tauri-plugin-updater/process/dialog/store/log
-
-**Testing**: vitest · MSW · @testing-library/react
-
-## Project Structure
-
-```
-├── src/                      # Frontend (React + TypeScript)
-│   ├── components/           # UI components (providers/settings/mcp/ui)
-│   ├── hooks/                # Custom hooks (business logic)
-│   ├── lib/
-│   │   ├── api/              # Tauri API wrapper (type-safe)
-│   │   └── query/            # TanStack Query config
-│   ├── i18n/locales/         # Translations (zh/en)
-│   ├── config/               # Presets (providers/mcp)
-│   └── types/                # TypeScript definitions
-├── src-tauri/                # Backend (Rust)
-│   └── src/
-│       ├── commands/         # Tauri command layer (by domain)
-│       ├── services/         # Business logic layer
-│       ├── app_config.rs     # Config data models
-│       ├── provider.rs       # Provider domain models
-│       ├── mcp.rs            # MCP sync & validation
-│       └── lib.rs            # App entry & tray menu
-├── tests/                    # Frontend tests
-│   ├── hooks/                # Unit tests
-│   └── components/           # Integration tests
-└── assets/                   # Screenshots & partner resources
-```
+## Tests & Coverage
+- API/integration bash tests under `tests/api` and `tests/integration` (providers, settings, MCP, usage, persistence).
+- MSW/Vitest component/hooks tests for UI logic.
+- Run `bash tests/run-all.sh` for web API coverage (requires running server).
 
 ## Changelog
+See [CHANGELOG.md](CHANGELOG.md) (current version: v0.1.0).
 
-See [CHANGELOG.md](CHANGELOG.md) for version update details.
+## Project Highlights (recap)
+- Web/server native (headless friendly), safe defaults (Basic Auth + same-origin).
+- Unified provider/MCP/skills/prompt management across Claude/Codex/Gemini.
+- Rich presets and backup auto-failover.
+- Import/export with backups; WSL/cloud directory overrides.
 
-## Legacy Electron Version
+## About the upstream project
+This fork builds on **cc-switch** by Jason Young (farion1231). The upstream Tauri desktop app unified provider switching, MCP management, skills, and prompts with strong i18n and safety. cc-switch-web reuses that foundation, adds a web/server runtime, CORS controls, Basic Auth by default, more templates, and docs for cloud/headless deployment. Many thanks to the original author and contributors for the groundwork.
 
-[Releases](../../releases) retains v2.0.3 legacy Electron version
-
-If you need legacy Electron code, you can pull the electron-legacy branch
-
-## Contributing
-
-Issues and suggestions are welcome!
-
-Before submitting PRs, please ensure:
-
-- Pass type check: `pnpm typecheck`
-- Pass format check: `pnpm format:check`
-- Pass unit tests: `pnpm test:unit`
-- 💡 For new features, please open an issue for discussion before submitting a PR
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=farion1231/cc-switch&type=Date)](https://www.star-history.com/#farion1231/cc-switch&Date)
-
-## License
-
-MIT © Jason Young
+## Maintenance note
+This is a newly published web/headless variant; some areas may still need polish. Please file issues for bugs or feature ideas. I’ll focus on updates during the coming week after seeing new issues, then shift to a weekly maintenance cadence until it’s solid for cloud development.
