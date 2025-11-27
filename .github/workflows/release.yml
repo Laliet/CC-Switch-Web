@@ -87,76 +87,20 @@ jobs:
       - name: Install frontend deps
         run: pnpm install --frozen-lockfile
 
-      - name: Prepare Tauri signing key
+      - name: Set Tauri signing key
         shell: bash
         run: |
-          # 调试：检查 Secret 是否存在
+          # Tauri CLI 直接接受 tauri signer generate 输出的 base64 字符串
+          # 不需要任何解码或转换，直接传递即可
           if [ -z "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" ]; then
-            echo "❌ TAURI_SIGNING_PRIVATE_KEY Secret 为空或不存在" >&2
-            echo "请检查 GitHub 仓库 Settings > Secrets and variables > Actions" >&2
+            echo "❌ TAURI_SIGNING_PRIVATE_KEY Secret 为空" >&2
             exit 1
           fi
-          RAW="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
-          # 清理 CRLF、尾随空格和换行符
-          RAW_CLEAN=$(printf '%s' "$RAW" | tr -d '\r\n' | sed 's/[ \t]*$//')
-          # 目标：提供正确的私钥"文件路径"给 Tauri CLI
-          KEY_PATH="$RUNNER_TEMP/tauri_signing.key"
-
-          echo "🔍 调试：RAW_CLEAN 长度=${#RAW_CLEAN}, 前20字符=$(echo "$RAW_CLEAN" | head -c 20)..."
-
-          # 情况 1：原始两行文本（第一行以 "untrusted comment:" 开头）
-          if echo "$RAW_CLEAN" | grep -q '^untrusted comment:'; then
-            printf '%s\n' "$RAW_CLEAN" > "$KEY_PATH"
-            echo "✅ 使用原始两行密钥文件格式"
-          else
-            # 情况 2：整体被 base64 包裹（解包后应当是两行）
-            # 尝试多种 base64 解码方式
-            DECODED=""
-            if command -v base64 >/dev/null 2>&1; then
-              # Linux GNU base64
-              DECODED=$(printf '%s' "$RAW_CLEAN" | base64 --decode 2>/dev/null) || true
-              if [ -z "$DECODED" ]; then
-                # macOS BSD base64
-                DECODED=$(printf '%s' "$RAW_CLEAN" | base64 -D 2>/dev/null) || true
-              fi
-            fi
-
-            if [ -n "$DECODED" ] && echo "$DECODED" | head -n1 | grep -q '^untrusted comment:'; then
-              printf '%s\n' "$DECODED" > "$KEY_PATH"
-              echo "✅ 成功解码 base64 包裹密钥，已还原为两行文件"
-            else
-              # 情况 3：已是第二行（纯 Base64 一行）→ 构造两行文件
-              # 使用更宽松的检查：移除所有空白后检查是否只有 base64 字符
-              CLEAN_B64=$(printf '%s' "$RAW_CLEAN" | tr -d '[:space:]')
-              if printf '%s' "$CLEAN_B64" | grep -Eq '^[A-Za-z0-9+/=]+$'; then
-                printf '%s\n%s\n' "untrusted comment: tauri signing key" "$CLEAN_B64" > "$KEY_PATH"
-                echo "✅ 使用一行 Base64 私钥，已构造两行文件"
-              else
-                echo "❌ TAURI_SIGNING_PRIVATE_KEY 格式无法识别" >&2
-                echo "调试信息：长度=${#RAW_CLEAN}, 前20字符=$(echo "$RAW_CLEAN" | head -c 20)..." >&2
-                exit 1
-              fi
-            fi
-          fi
-          # 将“完整两行内容”作为环境变量注入（Tauri 支持传入完整私钥文本或文件路径）
-          # 使用多行写入语法，保持换行以便解析
-          # 将完整两行私钥内容进行 base64 编码，作为单行内容注入环境变量
-          if command -v base64 >/dev/null 2>&1; then
-            KEY_B64=$(base64 < "$KEY_PATH" | tr -d '\r\n')
-          elif command -v openssl >/dev/null 2>&1; then
-            KEY_B64=$(openssl base64 -A -in "$KEY_PATH")
-          else
-            KEY_B64=$(KEY_PATH="$KEY_PATH" node -e "process.stdout.write(require('fs').readFileSync(process.env.KEY_PATH).toString('base64'))")
-          fi
-          if [ -z "$KEY_B64" ]; then
-            echo "❌ 无法生成私钥 base64 内容" >&2
-            exit 1
-          fi
-          echo "TAURI_SIGNING_PRIVATE_KEY=$KEY_B64" >> "$GITHUB_ENV"
+          echo "TAURI_SIGNING_PRIVATE_KEY=${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" >> "$GITHUB_ENV"
           if [ -n "${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}" ]; then
-            echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}" >> $GITHUB_ENV
+            echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}" >> "$GITHUB_ENV"
           fi
-          echo "✅ Tauri signing key prepared"
+          echo "✅ Tauri signing key configured"
 
       - name: Build Tauri App (macOS)
         if: runner.os == 'macOS'
