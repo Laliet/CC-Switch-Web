@@ -22,11 +22,11 @@ CC-Switch-Web 是一个统一的 AI CLI 配置管理工具，支持 **Claude Cod
 
 | 平台 | 下载链接 |
 |------|----------|
-| **Windows** | [CC-Switch-v0.2.0-Windows.msi](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.2.0/CC-Switch-v0.2.0-Windows.msi)（安装版） |
-| | [CC-Switch-v0.2.0-Windows-Portable.zip](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.2.0/CC-Switch-v0.2.0-Windows-Portable.zip)（绿色版） |
-| **macOS** | [CC-Switch-v0.2.0-macOS.zip](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.2.0/CC-Switch-v0.2.0-macOS.zip) |
-| **Linux** | [CC-Switch-v0.2.0-Linux.AppImage](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.2.0/CC-Switch-v0.2.0-Linux.AppImage) |
-| | [CC-Switch-v0.2.0-Linux.deb](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.2.0/CC-Switch-v0.2.0-Linux.deb)（Debian/Ubuntu） |
+| **Windows** | [CC-Switch-v0.3.0-Windows.msi](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.3.0/CC-Switch-v0.3.0-Windows.msi)（安装版） |
+| | [CC-Switch-v0.3.0-Windows-Portable.zip](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.3.0/CC-Switch-v0.3.0-Windows-Portable.zip)（绿色版） |
+| **macOS** | [CC-Switch-v0.3.0-macOS.zip](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.3.0/CC-Switch-v0.3.0-macOS.zip) |
+| **Linux** | [CC-Switch-v0.3.0-Linux.AppImage](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.3.0/CC-Switch-v0.3.0-Linux.AppImage) |
+| | [CC-Switch-v0.3.0-Linux.deb](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.3.0/CC-Switch-v0.3.0-Linux.deb)（Debian/Ubuntu） |
 
 **macOS 提示**：如遇"已损坏"警告，在终端执行：`xattr -cr "/Applications/CC Switch.app"`
 
@@ -48,7 +48,7 @@ curl -fsSL https://raw.githubusercontent.com/LITLAY2004/CC-Switch-Web/main/scrip
 **高级选项**：
 ```bash
 # 安装指定版本
-VERSION=v0.2.0 curl -fsSL https://...install.sh | bash
+VERSION=v0.3.0 curl -fsSL https://...install.sh | bash
 
 # 跳过校验
 NO_CHECKSUM=1 curl -fsSL https://...install.sh | bash
@@ -192,7 +192,7 @@ pnpm test
 
 ## 更新日志
 
-参见 [CHANGELOG.md](CHANGELOG.md) — 当前版本：**v0.2.0**
+参见 [CHANGELOG.md](CHANGELOG.md) — 当前版本：**v0.3.0**
 
 ## 致谢
 

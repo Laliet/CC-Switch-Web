@@ -22,11 +22,11 @@ Download the latest release for your platform:
 
 | Platform | Download |
 |----------|----------|
-| **Windows** | [CC-Switch-v0.2.0-Windows.msi](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.2.0/CC-Switch-v0.2.0-Windows.msi) (Installer) |
-| | [CC-Switch-v0.2.0-Windows-Portable.zip](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.2.0/CC-Switch-v0.2.0-Windows-Portable.zip) (Portable) |
-| **macOS** | [CC-Switch-v0.2.0-macOS.zip](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.2.0/CC-Switch-v0.2.0-macOS.zip) |
-| **Linux** | [CC-Switch-v0.2.0-Linux.AppImage](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.2.0/CC-Switch-v0.2.0-Linux.AppImage) |
-| | [CC-Switch-v0.2.0-Linux.deb](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.2.0/CC-Switch-v0.2.0-Linux.deb) (Debian/Ubuntu) |
+| **Windows** | [CC-Switch-v0.3.0-Windows.msi](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.3.0/CC-Switch-v0.3.0-Windows.msi) (Installer) |
+| | [CC-Switch-v0.3.0-Windows-Portable.zip](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.3.0/CC-Switch-v0.3.0-Windows-Portable.zip) (Portable) |
+| **macOS** | [CC-Switch-v0.3.0-macOS.zip](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.3.0/CC-Switch-v0.3.0-macOS.zip) |
+| **Linux** | [CC-Switch-v0.3.0-Linux.AppImage](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.3.0/CC-Switch-v0.3.0-Linux.AppImage) |
+| | [CC-Switch-v0.3.0-Linux.deb](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.3.0/CC-Switch-v0.3.0-Linux.deb) (Debian/Ubuntu) |
 
 **macOS Note**: If you see "damaged" warning, run: `xattr -cr "/Applications/CC Switch.app"`
 
@@ -48,7 +48,7 @@ This script will:
 **Advanced options**:
 ```bash
 # Install specific version
-VERSION=v0.2.0 curl -fsSL https://...install.sh | bash
+VERSION=v0.3.0 curl -fsSL https://...install.sh | bash
 
 # Skip checksum verification
 NO_CHECKSUM=1 curl -fsSL https://...install.sh | bash
@@ -192,7 +192,7 @@ pnpm test
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) — Current version: **v0.2.0**
+See [CHANGELOG.md](CHANGELOG.md) — Current version: **v0.3.0**
 
 ## Credits
 
