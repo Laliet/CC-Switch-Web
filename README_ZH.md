@@ -24,11 +24,11 @@ CC-Switch-Web 是一个统一的 AI CLI 配置管理工具，支持 **Claude Cod
 
 | 平台 | 下载链接 |
 |------|----------|
-| **Windows** | [CC-Switch-v0.3.0-Windows.msi](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.3.0/CC-Switch-v0.3.0-Windows.msi)（安装版） |
-| | [CC-Switch-v0.3.0-Windows-Portable.zip](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.3.0/CC-Switch-v0.3.0-Windows-Portable.zip)（绿色版） |
-| **macOS** | [CC-Switch-v0.3.0-macOS.zip](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.3.0/CC-Switch-v0.3.0-macOS.zip) |
-| **Linux** | [CC-Switch-v0.3.0-Linux.AppImage](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.3.0/CC-Switch-v0.3.0-Linux.AppImage) |
-| | [CC-Switch-v0.3.0-Linux.deb](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.3.0/CC-Switch-v0.3.0-Linux.deb)（Debian/Ubuntu） |
+| **Windows** | [CC-Switch-v0.4.0-Windows.msi](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Windows.msi)（安装版） |
+| | [CC-Switch-v0.4.0-Windows-Portable.zip](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Windows-Portable.zip)（绿色版） |
+| **macOS** | [CC-Switch-v0.4.0-macOS.zip](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-macOS.zip) |
+| **Linux** | [CC-Switch-v0.4.0-Linux.AppImage](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Linux.AppImage) |
+| | [CC-Switch-v0.4.0-Linux.deb](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Linux.deb)（Debian/Ubuntu） |
 
 **macOS 提示**：如遇"已损坏"警告，在终端执行：`xattr -cr "/Applications/CC Switch.app"`
 
@@ -50,7 +50,7 @@ curl -fsSL https://raw.githubusercontent.com/LITLAY2004/CC-Switch-Web/main/scrip
 **高级选项**：
 ```bash
 # 安装指定版本
-VERSION=v0.3.0 curl -fsSL https://...install.sh | bash
+VERSION=v0.4.0 curl -fsSL https://...install.sh | bash
 
 # 跳过校验
 NO_CHECKSUM=1 curl -fsSL https://...install.sh | bash
@@ -58,30 +58,33 @@ NO_CHECKSUM=1 curl -fsSL https://...install.sh | bash
 
 ### 方式二：Web 服务器模式（无头/云端）
 
-适用于没有图形界面的服务器环境：
+适用于没有图形界面的服务器环境。v0.4.0 构建链已大幅简化，Web 服务器不再依赖 Tauri/GTK/WebKit。
 
-**一键部署**（推荐）：
+**一键部署（预编译，推荐）**：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/LITLAY2004/CC-Switch-Web/main/scripts/deploy-web.sh | bash
+curl -fsSL https://raw.githubusercontent.com/LITLAY2004/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
 ```
 
-该脚本会：
-- 检查并安装系统依赖（Node.js、pnpm、Rust、Linux 编译工具）
-- 克隆仓库到 `~/cc-switch-web`
-- 构建前端资源和 Rust 后端
-- 创建启动脚本
+- 下载预编译 Web 服务器二进制（Linux x86_64/aarch64），无需编译即可运行。
 
-**高级选项**：
+**高级选项**（同样支持 `--prebuilt`）：
 ```bash
 # 自定义安装目录和端口
-INSTALL_DIR=/opt/cc-switch PORT=8080 curl -fsSL https://...deploy-web.sh | bash
+INSTALL_DIR=/opt/cc-switch PORT=8080 curl -fsSL https://raw.githubusercontent.com/LITLAY2004/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
 
 # 创建 systemd 服务（开机自启）
-CREATE_SERVICE=1 curl -fsSL https://...deploy-web.sh | bash
+CREATE_SERVICE=1 curl -fsSL https://raw.githubusercontent.com/LITLAY2004/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
 ```
 
-**手动安装**：
+**Docker 容器部署（新增）**：
+```bash
+docker build -t cc-switch-web .
+docker run -p 3000:3000 cc-switch-web
+```
+
+**源码构建（简化版）**：
+- 依赖精简为 `libssl-dev` 与 `pkg-config`，无需 WebKit/GTK；Rust 1.75+ 和 pnpm 即可。
 
 ```bash
 # 1. 克隆并安装依赖
@@ -194,7 +197,7 @@ pnpm test
 
 ## 更新日志
 
-参见 [CHANGELOG.md](CHANGELOG.md) — 当前版本：**v0.3.0**
+参见 [CHANGELOG.md](CHANGELOG.md) — 当前版本：**v0.4.0**
 
 ## 致谢
 

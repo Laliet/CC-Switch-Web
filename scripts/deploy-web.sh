@@ -2,6 +2,12 @@
 # CC-Switch Web Server 一键部署脚本
 # Usage: curl -fsSL https://raw.githubusercontent.com/LITLAY2004/CC-Switch-Web/main/scripts/deploy-web.sh | bash
 #
+# 快速部署（推荐）- 使用预编译二进制：
+#   INSTALL_DIR=/opt/cc-switch curl -fsSL .../deploy-web.sh | bash -s -- --prebuilt
+#
+# 从源码编译：
+#   curl -fsSL .../deploy-web.sh | bash
+#
 # 环境变量：
 #   HOST      - 监听地址，默认 0.0.0.0
 #   PORT      - 监听端口，默认 3000
@@ -20,6 +26,7 @@ REPO_URL="${REPO_URL:-https://github.com/LITLAY2004/CC-Switch-Web.git}"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/cc-switch-web}"
 HOST="${HOST:-0.0.0.0}"
 PORT="${PORT:-3000}"
+PREBUILT=0
 
 # 检查命令是否存在
 need_cmd() {
@@ -33,6 +40,7 @@ need_cmd() {
 check_dependencies() {
   log "检查系统依赖..."
 
+  local require_build_tools="${1:-1}"
   local missing=()
 
   # 检查 Git
@@ -40,30 +48,32 @@ check_dependencies() {
     missing+=("git")
   fi
 
-  # 检查 Node.js
-  if ! need_cmd node; then
-    missing+=("nodejs")
-  else
-    local node_version
-    node_version=$(node -v | sed 's/v//' | cut -d. -f1)
-    if [[ "$node_version" -lt 18 ]]; then
-      warn "Node.js 版本过低 (需要 >= 18)，当前: $(node -v)"
-      missing+=("nodejs>=18")
+  if [[ "$require_build_tools" == "1" ]]; then
+    # 检查 Node.js
+    if ! need_cmd node; then
+      missing+=("nodejs")
+    else
+      local node_version
+      node_version=$(node -v | sed 's/v//' | cut -d. -f1)
+      if [[ "$node_version" -lt 18 ]]; then
+        warn "Node.js 版本过低 (需要 >= 18)，当前: $(node -v)"
+        missing+=("nodejs>=18")
+      fi
     fi
-  fi
 
-  # 检查 pnpm
-  if ! need_cmd pnpm; then
-    log "安装 pnpm..."
-    npm install -g pnpm || {
-      err "pnpm 安装失败，请手动安装: npm install -g pnpm"
-      exit 1
-    }
-  fi
+    # 检查 pnpm
+    if ! need_cmd pnpm; then
+      log "安装 pnpm..."
+      npm install -g pnpm || {
+        err "pnpm 安装失败，请手动安装: npm install -g pnpm"
+        exit 1
+      }
+    fi
 
-  # 检查 Rust/Cargo
-  if ! need_cmd cargo; then
-    missing+=("rust/cargo")
+    # 检查 Rust/Cargo
+    if ! need_cmd cargo; then
+      missing+=("rust/cargo")
+    fi
   fi
 
   # 检查 curl
@@ -71,14 +81,22 @@ check_dependencies() {
     missing+=("curl")
   fi
 
+  # 检查 Python3
+  if ! need_cmd python3; then
+    missing+=("python3")
+  fi
+
   if [[ ${#missing[@]} -gt 0 ]]; then
     err "缺少以下依赖: ${missing[*]}"
     echo ""
     echo "请先安装缺失的依赖："
     echo "  - Git: sudo apt install git"
-    echo "  - Node.js 18+: https://nodejs.org/ 或 nvm install 20"
-    echo "  - Rust: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
+    if [[ "$require_build_tools" == "1" ]]; then
+      echo "  - Node.js 18+: https://nodejs.org/ 或 nvm install 20"
+      echo "  - Rust: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
+    fi
     echo "  - curl: sudo apt install curl"
+    echo "  - Python3: sudo apt install python3"
     exit 1
   fi
 
@@ -100,9 +118,6 @@ install_linux_deps() {
       build-essential
       pkg-config
       libssl-dev
-      libgtk-3-dev
-      librsvg2-dev
-      libwebkit2gtk-4.1-dev
     )
 
     local to_install=()
@@ -115,29 +130,20 @@ install_linux_deps() {
     if [[ ${#to_install[@]} -gt 0 ]]; then
       log "安装编译依赖: ${to_install[*]}"
       sudo apt-get update
-      sudo apt-get install -y "${to_install[@]}" || {
-        # 尝试 webkit2gtk-4.0 作为备选
-        sudo apt-get install -y libwebkit2gtk-4.0-dev 2>/dev/null || true
-      }
+      sudo apt-get install -y "${to_install[@]}"
     fi
   elif need_cmd dnf; then
     # Fedora/RHEL
     sudo dnf install -y \
       gcc gcc-c++ \
       openssl-devel \
-      gtk3-devel \
-      librsvg2-devel \
-      webkit2gtk4.1-devel \
-      || sudo dnf install -y webkit2gtk3-devel 2>/dev/null || true
+      pkg-config
   elif need_cmd pacman; then
     # Arch Linux
     sudo pacman -S --needed --noconfirm \
       base-devel \
       openssl \
-      gtk3 \
-      librsvg \
-      webkit2gtk-4.1 \
-      || sudo pacman -S --needed --noconfirm webkit2gtk 2>/dev/null || true
+      pkgconf
   fi
 
   success "Linux 编译依赖就绪"
@@ -192,6 +198,31 @@ build_backend() {
   cd ..
 
   success "后端构建完成"
+}
+
+download_prebuilt() {
+  log "下载预编译的 CC-Switch Web 服务器..."
+
+  local arch
+  case "$(uname -m)" in
+    x86_64|amd64) arch="x86_64" ;;
+    aarch64|arm64) arch="aarch64" ;;
+    *)
+      err "暂不支持的架构: $(uname -m)"
+      exit 1
+      ;;
+  esac
+
+  local download_url="https://github.com/LITLAY2004/CC-Switch-Web/releases/latest/download/cc-switch-server-linux-${arch}"
+  local target_path="$INSTALL_DIR/src-tauri/target/release/examples/server"
+
+  mkdir -p "$(dirname "$target_path")"
+
+  log "从 $download_url 下载..."
+  curl -fL "$download_url" -o "$target_path"
+  chmod +x "$target_path"
+
+  success "预编译服务器已下载: $target_path"
 }
 
 # 创建 systemd 服务（可选）
@@ -289,11 +320,25 @@ main() {
   log "=============================="
   echo ""
 
-  check_dependencies
+  for arg in "$@"; do
+    case "$arg" in
+      --prebuilt) PREBUILT=1 ;;
+    esac
+  done
+
+  if [[ "$PREBUILT" == "1" ]]; then
+    log "使用预编译二进制部署"
+  fi
+
+  check_dependencies "$((1 - PREBUILT))"
   install_linux_deps
   clone_or_update
-  build_frontend
-  build_backend
+  if [[ "$PREBUILT" == "1" ]]; then
+    download_prebuilt
+  else
+    build_frontend
+    build_backend
+  fi
   create_start_script
   create_systemd_service
   show_completion

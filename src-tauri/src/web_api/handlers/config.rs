@@ -13,7 +13,7 @@ use serde_json::Value;
 
 use crate::{
     app_config::{AppType, MultiAppConfig},
-    app_store, codex_config,
+    codex_config,
     config::{
         atomic_write, get_app_config_dir, get_app_config_path as resolve_app_config_path,
         get_claude_settings_path,
@@ -217,8 +217,8 @@ pub async fn open_app_config_folder() -> ApiResult<bool> {
 }
 
 pub async fn get_app_config_dir_override() -> ApiResult<Option<String>> {
-    let dir = app_store::get_app_config_dir_override().map(|p| p.to_string_lossy().to_string());
-    Ok(Json(dir))
+    // Web server mode does not support overriding the app config directory.
+    Ok(Json(None))
 }
 
 #[derive(Deserialize)]
@@ -228,8 +228,8 @@ pub struct OverridePayload {
 }
 
 pub async fn set_app_config_dir_override(Json(payload): Json<OverridePayload>) -> ApiResult<bool> {
-    app_store::set_app_config_dir_override_standalone(payload.path.as_deref())
-        .map_err(ApiError::from)?;
+    let _ = payload;
+    // No-op in web server mode; desktop handles persistence.
     Ok(Json(true))
 }
 

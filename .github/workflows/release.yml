@@ -283,10 +283,76 @@ jobs:
           echo "Listing bundles in src-tauri/target..."
           find src-tauri/target -maxdepth 4 -type f -name "*.*" 2>/dev/null || true
 
+  build-web-server:
+    name: Build Web Server Binary
+    runs-on: ubuntu-22.04
+    needs: release  # 等待主 release 完成
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            artifact: cc-switch-server-linux-x86_64
+          - target: aarch64-unknown-linux-gnu
+            artifact: cc-switch-server-linux-aarch64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10.12.3
+
+      - name: Install frontend deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web assets
+        run: pnpm build:web
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross-compilation tools (aarch64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libssl-dev pkg-config
+
+      - name: Build server binary
+        run: |
+          cd src-tauri
+          cargo build --release --no-default-features --features web-server --example server --target ${{ matrix.target }}
+
+      - name: Prepare artifact
+        run: |
+          mkdir -p release-assets
+          cp src-tauri/target/${{ matrix.target }}/release/examples/server release-assets/${{ matrix.artifact }}
+          chmod +x release-assets/${{ matrix.artifact }}
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: release-assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   assemble-latest-json:
     name: Assemble latest.json
     runs-on: ubuntu-22.04
-    needs: release
+    needs: [release, build-web-server]
     permissions:
       contents: write
     steps:

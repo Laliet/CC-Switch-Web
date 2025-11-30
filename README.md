@@ -24,11 +24,11 @@ Download the latest release for your platform:
 
 | Platform | Download |
 |----------|----------|
-| **Windows** | [CC-Switch-v0.3.0-Windows.msi](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.3.0/CC-Switch-v0.3.0-Windows.msi) (Installer) |
-| | [CC-Switch-v0.3.0-Windows-Portable.zip](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.3.0/CC-Switch-v0.3.0-Windows-Portable.zip) (Portable) |
-| **macOS** | [CC-Switch-v0.3.0-macOS.zip](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.3.0/CC-Switch-v0.3.0-macOS.zip) |
-| **Linux** | [CC-Switch-v0.3.0-Linux.AppImage](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.3.0/CC-Switch-v0.3.0-Linux.AppImage) |
-| | [CC-Switch-v0.3.0-Linux.deb](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.3.0/CC-Switch-v0.3.0-Linux.deb) (Debian/Ubuntu) |
+| **Windows** | [CC-Switch-v0.4.0-Windows.msi](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Windows.msi) (Installer) |
+| | [CC-Switch-v0.4.0-Windows-Portable.zip](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Windows-Portable.zip) (Portable) |
+| **macOS** | [CC-Switch-v0.4.0-macOS.zip](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-macOS.zip) |
+| **Linux** | [CC-Switch-v0.4.0-Linux.AppImage](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Linux.AppImage) |
+| | [CC-Switch-v0.4.0-Linux.deb](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Linux.deb) (Debian/Ubuntu) |
 
 **macOS Note**: If you see "damaged" warning, run: `xattr -cr "/Applications/CC Switch.app"`
 
@@ -50,7 +50,7 @@ This script will:
 **Advanced options**:
 ```bash
 # Install specific version
-VERSION=v0.3.0 curl -fsSL https://...install.sh | bash
+VERSION=v0.4.0 curl -fsSL https://...install.sh | bash
 
 # Skip checksum verification
 NO_CHECKSUM=1 curl -fsSL https://...install.sh | bash
@@ -58,30 +58,33 @@ NO_CHECKSUM=1 curl -fsSL https://...install.sh | bash
 
 ### Option 2: Web Server Mode (Headless/Cloud)
 
-For server environments without GUI:
+For server environments without GUI. Build chain is now much simpler—no WebKit/GTK desktop dependencies for the web server.
 
-**One-Line Deploy** (recommended):
+**One-Line Deploy (prebuilt, recommended)**:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/LITLAY2004/CC-Switch-Web/main/scripts/deploy-web.sh | bash
+curl -fsSL https://raw.githubusercontent.com/LITLAY2004/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
 ```
 
-This script will:
-- Check and install system dependencies (Node.js, pnpm, Rust, Linux build tools)
-- Clone the repository to `~/cc-switch-web`
-- Build frontend assets and Rust backend
-- Create a startup script
+This downloads a precompiled web server binary (Linux x86_64/aarch64) and sets up a startup script—no compilation required.
 
-**Advanced options**:
+**Advanced options** (work with `--prebuilt` too):
 ```bash
 # Custom install directory and port
-INSTALL_DIR=/opt/cc-switch PORT=8080 curl -fsSL https://...deploy-web.sh | bash
+INSTALL_DIR=/opt/cc-switch PORT=8080 curl -fsSL https://raw.githubusercontent.com/LITLAY2004/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
 
 # Create systemd service for auto-start
-CREATE_SERVICE=1 curl -fsSL https://...deploy-web.sh | bash
+CREATE_SERVICE=1 curl -fsSL https://raw.githubusercontent.com/LITLAY2004/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
 ```
 
-**Manual installation**:
+**Docker container (new)**:
+```bash
+docker build -t cc-switch-web .
+docker run -p 3000:3000 cc-switch-web
+```
+
+**Build from source (simplified)**:
+- Dependencies trimmed to `libssl-dev` and `pkg-config` (no WebKit/GTK). Rust 1.75+ and pnpm are sufficient.
 
 ```bash
 # 1. Clone and install dependencies
@@ -194,7 +197,7 @@ pnpm test
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) — Current version: **v0.3.0**
+See [CHANGELOG.md](CHANGELOG.md) — Current version: **v0.4.0**
 
 ## Credits
 

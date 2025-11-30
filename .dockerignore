@@ -1,0 +1,17 @@
+node_modules
+dist
+dist-web
+target
+src-tauri/target
+.git
+.gitignore
+.github
+.vscode
+.idea
+.DS_Store
+*.log
+npm-debug.log*
+pnpm-debug.log*
+coverage
+.env
+.env.*

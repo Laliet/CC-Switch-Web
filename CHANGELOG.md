@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2024-11-30
+
+### Added
+- 预编译 server binary：Linux x86_64/aarch64 开箱即用
+- Docker 支持：多阶段 Dockerfile 容器化部署
+- deploy-web.sh --prebuilt 选项：秒级部署
+
+### Changed  
+- 解耦 desktop/web-server feature：web-server 不再依赖 Tauri/GTK/WebKit
+- 降低 Rust 版本要求：1.83 → 1.75
+- 精简 Web 服务器编译依赖：仅需 libssl-dev, pkg-config
+
+### Fixed
+- Web 模式部署不再需要安装桌面 GUI 依赖
+
 ## [0.3.0] - 2025-11-29
 
 ### ✨ New Features
