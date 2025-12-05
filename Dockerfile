@@ -6,7 +6,7 @@ COPY tsconfig.json tsconfig.node.json tailwind.config.js vite.config.mts vite.co
 COPY src ./src
 RUN pnpm build:web
 
-FROM rust:1.75-bookworm AS rust-builder
+FROM rust:1.83-bookworm AS rust-builder
 RUN apt-get update && apt-get install -y --no-install-recommends libssl-dev pkg-config \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
