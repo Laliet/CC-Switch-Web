@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # CC-Switch Web Server 一键部署脚本
-# Usage: curl -fsSL https://raw.githubusercontent.com/LITLAY2004/CC-Switch-Web/main/scripts/deploy-web.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/Laliet/CC-Switch-Web/main/scripts/deploy-web.sh | bash
 #
 # 快速部署（推荐）- 使用预编译二进制：
 #   INSTALL_DIR=/opt/cc-switch curl -fsSL .../deploy-web.sh | bash -s -- --prebuilt
@@ -22,7 +22,7 @@ err() { printf '\033[1;31m[CC-Switch]\033[0m %s\n' "$*" >&2; }
 success() { printf '\033[1;32m[CC-Switch]\033[0m %s\n' "$*"; }
 
 # 配置
-REPO_URL="${REPO_URL:-https://github.com/LITLAY2004/CC-Switch-Web.git}"
+REPO_URL="${REPO_URL:-https://github.com/Laliet/CC-Switch-Web.git}"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/cc-switch-web}"
 HOST="${HOST:-0.0.0.0}"
 PORT="${PORT:-3000}"
@@ -213,7 +213,7 @@ download_prebuilt() {
       ;;
   esac
 
-  local download_url="https://github.com/LITLAY2004/CC-Switch-Web/releases/latest/download/cc-switch-server-linux-${arch}"
+  local download_url="https://github.com/Laliet/CC-Switch-Web/releases/latest/download/cc-switch-server-linux-${arch}"
   local target_path="$INSTALL_DIR/src-tauri/target/release/examples/server"
 
   mkdir -p "$(dirname "$target_path")"

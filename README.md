@@ -26,11 +26,11 @@ Download the latest release for your platform:
 
 | Platform | Download |
 |----------|----------|
-| **Windows** | [CC-Switch-v0.4.0-Windows.msi](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Windows.msi) (Installer) |
-| | [CC-Switch-v0.4.0-Windows-Portable.zip](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Windows-Portable.zip) (Portable) |
-| **macOS** | [CC-Switch-v0.4.0-macOS.zip](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-macOS.zip) |
-| **Linux** | [CC-Switch-v0.4.0-Linux.AppImage](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Linux.AppImage) |
-| | [CC-Switch-v0.4.0-Linux.deb](https://github.com/LITLAY2004/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Linux.deb) (Debian/Ubuntu) |
+| **Windows** | [CC-Switch-v0.4.0-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Windows.msi) (Installer) |
+| | [CC-Switch-v0.4.0-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Windows-Portable.zip) (Portable) |
+| **macOS** | [CC-Switch-v0.4.0-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-macOS.zip) |
+| **Linux** | [CC-Switch-v0.4.0-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Linux.AppImage) |
+| | [CC-Switch-v0.4.0-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Linux.deb) (Debian/Ubuntu) |
 
 **macOS Note**: If you see "damaged" warning, run: `xattr -cr "/Applications/CC Switch.app"`
 
@@ -39,7 +39,7 @@ Download the latest release for your platform:
 **Linux One-Line Install** (recommended):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/LITLAY2004/CC-Switch-Web/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Laliet/CC-Switch-Web/main/scripts/install.sh | bash
 ```
 
 This script will:
@@ -65,7 +65,7 @@ For server environments without GUI. Build chain is now much simpler—no WebKit
 **One-Line Deploy (prebuilt, recommended)**:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/LITLAY2004/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
+curl -fsSL https://raw.githubusercontent.com/Laliet/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
 ```
 
 This downloads a precompiled web server binary (Linux x86_64/aarch64) and sets up a startup script—no compilation required.
@@ -73,10 +73,10 @@ This downloads a precompiled web server binary (Linux x86_64/aarch64) and sets u
 **Advanced options** (work with `--prebuilt` too):
 ```bash
 # Custom install directory and port
-INSTALL_DIR=/opt/cc-switch PORT=8080 curl -fsSL https://raw.githubusercontent.com/LITLAY2004/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
+INSTALL_DIR=/opt/cc-switch PORT=8080 curl -fsSL https://raw.githubusercontent.com/Laliet/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
 
 # Create systemd service for auto-start
-CREATE_SERVICE=1 curl -fsSL https://raw.githubusercontent.com/LITLAY2004/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
+CREATE_SERVICE=1 curl -fsSL https://raw.githubusercontent.com/Laliet/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
 ```
 
 **Docker container (new)**:
@@ -100,7 +100,7 @@ docker run -p 3000:3000 cc-switch-web
 
 ```bash
 # 1. Clone and install dependencies
-git clone https://github.com/LITLAY2004/CC-Switch-Web.git
+git clone https://github.com/Laliet/CC-Switch-Web.git
 cd CC-Switch-Web
 pnpm install
 

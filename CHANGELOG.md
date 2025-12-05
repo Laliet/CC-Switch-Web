@@ -126,7 +126,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **主要变更文件**：43 files changed
 - **代码行数**：约 +1,500 insertions, -300 deletions
 
-### 🔧 Release Engineering Fixes (by LITLAY2004)
+### 🔧 Release Engineering Fixes (by Laliet)
 
 本次发布过程中修复了多个 CI/CD 和签名相关问题：
 

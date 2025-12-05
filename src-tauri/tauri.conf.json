@@ -60,7 +60,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDUyN0EzQjMxMTEwNTQwNDgKUldSSVFBVVJNVHQ2VXFSQ2dBbmFMRzRIc0R6S0x2c1Bvc3ZnbjJ0SGFIYmpCK2NkaFVSRFBqYXQK",
       "endpoints": [
-        "https://github.com/LITLAY2004/CC-Switch-Web/releases/latest/download/latest.json"
+        "https://github.com/Laliet/CC-Switch-Web/releases/latest/download/latest.json"
       ]
     }
   }
