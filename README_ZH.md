@@ -20,17 +20,17 @@ CC-Switch-Web 是一个统一的 AI CLI 配置管理工具，支持 **Claude Cod
 
 ## 快速开始
 
-### 方式一：桌面应用（linux 推荐方式二）
+### 方式一：桌面应用（GUI）
 
-下载适合你平台的最新版本：
+功能完整的桌面应用，带图形界面，基于 Tauri 构建。
 
-| 平台 | 下载链接 |
-|------|----------|
-| **Windows** | [CC-Switch-v0.4.0-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Windows.msi)（安装版） |
-| | [CC-Switch-v0.4.0-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Windows-Portable.zip)（绿色版） |
-| **macOS** | [CC-Switch-v0.4.0-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-macOS.zip) |
-| **Linux** | [CC-Switch-v0.4.0-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Linux.AppImage) |
-| | [CC-Switch-v0.4.0-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Linux.deb)（Debian/Ubuntu） |
+| 平台 | 下载链接 | 说明 |
+|------|----------|------|
+| **Windows** | [CC-Switch-v0.4.0-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Windows.msi) | 安装版（推荐） |
+| | [CC-Switch-v0.4.0-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Windows-Portable.zip) | 绿色版（免安装） |
+| **macOS** | [CC-Switch-v0.4.0-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-macOS.zip) | 通用二进制（Intel + Apple Silicon） |
+| **Linux** | [CC-Switch-v0.4.0-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Linux.AppImage) | AppImage（通用） |
+| | [CC-Switch-v0.4.0-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Linux.deb) | Debian/Ubuntu 包 |
 
 **macOS 提示**：如遇"已损坏"警告，在终端执行：`xattr -cr "/Applications/CC Switch.app"`
 
@@ -60,17 +60,23 @@ NO_CHECKSUM=1 curl -fsSL https://...install.sh | bash
 
 ### 方式二：Web 服务器模式（无头/云端）
 
-适用于没有图形界面的服务器环境。v0.4.0 构建链已大幅简化，Web 服务器不再依赖 Tauri/GTK/WebKit。
+轻量级 Web 服务器，适用于无图形界面的服务器环境。通过浏览器访问，无需 GUI 依赖。
 
-**一键部署（预编译，推荐）**：
+#### 方法 A：预编译二进制（推荐）
 
+下载预编译的服务器二进制，无需编译：
+
+| 架构 | 下载链接 |
+|------|----------|
+| **Linux x86_64** | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/cc-switch-server-linux-x86_64) |
+| **Linux aarch64** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/cc-switch-server-linux-aarch64) |
+
+**一键部署**：
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Laliet/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
 ```
 
-- 下载预编译 Web 服务器二进制（Linux x86_64/aarch64），无需编译即可运行。
-
-**高级选项**（同样支持 `--prebuilt`）：
+**高级选项**：
 ```bash
 # 自定义安装目录和端口
 INSTALL_DIR=/opt/cc-switch PORT=8080 curl -fsSL https://raw.githubusercontent.com/Laliet/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
@@ -79,25 +85,29 @@ INSTALL_DIR=/opt/cc-switch PORT=8080 curl -fsSL https://raw.githubusercontent.co
 CREATE_SERVICE=1 curl -fsSL https://raw.githubusercontent.com/Laliet/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
 ```
 
-**Docker 容器部署（新增）**：
-- 直接拉取并运行 GHCR 镜像（一行启动）：
+#### 方法 B：Docker 容器
+
+Docker 镜像发布到 GitHub Container Registry (ghcr.io)：
+
 ```bash
 docker run -p 3000:3000 ghcr.io/laliet/cc-switch-web:latest
 ```
-> ⚠️ **注意**：Docker 镜像名必须全小写（`laliet`，不是 `Laliet`）
-- 使用一键部署脚本（自定义端口/版本/数据目录、可后台运行）：
+
+> ⚠️ **注意**：Docker 镜像名必须**全小写**（`laliet`，不是 `Laliet`）
+
+**Docker 高级选项**：
 ```bash
-# 在仓库根目录
+# 使用部署脚本（自定义端口/版本/数据目录、可后台运行）
 ./scripts/docker-deploy.sh -p 8080 --data-dir /opt/cc-switch-data -d
-```
-- 本地构建镜像（可选）：
-```bash
+
+# 本地构建镜像（可选）
 docker build -t cc-switch-web .
 docker run -p 3000:3000 cc-switch-web
 ```
 
-**源码构建（简化版）**：
-- 依赖精简为 `libssl-dev` 与 `pkg-config`，无需 WebKit/GTK；Rust 1.75+ 和 pnpm 即可。
+#### 方法 C：源码构建
+
+依赖：`libssl-dev`、`pkg-config`、Rust 1.78+、pnpm（无需 WebKit/GTK）
 
 ```bash
 # 1. 克隆并安装依赖
@@ -114,7 +124,10 @@ cargo build --release --features web-server --example server
 HOST=0.0.0.0 PORT=3000 ./target/release/examples/server
 ```
 
-- **登录凭据**：用户名 `admin`，密码在 `~/.cc-switch/web_password`（首次运行自动生成）
+### Web 服务器登录
+
+- **用户名**：`admin`
+- **密码**：首次运行自动生成，保存在 `~/.cc-switch/web_password`
 - **跨域设置**：默认同源；需跨域请设置 `CORS_ALLOW_ORIGINS=https://your-domain.com`
 - **注意**：Web 模式不支持原生文件选择器，请手动输入路径
 

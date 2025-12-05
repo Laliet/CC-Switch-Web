@@ -20,17 +20,17 @@ CC-Switch-Web is a unified configuration management tool for **Claude Code**, **
 
 ## Quick Start
 
-### Option 1: Desktop Application (Option2 is Recommended if use linux)
+### Option 1: Desktop Application (GUI)
 
-Download the latest release for your platform:
+Full-featured desktop app with graphical interface, built with Tauri.
 
-| Platform | Download |
-|----------|----------|
-| **Windows** | [CC-Switch-v0.4.0-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Windows.msi) (Installer) |
-| | [CC-Switch-v0.4.0-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Windows-Portable.zip) (Portable) |
-| **macOS** | [CC-Switch-v0.4.0-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-macOS.zip) |
-| **Linux** | [CC-Switch-v0.4.0-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Linux.AppImage) |
-| | [CC-Switch-v0.4.0-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Linux.deb) (Debian/Ubuntu) |
+| Platform | Download | Description |
+|----------|----------|-------------|
+| **Windows** | [CC-Switch-v0.4.0-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Windows.msi) | Installer (recommended) |
+| | [CC-Switch-v0.4.0-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Windows-Portable.zip) | Portable (no install) |
+| **macOS** | [CC-Switch-v0.4.0-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-macOS.zip) | Universal binary (Intel + Apple Silicon) |
+| **Linux** | [CC-Switch-v0.4.0-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Linux.AppImage) | AppImage (universal) |
+| | [CC-Switch-v0.4.0-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/CC-Switch-v0.4.0-Linux.deb) | Debian/Ubuntu package |
 
 **macOS Note**: If you see "damaged" warning, run: `xattr -cr "/Applications/CC Switch.app"`
 
@@ -60,17 +60,23 @@ NO_CHECKSUM=1 curl -fsSL https://...install.sh | bash
 
 ### Option 2: Web Server Mode (Headless/Cloud)
 
-For server environments without GUI. Build chain is now much simpler—no WebKit/GTK desktop dependencies for the web server.
+Lightweight web server for headless environments. Access via browser, no GUI dependencies.
 
-**One-Line Deploy (prebuilt, recommended)**:
+#### Method A: Prebuilt Binary (Recommended)
 
+Download precompiled server binary—no compilation required:
+
+| Architecture | Download |
+|--------------|----------|
+| **Linux x86_64** | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/cc-switch-server-linux-x86_64) |
+| **Linux aarch64** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.4.0/cc-switch-server-linux-aarch64) |
+
+**One-Line Deploy**:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Laliet/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
 ```
 
-This downloads a precompiled web server binary (Linux x86_64/aarch64) and sets up a startup script—no compilation required.
-
-**Advanced options** (work with `--prebuilt` too):
+**Advanced options**:
 ```bash
 # Custom install directory and port
 INSTALL_DIR=/opt/cc-switch PORT=8080 curl -fsSL https://raw.githubusercontent.com/Laliet/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
@@ -79,25 +85,29 @@ INSTALL_DIR=/opt/cc-switch PORT=8080 curl -fsSL https://raw.githubusercontent.co
 CREATE_SERVICE=1 curl -fsSL https://raw.githubusercontent.com/Laliet/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
 ```
 
-**Docker container (new)**:
-- Pull and run the prebuilt image (one line):
+#### Method B: Docker Container
+
+Docker image published to GitHub Container Registry (ghcr.io):
+
 ```bash
 docker run -p 3000:3000 ghcr.io/laliet/cc-switch-web:latest
 ```
-> ⚠️ **Note**: Docker image name must be lowercase (`laliet`, not `Laliet`)
-- Use the one-click deploy script (custom port/version/data dir/background):
+
+> ⚠️ **Note**: Docker image name must be **lowercase** (`laliet`, not `Laliet`)
+
+**Advanced Docker options**:
 ```bash
-# from repo root
+# Use the deploy script (custom port/version/data dir/background)
 ./scripts/docker-deploy.sh -p 8080 --data-dir /opt/cc-switch-data -d
-```
-- Build locally (optional):
-```bash
+
+# Build locally (optional)
 docker build -t cc-switch-web .
 docker run -p 3000:3000 cc-switch-web
 ```
 
-**Build from source (simplified)**:
-- Dependencies trimmed to `libssl-dev` and `pkg-config` (no WebKit/GTK). Rust 1.75+ and pnpm are sufficient.
+#### Method C: Build from Source
+
+Dependencies: `libssl-dev`, `pkg-config`, Rust 1.78+, pnpm (no WebKit/GTK needed)
 
 ```bash
 # 1. Clone and install dependencies
@@ -114,7 +124,10 @@ cargo build --release --features web-server --example server
 HOST=0.0.0.0 PORT=3000 ./target/release/examples/server
 ```
 
-- **Login**: `admin` / password in `~/.cc-switch/web_password` (auto-generated on first run)
+### Web Server Login
+
+- **Username**: `admin`
+- **Password**: Auto-generated on first run, stored in `~/.cc-switch/web_password`
 - **CORS**: Same-origin by default; set `CORS_ALLOW_ORIGINS=https://your-domain.com` for cross-origin
 - **Note**: Web mode doesn't support native file pickers—enter paths manually
 
