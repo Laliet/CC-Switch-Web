@@ -264,8 +264,12 @@ pub fn get_claude_config_status() -> ConfigStatus {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
     use std::env;
     use tempfile::tempdir;
+
+    // These tests mutate HOME/USERPROFILE, so run them serially to avoid
+    // cross-test env races (especially on Windows).
 
     struct EnvGuard {
         key: &'static str,
@@ -291,6 +295,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_get_home_dir() {
         let temp_dir = tempdir().expect("temp dir should be created");
         let home_str = temp_dir.path().to_string_lossy().to_string();
@@ -303,6 +308,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_get_app_config_path() {
         let temp_dir = tempdir().expect("temp dir should be created");
         let home_str = temp_dir.path().to_string_lossy().to_string();
