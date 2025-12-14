@@ -223,4 +223,3 @@ async fn test_security_headers_present() {
         "no-referrer"
     );
 }
-
