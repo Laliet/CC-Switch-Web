@@ -1,6 +1,10 @@
 #![cfg(feature = "web-server")]
 
-use std::{env, fs, path::PathBuf, sync::Arc};
+use std::{
+    env, fs,
+    path::{Path as StdPath, PathBuf},
+    sync::Arc,
+};
 
 use axum::{
     body::Body,
@@ -22,6 +26,9 @@ use rust_embed::RustEmbed;
 use std::sync::Arc as StdArc;
 use tower_http::{cors::CorsLayer, validate_request::ValidateRequestHeaderLayer};
 
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+
 use crate::{
     config::{atomic_write, get_home_dir},
     store::AppState,
@@ -39,7 +46,6 @@ struct WebAssets;
 
 #[derive(Clone)]
 struct WebTokens {
-    api_token: String,
     csrf_token: String,
 }
 
@@ -67,15 +73,16 @@ async fn serve_static(path: Option<Path<String>>, tokens: Arc<WebTokens>) -> imp
 
     if served_path == "index.html" {
         if let Ok(mut html) = String::from_utf8(content.clone()) {
+            let csrf_token_json = serde_json::to_string(&tokens.csrf_token)
+                .unwrap_or_else(|_| "\"\"".to_string())
+                .replace('<', "\\u003c");
             let injection = format!(
                 r#"<script>
 window.__CC_SWITCH_TOKENS__ = {{
-  apiToken: "{api}",
-  csrfToken: "{csrf}"
+  csrfToken: {csrf}
 }};
 </script>"#,
-                api = tokens.api_token,
-                csrf = tokens.csrf_token
+                csrf = csrf_token_json
             );
             if let Some(pos) = html.find("</head>") {
                 html.insert_str(pos, &injection);
@@ -107,7 +114,12 @@ fn cors_layer() -> CorsLayer {
 
     let mut layer = CorsLayer::new()
         .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
-        .allow_headers([ACCEPT, AUTHORIZATION, CONTENT_TYPE]);
+        .allow_headers([
+            ACCEPT,
+            AUTHORIZATION,
+            CONTENT_TYPE,
+            header::HeaderName::from_static("x-csrf-token"),
+        ]);
 
     match allow_origins.as_deref() {
         Some("*") => {
@@ -154,11 +166,7 @@ pub fn create_router(state: SharedState, password: String) -> Router {
         .map(|v| matches!(v.as_str(), "1" | "true" | "TRUE" | "yes" | "on"))
         .unwrap_or(true);
 
-    let auth_validator = AuthValidator::new(
-        password,
-        Some(tokens.api_token.clone()),
-        Some(tokens.csrf_token.clone()),
-    );
+    let auth_validator = AuthValidator::new(password, Some(tokens.csrf_token.clone()));
 
     let router = routes::create_router(state)
         .layer(ValidateRequestHeaderLayer::custom(auth_validator))
@@ -196,34 +204,19 @@ pub fn create_router(state: SharedState, password: String) -> Router {
 struct AuthValidator {
     basic_user: StdArc<String>,
     basic_pass: StdArc<String>,
-    bearer: Option<StdArc<String>>,
     csrf_token: Option<StdArc<String>>,
 }
 
 impl AuthValidator {
-    fn new(password: String, bearer: Option<String>, csrf_token: Option<String>) -> Self {
+    fn new(password: String, csrf_token: Option<String>) -> Self {
         Self {
             basic_user: StdArc::new("admin".to_string()),
             basic_pass: StdArc::new(password),
-            bearer: bearer.map(StdArc::new),
             csrf_token: csrf_token.map(StdArc::new),
         }
     }
 
     fn is_authorized(&self, auth_value: &str) -> bool {
-        if let Some(token) = self.bearer.as_ref() {
-            if auth_value
-                .trim_start()
-                .to_ascii_lowercase()
-                .starts_with("bearer")
-            {
-                return auth_value
-                    .split_once(' ')
-                    .map(|(_, v)| v == token.as_ref())
-                    .unwrap_or(false);
-            }
-        }
-
         if let Some(raw) = auth_value.strip_prefix("Basic ") {
             if let Ok(decoded) =
                 base64::engine::general_purpose::STANDARD.decode(raw.trim().as_bytes())
@@ -306,6 +299,17 @@ async fn add_hsts_header(
             .entry(STRICT_TRANSPORT_SECURITY)
             .or_insert(value);
     }
+
+    res.headers_mut()
+        .entry(header::HeaderName::from_static("x-frame-options"))
+        .or_insert(HeaderValue::from_static("DENY"));
+    res.headers_mut()
+        .entry(header::HeaderName::from_static("x-content-type-options"))
+        .or_insert(HeaderValue::from_static("nosniff"));
+    res.headers_mut()
+        .entry(header::HeaderName::from_static("referrer-policy"))
+        .or_insert(HeaderValue::from_static("no-referrer"));
+
     res
 }
 
@@ -313,61 +317,71 @@ fn token_store_path() -> Option<PathBuf> {
     get_home_dir().map(|home| home.join(".cc-switch").join("web_env"))
 }
 
+#[cfg(unix)]
+fn enforce_permissions(path: &StdPath) -> std::io::Result<()> {
+    fs::set_permissions(path, PermissionsExt::from_mode(0o600))
+}
+
+#[cfg(windows)]
+fn enforce_permissions(path: &StdPath) -> std::io::Result<()> {
+    use std::process::Command;
+
+    let path_str = path.to_string_lossy();
+    let output = Command::new("icacls")
+        .args([&*path_str, "/inheritance:r", "/grant:r", "*S-1-3-4:F"])
+        .output()?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        log::warn!("Failed to set Windows file permissions: {}", stderr);
+    }
+
+    Ok(())
+}
+
+#[cfg(all(not(unix), not(windows)))]
+fn enforce_permissions(_path: &StdPath) -> std::io::Result<()> {
+    Ok(())
+}
+
 fn load_or_generate_tokens() -> WebTokens {
-    let env_api = env::var("WEB_API_TOKEN").ok();
     let env_csrf = env::var("WEB_CSRF_TOKEN").ok();
 
-    if let Some(api) = env_api {
-        let csrf = env_csrf.unwrap_or_else(|| generate_token(16));
-        return WebTokens {
-            api_token: api,
-            csrf_token: csrf,
-        };
+    if let Some(csrf) = env_csrf {
+        return WebTokens { csrf_token: csrf };
     }
 
     if let Some(path) = token_store_path() {
         if let Ok(content) = fs::read_to_string(&path) {
-            let mut api = None;
             let mut csrf = None;
             for line in content.lines() {
-                if let Some(val) = line.strip_prefix("WEB_API_TOKEN=") {
-                    api = Some(val.trim().to_string());
-                } else if let Some(val) = line.strip_prefix("WEB_CSRF_TOKEN=") {
+                if let Some(val) = line.strip_prefix("WEB_CSRF_TOKEN=") {
                     csrf = Some(val.trim().to_string());
                 }
             }
-            if let Some(api_val) = api {
-                let csrf_val = csrf.unwrap_or_else(|| generate_token(16));
+            if let Some(csrf_val) = csrf {
+                let _ = enforce_permissions(&path);
                 return WebTokens {
-                    api_token: api_val,
                     csrf_token: csrf_val,
                 };
             }
         }
 
-        let api = generate_token(48);
-        let csrf = env_csrf.unwrap_or_else(|| generate_token(16));
+        let csrf = generate_token(16);
         if let Some(parent) = path.parent() {
             let _ = fs::create_dir_all(parent);
         }
-        let _ = atomic_write(
-            &path,
-            format!("WEB_API_TOKEN={api}\nWEB_CSRF_TOKEN={csrf}\n").as_bytes(),
-        );
-        log::info!(
-            "WEB_API_TOKEN/WEB_CSRF_TOKEN 已生成并写入 {}",
-            path.display()
-        );
-        WebTokens {
-            api_token: api,
-            csrf_token: csrf,
+        let write_result = atomic_write(&path, format!("WEB_CSRF_TOKEN={csrf}\n").as_bytes());
+        if write_result.is_ok() {
+            if let Err(err) = enforce_permissions(&path) {
+                log::warn!("Failed to enforce web token file permissions: {}", err);
+            }
         }
+        log::info!("WEB_CSRF_TOKEN 已生成并写入 {}", path.display());
+        WebTokens { csrf_token: csrf }
     } else {
-        let api = generate_token(48);
-        let csrf = env_csrf.unwrap_or_else(|| generate_token(16));
         WebTokens {
-            api_token: api,
-            csrf_token: csrf,
+            csrf_token: generate_token(16),
         }
     }
 }

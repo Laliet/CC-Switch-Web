@@ -145,7 +145,7 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
   const isTokenApplied =
     autoTokenApplied ||
     (typeof window !== "undefined" &&
-      Boolean((window as any).__CC_SWITCH_TOKENS__?.apiToken));
+      Boolean((window as any).__CC_SWITCH_TOKENS__?.csrfToken));
 
   // 内联模式：仅显示第一个套餐的核心数据（分上下两行）
   if (inline) {

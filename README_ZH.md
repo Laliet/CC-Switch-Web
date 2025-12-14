@@ -28,7 +28,7 @@
 
 ---
 
-## v0.5.0 更新内容
+## v0.5.1 更新内容
 
 - 修复了 14 个 bug，覆盖错误处理、状态管理、闭包陷阱等问题
 - 增强 API 请求的健壮性，加入超时与重试机制
@@ -36,7 +36,7 @@
 
 ---
 
-## v0.5.0 更新内容
+## v0.5.1 更新内容
 
 ### 🐛 Bug 修复
 - 修复 14 个问题，涵盖错误处理、状态管理和闭包相关缺陷
@@ -69,11 +69,11 @@
 
 | 平台 | 下载链接 | 说明 |
 |------|----------|------|
-| **Windows** | [CC-Switch-v0.5.0-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.0/CC-Switch-v0.5.0-Windows.msi) | 安装版（推荐） |
-| | [CC-Switch-v0.5.0-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.0/CC-Switch-v0.5.0-Windows-Portable.zip) | 绿色版（免安装） |
-| **macOS** | [CC-Switch-v0.5.0-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.0/CC-Switch-v0.5.0-macOS.zip) | 通用二进制（Intel + Apple Silicon） |
-| **Linux** | [CC-Switch-v0.5.0-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.0/CC-Switch-v0.5.0-Linux.AppImage) | AppImage（通用） |
-| | [CC-Switch-v0.5.0-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.0/CC-Switch-v0.5.0-Linux.deb) | Debian/Ubuntu 包 |
+| **Windows** | [CC-Switch-v0.5.1-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.1/CC-Switch-v0.5.1-Windows.msi) | 安装版（推荐） |
+| | [CC-Switch-v0.5.1-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.1/CC-Switch-v0.5.1-Windows-Portable.zip) | 绿色版（免安装） |
+| **macOS** | [CC-Switch-v0.5.1-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.1/CC-Switch-v0.5.1-macOS.zip) | 通用二进制（Intel + Apple Silicon） |
+| **Linux** | [CC-Switch-v0.5.1-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.1/CC-Switch-v0.5.1-Linux.AppImage) | AppImage（通用） |
+| | [CC-Switch-v0.5.1-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.1/CC-Switch-v0.5.1-Linux.deb) | Debian/Ubuntu 包 |
 
 **macOS 提示**：如遇"已损坏"警告，在终端执行：`xattr -cr "/Applications/CC Switch.app"`
 
@@ -95,7 +95,7 @@ curl -fsSL https://raw.githubusercontent.com/Laliet/CC-Switch-Web/main/scripts/i
 **高级选项**：
 ```bash
 # 安装指定版本
-VERSION=v0.5.0 curl -fsSL https://...install.sh | bash
+VERSION=v0.5.1 curl -fsSL https://...install.sh | bash
 
 # 跳过校验
 NO_CHECKSUM=1 curl -fsSL https://...install.sh | bash
@@ -111,8 +111,8 @@ NO_CHECKSUM=1 curl -fsSL https://...install.sh | bash
 
 | 架构 | 下载链接 |
 |------|----------|
-| **Linux x86_64** | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.0/cc-switch-server-linux-x86_64) |
-| **Linux aarch64** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.0/cc-switch-server-linux-aarch64) |
+| **Linux x86_64** | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.1/cc-switch-server-linux-x86_64) |
+| **Linux aarch64** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.1/cc-switch-server-linux-aarch64) |
 
 **一键部署**：
 ```bash
@@ -173,6 +173,35 @@ HOST=0.0.0.0 PORT=3000 ./target/release/examples/server
 - **密码**：首次运行自动生成，保存在 `~/.cc-switch/web_password`
 - **跨域设置**：默认同源；需跨域请设置 `CORS_ALLOW_ORIGINS=https://your-domain.com`
 - **注意**：Web 模式不支持原生文件选择器，请手动输入路径
+
+### 安全
+
+**认证**：
+- 所有 API 请求都需要 Basic Auth
+- 浏览器会弹出用户名/密码提示
+- 对非 GET 请求会自动注入并校验 CSRF Token
+
+**安全响应头**：
+- 默认启用 HSTS（HTTP Strict Transport Security）
+- X-Frame-Options: DENY（防止点击劫持）
+- X-Content-Type-Options: nosniff
+- Referrer-Policy: no-referrer
+
+**最佳实践**：
+- 生产环境建议在反向代理后部署，并启用 TLS
+- 仅在充分理解风险的情况下设置 `ALLOW_HTTP_BASIC_OVER_HTTP=1` 以抑制 HTTP 警告
+- 请妥善保护 `~/.cc-switch/web_password` 文件（权限建议 0600）
+
+**环境变量**：
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `PORT` | 服务端口 | 3000 |
+| `HOST` | 监听地址 | 127.0.0.1 |
+| `ENABLE_HSTS` | 是否启用 HSTS 响应头 | true |
+| `CORS_ALLOW_ORIGINS` | 允许的来源（逗号分隔） | （同源） |
+| `CORS_ALLOW_CREDENTIALS` | 是否允许 CORS 携带凭据 | false |
+| `ALLOW_HTTP_BASIC_OVER_HTTP` | 抑制 HTTP 警告 | false |
+| `WEB_CSRF_TOKEN` | 覆盖 CSRF Token | （自动生成） |
 
 ---
 
@@ -278,7 +307,7 @@ pnpm test
 
 ## 更新日志
 
-参见 [CHANGELOG.md](CHANGELOG.md) — 当前版本：**v0.5.0**
+参见 [CHANGELOG.md](CHANGELOG.md) — 当前版本：**v0.5.1**
 
 ---
 

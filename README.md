@@ -28,7 +28,7 @@ Whether you're working locally or in a headless cloud environment, CC-Switch-Web
 
 ---
 
-## What's New in v0.5.0
+## What's New in v0.5.1
 
 - Fixed 14 bugs across error handling, state management, closure traps, and other edge cases
 - Hardened API requests with timeout and retry handling for better resiliency
@@ -36,7 +36,7 @@ Whether you're working locally or in a headless cloud environment, CC-Switch-Web
 
 ---
 
-## What's New in v0.5.0
+## What's New in v0.5.1
 
 ### 🐛 Bug Fixes
 - Resolved 14 issues spanning error handling, state management, and closure-related bugs
@@ -69,11 +69,11 @@ Full-featured desktop app with graphical interface, built with Tauri.
 
 | Platform | Download | Description |
 |----------|----------|-------------|
-| **Windows** | [CC-Switch-v0.5.0-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.0/CC-Switch-v0.5.0-Windows.msi) | Installer (recommended) |
-| | [CC-Switch-v0.5.0-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.0/CC-Switch-v0.5.0-Windows-Portable.zip) | Portable (no install) |
-| **macOS** | [CC-Switch-v0.5.0-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.0/CC-Switch-v0.5.0-macOS.zip) | Universal binary (Intel + Apple Silicon) |
-| **Linux** | [CC-Switch-v0.5.0-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.0/CC-Switch-v0.5.0-Linux.AppImage) | AppImage (universal) |
-| | [CC-Switch-v0.5.0-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.0/CC-Switch-v0.5.0-Linux.deb) | Debian/Ubuntu package |
+| **Windows** | [CC-Switch-v0.5.1-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.1/CC-Switch-v0.5.1-Windows.msi) | Installer (recommended) |
+| | [CC-Switch-v0.5.1-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.1/CC-Switch-v0.5.1-Windows-Portable.zip) | Portable (no install) |
+| **macOS** | [CC-Switch-v0.5.1-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.1/CC-Switch-v0.5.1-macOS.zip) | Universal binary (Intel + Apple Silicon) |
+| **Linux** | [CC-Switch-v0.5.1-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.1/CC-Switch-v0.5.1-Linux.AppImage) | AppImage (universal) |
+| | [CC-Switch-v0.5.1-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.1/CC-Switch-v0.5.1-Linux.deb) | Debian/Ubuntu package |
 
 **macOS Note**: If you see "damaged" warning, run: `xattr -cr "/Applications/CC Switch.app"`
 
@@ -95,7 +95,7 @@ This script will:
 **Advanced options**:
 ```bash
 # Install specific version
-VERSION=v0.5.0 curl -fsSL https://...install.sh | bash
+VERSION=v0.5.1 curl -fsSL https://...install.sh | bash
 
 # Skip checksum verification
 NO_CHECKSUM=1 curl -fsSL https://...install.sh | bash
@@ -111,8 +111,8 @@ Download precompiled server binary—no compilation required:
 
 | Architecture | Download |
 |--------------|----------|
-| **Linux x86_64** | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.0/cc-switch-server-linux-x86_64) |
-| **Linux aarch64** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.0/cc-switch-server-linux-aarch64) |
+| **Linux x86_64** | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.1/cc-switch-server-linux-x86_64) |
+| **Linux aarch64** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.1/cc-switch-server-linux-aarch64) |
 
 **One-Line Deploy**:
 ```bash
@@ -173,6 +173,35 @@ HOST=0.0.0.0 PORT=3000 ./target/release/examples/server
 - **Password**: Auto-generated on first run, stored in `~/.cc-switch/web_password`
 - **CORS**: Same-origin by default; set `CORS_ALLOW_ORIGINS=https://your-domain.com` for cross-origin
 - **Note**: Web mode doesn't support native file pickers—enter paths manually
+
+### Security
+
+**Authentication**:
+- Basic Auth is required for all API requests
+- Browser will prompt for credentials (username/password)
+- CSRF token is automatically injected and validated for non-GET requests
+
+**Security Headers**:
+- HSTS (HTTP Strict Transport Security) enabled by default
+- X-Frame-Options: DENY (prevents clickjacking)
+- X-Content-Type-Options: nosniff
+- Referrer-Policy: no-referrer
+
+**Best Practices**:
+- Deploy behind a reverse proxy with TLS in production
+- Set `ALLOW_HTTP_BASIC_OVER_HTTP=1` only if you understand the risks
+- Keep `~/.cc-switch/web_password` file secure (mode 0600)
+
+**Environment Variables**:
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PORT` | Server port | 3000 |
+| `HOST` | Bind address | 127.0.0.1 |
+| `ENABLE_HSTS` | Enable HSTS header | true |
+| `CORS_ALLOW_ORIGINS` | Allowed origins (comma-separated) | (same-origin) |
+| `CORS_ALLOW_CREDENTIALS` | Allow credentials in CORS | false |
+| `ALLOW_HTTP_BASIC_OVER_HTTP` | Suppress HTTP warning | false |
+| `WEB_CSRF_TOKEN` | Override CSRF token | (auto-generated) |
 
 ---
 
@@ -278,7 +307,7 @@ pnpm test
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) — Current version: **v0.5.0**
+See [CHANGELOG.md](CHANGELOG.md) — Current version: **v0.5.1**
 
 ---
 

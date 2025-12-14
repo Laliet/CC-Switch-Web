@@ -54,7 +54,6 @@ export function isWeb(): boolean {
 declare global {
   interface Window {
     __CC_SWITCH_TOKENS__?: {
-      apiToken: string;
       csrfToken: string;
       __noticeShown?: boolean;
     };
@@ -64,12 +63,12 @@ declare global {
 function getAutoTokens() {
   if (typeof window === "undefined") return undefined;
   const tokens = window.__CC_SWITCH_TOKENS__;
-  if (tokens?.apiToken && tokens?.csrfToken) {
+  if (tokens?.csrfToken) {
     if (!tokens.__noticeShown) {
-      console.info("cc-switch: 已自动应用内置 API Token 与 CSRF Token");
+      console.info("cc-switch: 已自动应用内置 CSRF Token");
       tokens.__noticeShown = true;
     }
-    return { apiToken: tokens.apiToken, csrfToken: tokens.csrfToken };
+    return { csrfToken: tokens.csrfToken };
   }
   return undefined;
 }
@@ -548,7 +547,6 @@ export async function invoke<T>(
   const headers: Record<string, string> = { Accept: "application/json" };
   const tokens = getAutoTokens();
   if (tokens) {
-    headers["Authorization"] = `Bearer ${tokens.apiToken}`;
     headers["X-CSRF-Token"] = tokens.csrfToken;
   }
   const init: RequestInit = {

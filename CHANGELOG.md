@@ -5,6 +5,39 @@ All notable changes to CC Switch will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2025-12-14
+
+### 🔒 Security / 安全修复
+
+**高优先级：**
+- **修复 Web 服务器认证绕过漏洞** - 移除 API Token 注入，强制使用 Basic Auth
+  - 之前：apiToken 被注入到 HTML 中，任何访问者都能获得完整 API 权限
+  - 之后：只注入 csrfToken（防伪用），API 访问必须通过 Basic Auth 输入密码
+- **修复 CSRF Token 注入 XSS 风险** - 使用 serde_json 序列化并转义特殊字符
+- **修复 CSRF Token 文件权限** - 显式设置 `~/.cc-switch/web_env` 为 0600
+
+**安全增强：**
+- 添加安全响应头：X-Frame-Options、X-Content-Type-Options、Referrer-Policy
+- CORS 配置添加 X-CSRF-Token 到允许的 headers
+- 移除 Bearer Token 认证方式，仅保留 Basic Auth
+
+### 🧪 Tests / 测试
+- 新增后端 Web 认证测试 (`src-tauri/tests/web_auth.rs`)
+- 新增前端认证相关测试 (`tests/lib/adapter.auth.test.ts`)
+
+### 📖 Documentation / 文档
+- README.md/README_ZH.md 添加详细的 Web 服务器安全说明
+- 添加环境变量配置表格
+
+### 📁 Changed Files / 变更文件
+- `src-tauri/src/web_api/mod.rs`
+- `src/lib/api/adapter.ts`
+- `src/components/UsageFooter.tsx`
+- `src-tauri/tests/web_auth.rs` (new)
+- `tests/lib/adapter.auth.test.ts` (new)
+- `README.md`
+- `README_ZH.md`
+
 ## [0.5.0] - 2025-12-11
 
 ### 🐛 Bug Fixes / Bug 修复
