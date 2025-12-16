@@ -70,7 +70,7 @@ function getSuggestionI18nKey(suggestion: string): string {
 export function formatSkillError(
   errorString: string,
   t: TFunction,
-  defaultTitle: string = "skills.installFailed"
+  defaultTitle: string = "skills.installFailed",
 ): { title: string; description: string } {
   const parsedError = parseSkillError(errorString);
 

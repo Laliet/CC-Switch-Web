@@ -25,19 +25,17 @@ const loadPathApi = async () => {
   try {
     return await import("@tauri-apps/api/path");
   } catch (error) {
-    console.error(
-      "[useDirectorySettings] Failed to load path API",
-      error,
-    );
+    console.error("[useDirectorySettings] Failed to load path API", error);
     return null;
   }
 };
 
 const computeDefaultAppConfigDir = async (): Promise<string | undefined> => {
+  if (isWeb()) return undefined;
+
+  const env = typeof process !== "undefined" ? process.env : undefined;
   const fallbackHome =
-    process.env.VITEST === "true"
-      ? "/home/mock"
-      : process.env.HOME ?? "/home/mock";
+    env?.VITEST === "true" ? "/home/mock" : (env?.HOME ?? "/home/mock");
   try {
     const pathApi = await loadPathApi();
     if (!pathApi) {
@@ -57,10 +55,11 @@ const computeDefaultAppConfigDir = async (): Promise<string | undefined> => {
 const computeDefaultConfigDir = async (
   app: AppId,
 ): Promise<string | undefined> => {
+  if (isWeb()) return undefined;
+
+  const env = typeof process !== "undefined" ? process.env : undefined;
   const fallbackHome =
-    process.env.VITEST === "true"
-      ? "/home/mock"
-      : process.env.HOME ?? "/home/mock";
+    env?.VITEST === "true" ? "/home/mock" : (env?.HOME ?? "/home/mock");
   try {
     const pathApi = await loadPathApi();
     const folder =

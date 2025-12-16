@@ -230,7 +230,8 @@ export function useImportExport(
         toast.error(
           t("settings.exportFailedError", {
             defaultValue: "导出配置失败: {{message}}",
-            message: error instanceof Error ? error.message : String(error ?? ""),
+            message:
+              error instanceof Error ? error.message : String(error ?? ""),
           }),
         );
       }

@@ -54,9 +54,7 @@ const UnifiedMcpPanel: React.FC<UnifiedMcpPanelProps> = ({
   } = useAllMcpServers();
   const toggleAppMutation = useToggleMcpApp();
   const deleteServerMutation = useDeleteMcpServer();
-  const [togglingIds, setTogglingIds] = useState<Set<string>>(
-    () => new Set(),
-  );
+  const [togglingIds, setTogglingIds] = useState<Set<string>>(() => new Set());
   const [deletingIds, setDeletingIds] = useState<Set<string>>(() => new Set());
 
   // Convert serversMap to array for easier rendering

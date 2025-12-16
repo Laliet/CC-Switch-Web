@@ -21,9 +21,24 @@ export interface SkillRepo {
   skillsPath?: string; // 可选：技能所在的子目录路径，如 "skills"
 }
 
+export interface SkillsResponse {
+  skills: Skill[];
+  warnings?: string[];
+}
+
 export const skillsApi = {
-  async getAll(): Promise<Skill[]> {
-    return await invoke("get_skills");
+  async getAll(): Promise<SkillsResponse> {
+    const result = await invoke("get_skills");
+
+    if (Array.isArray(result)) {
+      return { skills: result as Skill[], warnings: [] };
+    }
+
+    const response = result as SkillsResponse;
+    return {
+      skills: Array.isArray(response?.skills) ? response.skills : [],
+      warnings: Array.isArray(response?.warnings) ? response.warnings : [],
+    };
   },
 
   async install(directory: string): Promise<boolean> {

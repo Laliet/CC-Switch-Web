@@ -10,19 +10,19 @@ interface Endpoint {
 }
 
 const API_BASE = "/api";
+const WEB_AUTH_STORAGE_KEY = "cc-switch-web-auth";
+const WEB_CSRF_STORAGE_KEY = "cc-switch-csrf-token";
 const getEnvNumber = (value: unknown, fallback: number) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 const WEB_FETCH_TIMEOUT_MS = Math.max(
   0,
-  getEnvNumber(import.meta.env?.VITE_WEB_FETCH_TIMEOUT_MS, 30_000),
+  getEnvNumber(import.meta.env?.VITE_WEB_FETCH_TIMEOUT_MS, 180_000),
 );
 const WEB_FETCH_MAX_RETRIES = Math.max(
   0,
-  Math.floor(
-    getEnvNumber(import.meta.env?.VITE_WEB_FETCH_RETRIES, 1),
-  ),
+  Math.floor(getEnvNumber(import.meta.env?.VITE_WEB_FETCH_RETRIES, 1)),
 );
 const WEB_FETCH_RETRY_DELAY_MS = Math.max(
   0,
@@ -34,7 +34,9 @@ const encode = (value: unknown) => encodeURIComponent(String(value));
 const requireArg = (args: CommandArgs, key: string, cmd: string) => {
   const value = args?.[key];
   if (value === undefined || value === null) {
-    throw new Error(`Missing argument "${key}" for command "${cmd}" in web mode`);
+    throw new Error(
+      `Missing argument "${key}" for command "${cmd}" in web mode`,
+    );
   }
   return value;
 };
@@ -47,7 +49,8 @@ export function isWeb(): boolean {
     return true;
   }
 
-  const tauriGlobal = (window as any).__TAURI__ || (window as any).__TAURI_INTERNALS__;
+  const tauriGlobal =
+    (window as any).__TAURI__ || (window as any).__TAURI_INTERNALS__;
   return !tauriGlobal;
 }
 
@@ -92,8 +95,65 @@ async function fetchWithTimeout(
   }
 }
 
-const delay = (ms: number) =>
-  new Promise((resolve) => setTimeout(resolve, ms));
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function base64EncodeUtf8(value: string): string {
+  if (typeof window !== "undefined" && typeof window.btoa === "function") {
+    const bytes = new TextEncoder().encode(value);
+    let binary = "";
+    for (const byte of bytes) {
+      binary += String.fromCharCode(byte);
+    }
+    return window.btoa(binary);
+  }
+
+  if (typeof Buffer !== "undefined") {
+    return Buffer.from(value, "utf8").toString("base64");
+  }
+
+  throw new Error("Base64 encoder is not available");
+}
+
+function getStoredWebCredentials(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const value = window.sessionStorage?.getItem(WEB_AUTH_STORAGE_KEY);
+    if (!value) return undefined;
+    return value;
+  } catch {
+    return undefined;
+  }
+}
+
+function getStoredWebCsrfToken(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const value = window.sessionStorage?.getItem(WEB_CSRF_STORAGE_KEY);
+    if (!value) return undefined;
+    return value;
+  } catch {
+    return undefined;
+  }
+}
+
+export function setWebCredentials(password: string) {
+  if (typeof window === "undefined") return;
+  const encoded = base64EncodeUtf8(`admin:${password}`);
+  try {
+    window.sessionStorage?.setItem(WEB_AUTH_STORAGE_KEY, encoded);
+  } catch {
+    // ignore
+  }
+}
+
+export function clearWebCredentials() {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage?.removeItem(WEB_AUTH_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
 
 export function commandToEndpoint(
   cmd: string,
@@ -546,8 +606,11 @@ export async function invoke<T>(
   const endpoint = commandToEndpoint(cmd, args);
   const headers: Record<string, string> = { Accept: "application/json" };
   const tokens = getAutoTokens();
-  if (tokens) {
-    headers["X-CSRF-Token"] = tokens.csrfToken;
+  const csrfToken = tokens?.csrfToken ?? getStoredWebCsrfToken();
+  if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+  const storedAuth = getStoredWebCredentials();
+  if (storedAuth) {
+    headers.Authorization = `Basic ${storedAuth}`;
   }
   const init: RequestInit = {
     method: endpoint.method,

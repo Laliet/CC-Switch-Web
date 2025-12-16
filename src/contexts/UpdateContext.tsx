@@ -44,7 +44,10 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
     try {
       return window.localStorage.getItem(key);
     } catch (error) {
-      console.warn(`[UpdateContext] Failed to read localStorage key ${key}:`, error);
+      console.warn(
+        `[UpdateContext] Failed to read localStorage key ${key}:`,
+        error,
+      );
       return null;
     }
   }, []);
@@ -54,7 +57,10 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
     try {
       window.localStorage.setItem(key, value);
     } catch (error) {
-      console.warn(`[UpdateContext] Failed to write localStorage key ${key}:`, error);
+      console.warn(
+        `[UpdateContext] Failed to write localStorage key ${key}:`,
+        error,
+      );
     }
   }, []);
 
@@ -63,7 +69,10 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
     try {
       window.localStorage.removeItem(key);
     } catch (error) {
-      console.warn(`[UpdateContext] Failed to remove localStorage key ${key}:`, error);
+      console.warn(
+        `[UpdateContext] Failed to remove localStorage key ${key}:`,
+        error,
+      );
     }
   }, []);
 

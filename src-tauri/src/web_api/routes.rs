@@ -20,6 +20,7 @@ pub fn create_router(state: SharedState) -> Router {
         .nest("/settings", settings_routes())
         .nest("/config", config_routes())
         .route("/tray/update", post(system::update_tray))
+        .route("/system/csrf-token", get(system::get_csrf_token))
         .route("/system/open-external", post(system::open_external))
         .route("/fs/pick-directory", post(config::pick_directory))
         .route("/fs/save-file", post(config::save_file_dialog))

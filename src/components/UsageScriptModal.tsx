@@ -445,9 +445,8 @@ const UsageScriptModal: React.FC<UsageScriptModalProps> = ({
 
   // 判断是否应该显示凭证配置区域
   const shouldShowCredentialsConfig =
-    (selectedTemplate
-      ? API_KEY_TEMPLATES.has(selectedTemplate)
-      : false) || selectedTemplate === TEMPLATE_KEYS.NEW_API;
+    (selectedTemplate ? API_KEY_TEMPLATES.has(selectedTemplate) : false) ||
+    selectedTemplate === TEMPLATE_KEYS.NEW_API;
   const showApiKeyFields =
     selectedTemplate !== null && API_KEY_TEMPLATES.has(selectedTemplate);
   const showBaseUrlInput =

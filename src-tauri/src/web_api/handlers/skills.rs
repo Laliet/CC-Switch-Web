@@ -8,6 +8,7 @@ use axum::{
     Json,
 };
 use chrono::Utc;
+use serde::Serialize;
 
 use crate::{
     error::format_skill_error,
@@ -18,7 +19,14 @@ use crate::{
 
 use super::{ApiError, ApiResult};
 
-pub async fn list_skills(State(state): State<Arc<AppState>>) -> ApiResult<Vec<Skill>> {
+#[derive(Serialize)]
+pub struct SkillsResponse {
+    pub skills: Vec<Skill>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub warnings: Vec<String>,
+}
+
+pub async fn list_skills(State(state): State<Arc<AppState>>) -> ApiResult<SkillsResponse> {
     let repos = {
         let cfg = state
             .config
@@ -29,8 +37,8 @@ pub async fn list_skills(State(state): State<Arc<AppState>>) -> ApiResult<Vec<Sk
     };
 
     let service = SkillService::new().map_err(internal_error)?;
-    let skills = service.list_skills(repos).await.map_err(internal_error)?;
-    Ok(Json(skills))
+    let (skills, warnings) = service.list_skills(repos).await.map_err(internal_error)?;
+    Ok(Json(SkillsResponse { skills, warnings }))
 }
 
 pub async fn install_skill(
@@ -49,7 +57,7 @@ pub async fn install_skill(
             .map_err(ApiError::from)?;
         cfg.skills.repos.clone()
     };
-    let skills = service.list_skills(repos).await.map_err(internal_error)?;
+    let (skills, _warnings) = service.list_skills(repos).await.map_err(internal_error)?;
     let skill = skills
         .iter()
         .find(|s| s.directory.eq_ignore_ascii_case(&directory))

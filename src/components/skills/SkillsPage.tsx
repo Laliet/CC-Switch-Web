@@ -22,10 +22,21 @@ export function SkillsPage({ onClose: _onClose }: SkillsPageProps = {}) {
   const loadSkills = async (afterLoad?: (data: Skill[]) => void) => {
     try {
       setLoading(true);
-      const data = await skillsApi.getAll();
+      const { skills: data, warnings } = await skillsApi.getAll();
       setSkills(data);
       if (afterLoad) {
         afterLoad(data);
+      }
+      if (warnings && warnings.length > 0) {
+        toast.warning(
+          t("skills.repo.fetchWarning", {
+            defaultValue: "部分技能仓库获取失败，已显示本地技能",
+          }),
+          {
+            description: warnings.join("\n"),
+            duration: 8000,
+          },
+        );
       }
     } catch (error) {
       const errorMessage =
@@ -35,7 +46,7 @@ export function SkillsPage({ onClose: _onClose }: SkillsPageProps = {}) {
       const { title, description } = formatSkillError(
         errorMessage,
         t,
-        "skills.loadFailed"
+        "skills.loadFailed",
       );
 
       toast.error(title, {
@@ -75,7 +86,7 @@ export function SkillsPage({ onClose: _onClose }: SkillsPageProps = {}) {
       const { title, description } = formatSkillError(
         errorMessage,
         t,
-        "skills.installFailed"
+        "skills.installFailed",
       );
 
       toast.error(title, {
@@ -105,7 +116,7 @@ export function SkillsPage({ onClose: _onClose }: SkillsPageProps = {}) {
       const { title, description } = formatSkillError(
         errorMessage,
         t,
-        "skills.uninstallFailed"
+        "skills.uninstallFailed",
       );
 
       toast.error(title, {

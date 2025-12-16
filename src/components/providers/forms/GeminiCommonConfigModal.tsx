@@ -63,7 +63,8 @@ export const GeminiCommonConfigModal: React.FC<
           </DialogTitle>
           <DialogDescription>
             {t("geminiConfig.commonConfigDescription", {
-              defaultValue: "编辑共享配置片段，将其应用到启用的 Gemini 供应商。",
+              defaultValue:
+                "编辑共享配置片段，将其应用到启用的 Gemini 供应商。",
             })}
           </DialogDescription>
         </DialogHeader>

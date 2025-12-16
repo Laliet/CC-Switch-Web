@@ -30,31 +30,31 @@ import type { Provider } from "@/types";
 export const PROVIDER_NAME_MAPPING: Record<string, string> = {
   // 第三方 API 服务商（Relay-Pulse 监控）
   "88code": "88code",
-  "duckcoding": "duckcoding",
+  duckcoding: "duckcoding",
   "duck coding": "duckcoding",
-  "privnode": "privnode",
-  "packycode": "packycode",
+  privnode: "privnode",
+  packycode: "packycode",
   "paky code": "packycode",
-  "foxcode": "foxcode",
+  foxcode: "foxcode",
   "fox code": "foxcode",
-  "galaxycode": "galaxycode",
+  galaxycode: "galaxycode",
   "galaxy code": "galaxycode",
-  "yescode": "yescode",
+  yescode: "yescode",
   "yes code": "yescode",
-  "augmunt": "augmunt",
-  "ikuncode": "ikuncode",
+  augmunt: "augmunt",
+  ikuncode: "ikuncode",
   "ikun code": "ikuncode",
-  "uucode": "uucode",
+  uucode: "uucode",
   "uu code": "uucode",
-  "xyai": "xyai",
+  xyai: "xyai",
   "xy ai": "xyai",
-  "cubence": "cubence",
-  "elysiver": "elysiver",
-  "runanytime": "runanytime",
+  cubence: "cubence",
+  elysiver: "elysiver",
+  runanytime: "runanytime",
   "run anytime": "runanytime",
   "right.codes": "right.codes",
-  "rightcodes": "right.codes",
-  "xychatai": "xychatai",
+  rightcodes: "right.codes",
+  xychatai: "xychatai",
 };
 
 /**
@@ -126,7 +126,9 @@ export const URL_TO_PROVIDER_MAPPING: Record<string, string> = {
  * @param providerName CC-Switch 供应商名称
  * @returns Relay-Pulse 供应商名称，未找到返回 undefined
  */
-export function getRelayPulseProvider(providerName: string): string | undefined {
+export function getRelayPulseProvider(
+  providerName: string,
+): string | undefined {
   const normalized = providerName.toLowerCase().trim();
   return PROVIDER_NAME_MAPPING[normalized];
 }
@@ -170,7 +172,9 @@ export function getRelayPulseProviderFromUrl(url: string): string | undefined {
  * @param provider CC-Switch Provider 对象
  * @returns Relay-Pulse 供应商名称，未找到返回 undefined
  */
-export function getRelayPulseProviderFromProvider(provider: Provider): string | undefined {
+export function getRelayPulseProviderFromProvider(
+  provider: Provider,
+): string | undefined {
   // 1. 首先尝试名称匹配
   const byName = getRelayPulseProvider(provider.name);
   if (byName) return byName;
@@ -195,7 +199,9 @@ export function getRelayPulseProviderFromProvider(provider: Provider): string | 
 
   // Gemini 配置：env.GOOGLE_GEMINI_BASE_URL
   if (config?.env?.GOOGLE_GEMINI_BASE_URL) {
-    const byUrl = getRelayPulseProviderFromUrl(config.env.GOOGLE_GEMINI_BASE_URL);
+    const byUrl = getRelayPulseProviderFromUrl(
+      config.env.GOOGLE_GEMINI_BASE_URL,
+    );
     if (byUrl) return byUrl;
   }
 

@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Component, Path, PathBuf};
+use std::time::Duration;
 use tokio::time::timeout;
 
 use crate::config::get_home_dir;
@@ -83,7 +84,7 @@ impl Default for SkillStore {
                 SkillRepo {
                     owner: "ComposioHQ".to_string(),
                     name: "awesome-claude-skills".to_string(),
-                    branch: "main".to_string(),
+                    branch: "master".to_string(),
                     enabled: true,
                     skills_path: None, // 扫描根目录
                 },
@@ -125,12 +126,14 @@ impl SkillService {
         // 确保目录存在
         fs::create_dir_all(&install_dir)?;
 
+        let http_client = Client::builder()
+            .user_agent("cc-switch")
+            .connect_timeout(Duration::from_secs(5))
+            .timeout(Duration::from_secs(120))
+            .build()?;
+
         Ok(Self {
-            http_client: Client::builder()
-                .user_agent("cc-switch")
-                // 将单次请求超时时间控制在 10 秒以内，避免无效链接导致长时间卡住
-                .timeout(std::time::Duration::from_secs(10))
-                .build()?,
+            http_client,
             install_dir,
         })
     }
@@ -153,8 +156,9 @@ impl SkillService {
     }
 
     /// 列出所有技能
-    pub async fn list_skills(&self, repos: Vec<SkillRepo>) -> Result<Vec<Skill>> {
+    pub async fn list_skills(&self, repos: Vec<SkillRepo>) -> Result<(Vec<Skill>, Vec<String>)> {
         let mut skills = Vec::new();
+        let mut warnings = Vec::new();
 
         // 仅使用启用的仓库，并行获取技能列表，避免单个无效仓库拖慢整体刷新
         let enabled_repos: Vec<SkillRepo> = repos.into_iter().filter(|repo| repo.enabled).collect();
@@ -168,7 +172,11 @@ impl SkillService {
         for (repo, result) in enabled_repos.into_iter().zip(results.into_iter()) {
             match result {
                 Ok(repo_skills) => skills.extend(repo_skills),
-                Err(e) => log::warn!("获取仓库 {}/{} 技能失败: {}", repo.owner, repo.name, e),
+                Err(e) => {
+                    let warning = format!("获取仓库 {}/{} 失败: {}", repo.owner, repo.name, e);
+                    log::warn!("{warning}");
+                    warnings.push(warning);
+                }
             }
         }
 
@@ -179,13 +187,13 @@ impl SkillService {
         Self::deduplicate_skills(&mut skills);
         skills.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
 
-        Ok(skills)
+        Ok((skills, warnings))
     }
 
     /// 从仓库获取技能列表
     async fn fetch_repo_skills(&self, repo: &SkillRepo) -> Result<Vec<Skill>> {
         // 为单个仓库加载增加整体超时，避免无效链接长时间阻塞
-        let temp_dir = timeout(std::time::Duration::from_secs(60), self.download_repo(repo))
+        let temp_dir = timeout(Duration::from_secs(180), self.download_repo(repo))
             .await
             .map_err(|_| {
                 anyhow!(format_skill_error(
@@ -193,7 +201,7 @@ impl SkillService {
                     &[
                         ("owner", &repo.owner),
                         ("name", &repo.name),
-                        ("timeout", "60")
+                        ("timeout", "180")
                     ],
                     Some("checkNetwork"),
                 ))
@@ -493,7 +501,7 @@ impl SkillService {
 
         // 下载仓库时增加总超时，防止无效链接导致长时间卡住安装过程
         let temp_dir = timeout(
-            std::time::Duration::from_secs(60),
+            std::time::Duration::from_secs(180),
             self.download_repo(&repo),
         )
         .await
@@ -503,7 +511,7 @@ impl SkillService {
                 &[
                     ("owner", &repo.owner),
                     ("name", &repo.name),
-                    ("timeout", "60")
+                    ("timeout", "180")
                 ],
                 Some("checkNetwork"),
             ))

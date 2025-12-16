@@ -142,7 +142,9 @@ export function ProviderCard({
         ? healthStatus.availability
         : undefined;
     const availabilityText =
-      typeof availability === "number" ? `${availability.toFixed(1)}%` : undefined;
+      typeof availability === "number"
+        ? `${availability.toFixed(1)}%`
+        : undefined;
     const availabilityDisplay = availabilityText ?? "--%";
 
     const tooltipParts = [
@@ -152,7 +154,9 @@ export function ProviderCard({
       `${t("provider.health.latency", { defaultValue: "延迟" })}: ${Math.round(healthStatus.latency)}ms`,
       `${t("provider.health.availability24h", { defaultValue: "24小时可用率" })}: ${
         availabilityText ??
-        t("provider.health.availabilityUnknown", { defaultValue: "暂无可用率数据" })
+        t("provider.health.availabilityUnknown", {
+          defaultValue: "暂无可用率数据",
+        })
       }`,
     ];
 
@@ -225,10 +229,15 @@ export function ProviderCard({
                   aria-label={healthIndicator.tooltip}
                 >
                   <span
-                    className={cn("h-2 w-2 rounded-full", healthIndicator.indicatorColor)}
+                    className={cn(
+                      "h-2 w-2 rounded-full",
+                      healthIndicator.indicatorColor,
+                    )}
                     aria-hidden="true"
                   />
-                  <span className="leading-none">{healthIndicator.availabilityDisplay}</span>
+                  <span className="leading-none">
+                    {healthIndicator.availabilityDisplay}
+                  </span>
                 </span>
               )}
               {provider.category === "third_party" &&

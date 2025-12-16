@@ -70,7 +70,9 @@ function statusToHealth(status: number): HealthStatus {
 /**
  * 计算 24 小时平均可用率
  */
-function calculateAvailability(timeline: Array<{ availability: number }>): number | undefined {
+function calculateAvailability(
+  timeline: Array<{ availability: number }>,
+): number | undefined {
   if (!timeline || timeline.length === 0) return undefined;
   const validPoints = timeline.filter((t) => t.availability >= 0);
   if (validPoints.length === 0) return undefined;
@@ -80,7 +82,10 @@ function calculateAvailability(timeline: Array<{ availability: number }>): numbe
 
 export { statusToHealth, calculateAvailability, mergeHealth };
 
-function mergeHealth(existing: ProviderHealth | undefined, incoming: ProviderHealth): ProviderHealth {
+function mergeHealth(
+  existing: ProviderHealth | undefined,
+  incoming: ProviderHealth,
+): ProviderHealth {
   if (!existing) return incoming;
 
   const statusPriority: Record<HealthStatus, number> = {
@@ -110,7 +115,9 @@ function mergeHealth(existing: ProviderHealth | undefined, incoming: ProviderHea
 /**
  * 获取所有供应商的健康状态（带缓存）
  */
-export async function fetchAllHealthStatus(): Promise<Map<string, ProviderHealth>> {
+export async function fetchAllHealthStatus(): Promise<
+  Map<string, ProviderHealth>
+> {
   const now = Date.now();
 
   // 检查缓存是否有效
@@ -179,7 +186,7 @@ export async function fetchAllHealthStatus(): Promise<Map<string, ProviderHealth
  */
 export async function checkProviderHealth(
   relayPulseProvider: string,
-  service: "cc" | "cx" = "cc"
+  service: "cc" | "cx" = "cc",
 ): Promise<ProviderHealth> {
   const healthMap = await fetchAllHealthStatus();
   const key = `${relayPulseProvider.toLowerCase()}/${service}`;
@@ -199,7 +206,7 @@ export async function checkProviderHealth(
  * @param providers 供应商映射数组 [{ relayPulseProvider, service }]
  */
 export async function checkProvidersHealth(
-  providers: Array<{ relayPulseProvider: string; service: "cc" | "cx" }>
+  providers: Array<{ relayPulseProvider: string; service: "cc" | "cx" }>,
 ): Promise<Map<string, ProviderHealth>> {
   const healthMap = await fetchAllHealthStatus();
   const result = new Map<string, ProviderHealth>();
@@ -213,7 +220,7 @@ export async function checkProvidersHealth(
         status: "unknown",
         latency: 0,
         lastChecked: Date.now(),
-      }
+      },
     );
   }
 
@@ -223,7 +230,9 @@ export async function checkProvidersHealth(
 /**
  * 强制刷新健康状态缓存
  */
-export async function refreshHealthCache(): Promise<Map<string, ProviderHealth>> {
+export async function refreshHealthCache(): Promise<
+  Map<string, ProviderHealth>
+> {
   lastFetchTime = 0; // 清除缓存时间
   return fetchAllHealthStatus();
 }
@@ -233,7 +242,7 @@ export async function refreshHealthCache(): Promise<Map<string, ProviderHealth>>
  */
 export function getCachedHealth(
   relayPulseProvider: string,
-  service: "cc" | "cx" = "cc"
+  service: "cc" | "cx" = "cc",
 ): ProviderHealth | undefined {
   const key = `${relayPulseProvider.toLowerCase()}/${service}`;
   return healthCache.get(key);

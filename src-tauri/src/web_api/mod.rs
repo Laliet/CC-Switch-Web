@@ -8,7 +8,7 @@ use std::{
 
 use axum::{
     body::Body,
-    extract::Path,
+    extract::{Extension, Path},
     http::{
         header::{
             self, ACCEPT, AUTHORIZATION, CONTENT_TYPE, STRICT_TRANSPORT_SECURITY, WWW_AUTHENTICATE,
@@ -161,6 +161,7 @@ fn cors_layer() -> CorsLayer {
 /// Construct the axum router with all API routes and middleware.
 pub fn create_router(state: SharedState, password: String) -> Router {
     let tokens = Arc::new(load_or_generate_tokens());
+    let csrf_token = Some(Arc::new(tokens.csrf_token.clone()));
 
     let hsts_enabled = env::var("ENABLE_HSTS")
         .map(|v| matches!(v.as_str(), "1" | "true" | "TRUE" | "yes" | "on"))
@@ -169,6 +170,7 @@ pub fn create_router(state: SharedState, password: String) -> Router {
     let auth_validator = AuthValidator::new(password, Some(tokens.csrf_token.clone()));
 
     let router = routes::create_router(state)
+        .layer(Extension(csrf_token))
         .layer(ValidateRequestHeaderLayer::custom(auth_validator))
         .layer(middleware::from_fn({
             let hsts_enabled = hsts_enabled;

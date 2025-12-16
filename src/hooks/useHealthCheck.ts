@@ -34,7 +34,12 @@ export function useHealthCheck(
   const service = useMemo(() => appIdToService(appId), [appId]);
 
   const providerList = useMemo<Provider[]>(
-    () => (!providers ? [] : Array.isArray(providers) ? providers : Object.values(providers)),
+    () =>
+      !providers
+        ? []
+        : Array.isArray(providers)
+          ? providers
+          : Object.values(providers),
     [providers],
   );
 
@@ -80,13 +85,12 @@ export function useHealthCheck(
       const result: Record<string, ProviderHealth> = {};
       for (const { providerId, relayPulseProvider } of monitoredProviders) {
         const key = `${relayPulseProvider}/${service}`;
-        result[providerId] =
-          healthMap.get(key) || {
-            isHealthy: false,
-            status: "unknown",
-            latency: 0,
-            lastChecked: Date.now(),
-          };
+        result[providerId] = healthMap.get(key) || {
+          isHealthy: false,
+          status: "unknown",
+          latency: 0,
+          lastChecked: Date.now(),
+        };
       }
 
       console.log("[HealthCheck] Result:", { monitoredProviders, result });

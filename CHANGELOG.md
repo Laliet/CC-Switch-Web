@@ -5,6 +5,22 @@ All notable changes to CC Switch will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+### v0.5.2 (2025-12-16)
+
+#### 🐛 Bug Fixes
+- 修复 Web 模式下 `crypto.randomUUID` 在非安全上下文（HTTP）中不可用的问题
+- 修复 Web 模式下 `process.env` 在浏览器中不可用导致的错误
+- 修复 Web 开发模式下登录认证流程（Basic Auth + CSRF Token）
+- 修复 Skills API 因远程仓库获取超时导致的 AbortError
+- 修复 ComposioHQ/awesome-claude-skills 仓库分支名配置（main → master）
+
+#### ⚡ Improvements
+- Skills API 现在返回警告信息，远程仓库获取失败时仍显示本地技能
+- 增加 Skills 仓库下载超时时间（HTTP: 120s，总超时: 180s）
+- 增加前端 API 请求超时时间（30s → 180s）
+- 添加 Web 登录对话框，支持手动输入密码认证
+- 添加 CSRF Token API 端点 `GET /api/system/csrf-token`
+
 ## [0.5.1] - 2025-12-14
 
 ### 🔒 Security / 安全修复

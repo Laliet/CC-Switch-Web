@@ -7,7 +7,10 @@ import { skillsApi, type Skill, type SkillRepo } from "@/lib/api/skills";
 export function useAllSkills() {
   return useQuery<Skill[]>({
     queryKey: ["skills", "all"],
-    queryFn: () => skillsApi.getAll(),
+    queryFn: async () => {
+      const { skills } = await skillsApi.getAll();
+      return skills;
+    },
   });
 }
 

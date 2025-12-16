@@ -3,26 +3,36 @@ use crate::services::skill::SkillState;
 use crate::services::{Skill, SkillRepo, SkillService};
 use crate::store::AppState;
 use chrono::Utc;
+use serde::Serialize;
 use std::sync::Arc;
 use tauri::State;
 
 pub struct SkillServiceState(pub Arc<SkillService>);
 
+#[derive(Serialize)]
+pub struct SkillsResponse {
+    pub skills: Vec<Skill>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub warnings: Vec<String>,
+}
+
 #[tauri::command]
 pub async fn get_skills(
     service: State<'_, SkillServiceState>,
     app_state: State<'_, AppState>,
-) -> Result<Vec<Skill>, String> {
+) -> Result<SkillsResponse, String> {
     let repos = {
         let config = app_state.config.read().map_err(|e| e.to_string())?;
         config.skills.repos.clone()
     };
 
-    service
+    let (skills, warnings) = service
         .0
         .list_skills(repos)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    Ok(SkillsResponse { skills, warnings })
 }
 
 #[tauri::command]
@@ -41,7 +51,8 @@ pub async fn install_skill(
         .0
         .list_skills(repos)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())?
+        .0;
 
     let skill = skills
         .iter()

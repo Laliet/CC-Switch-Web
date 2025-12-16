@@ -15,6 +15,7 @@ import { checkAllEnvConflicts, checkEnvConflicts } from "@/lib/api/env";
 import { useProviderActions } from "@/hooks/useProviderActions";
 import { useHealthCheck } from "@/hooks/useHealthCheck";
 import { extractErrorMessage } from "@/utils/errorUtils";
+import { clearWebCredentials, isWeb } from "@/lib/api/adapter";
 import { AppSwitcher } from "@/components/AppSwitcher";
 import { ProviderList } from "@/components/providers/ProviderList";
 import { AddProviderDialog } from "@/components/providers/AddProviderDialog";
@@ -28,6 +29,7 @@ import UnifiedMcpPanel from "@/components/mcp/UnifiedMcpPanel";
 import PromptPanel from "@/components/prompts/PromptPanel";
 import { SkillsPage } from "@/components/skills/SkillsPage";
 import { DeepLinkImportDialog } from "@/components/DeepLinkImportDialog";
+import WebLoginDialog from "@/components/WebLoginDialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -44,7 +46,23 @@ import {
 } from "@/components/ui/select";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
-function App() {
+const WEB_AUTH_STORAGE_KEY = "cc-switch-web-auth";
+
+async function validateWebCredentials(encoded: string): Promise<boolean> {
+  const response = await fetch("/api/settings", {
+    method: "GET",
+    credentials: "include",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Basic ${encoded}`,
+    },
+  });
+
+  if (response.status === 401) return false;
+  return true;
+}
+
+function AppContent() {
   const { t } = useTranslation();
 
   const [activeApp, setActiveApp] = useState<AppId>("claude");
@@ -196,7 +214,7 @@ function App() {
     try {
       await providersApi.setBackup(id, activeApp);
       await refetch();
-      const name = id ? providers[id]?.name ?? id : t("common.none");
+      const name = id ? (providers[id]?.name ?? id) : t("common.none");
       toast.success(
         t("provider.backupUpdated", {
           defaultValue: "已更新备用供应商为 {{name}}",
@@ -586,6 +604,60 @@ function App() {
       <DeepLinkImportDialog />
     </div>
   );
+}
+
+function App() {
+  const web = isWeb();
+  const [isAuthed, setIsAuthed] = useState(!web);
+  const [isChecking, setIsChecking] = useState(web);
+
+  useEffect(() => {
+    if (!web) return;
+
+    let cancelled = false;
+    const check = async () => {
+      try {
+        const stored = window.sessionStorage?.getItem(WEB_AUTH_STORAGE_KEY);
+        if (!stored) {
+          if (!cancelled) setIsAuthed(false);
+          return;
+        }
+
+        const ok = await validateWebCredentials(stored);
+        if (cancelled) return;
+
+        if (!ok) {
+          clearWebCredentials();
+          setIsAuthed(false);
+          return;
+        }
+
+        setIsAuthed(true);
+      } catch {
+        if (!cancelled) setIsAuthed(false);
+      } finally {
+        if (!cancelled) setIsChecking(false);
+      }
+    };
+
+    void check();
+    return () => {
+      cancelled = true;
+    };
+  }, [web]);
+
+  if (web && (isChecking || !isAuthed)) {
+    return (
+      <div className="min-h-screen bg-background">
+        <WebLoginDialog
+          open={!isChecking && !isAuthed}
+          onLoginSuccess={() => setIsAuthed(true)}
+        />
+      </div>
+    );
+  }
+
+  return <AppContent />;
 }
 
 export default App;

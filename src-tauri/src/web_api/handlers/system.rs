@@ -1,6 +1,8 @@
 #![cfg(feature = "web-server")]
 
-use axum::{http::StatusCode, Json};
+use std::sync::Arc;
+
+use axum::{extract::Extension, http::StatusCode, response::IntoResponse, Json};
 use serde::Deserialize;
 
 use super::{ApiError, ApiResult};
@@ -28,4 +30,13 @@ pub async fn open_external(Json(payload): Json<OpenExternalPayload>) -> ApiResul
         ));
     }
     Ok(Json(true))
+}
+
+/// Return the current CSRF token for the session.
+/// This endpoint requires Basic Auth but does NOT require CSRF token (it's a GET request).
+pub async fn get_csrf_token(Extension(csrf): Extension<Option<Arc<String>>>) -> impl IntoResponse {
+    match csrf {
+        Some(token) => Json(serde_json::json!({ "csrfToken": token.as_str() })),
+        None => Json(serde_json::json!({ "csrfToken": null })),
+    }
 }

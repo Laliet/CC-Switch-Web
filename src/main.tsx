@@ -63,7 +63,9 @@ try {
       try {
         const { listen } = await import("@tauri-apps/api/event");
         await listen("configLoadError", async (evt) => {
-          await handleConfigLoadError(evt.payload as ConfigLoadErrorPayload | null);
+          await handleConfigLoadError(
+            evt.payload as ConfigLoadErrorPayload | null,
+          );
         });
       } catch (err) {
         console.error("Failed to subscribe configLoadError", err);
