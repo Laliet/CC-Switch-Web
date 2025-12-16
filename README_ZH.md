@@ -28,21 +28,28 @@
 
 ---
 
-## v0.5.2 更新内容
+## v0.5.3 更新内容
+
+### 🔒 安全修复
+- **修复 API Key 日志泄露** - DeepLinkImportDialog 现在对敏感数据脱敏
+- **修复 XSS 漏洞** - ApiKeySection 阻止 `javascript:` 等危险 URL 协议
+- **添加 URL 协议验证** - 供应商 URL 仅允许 `http/https` 协议
 
 ### 🐛 Bug 修复
-- 修复 Web 模式下 `crypto.randomUUID` 在非安全上下文（HTTP）中不可用的问题
-- 修复 Web 模式下 `process.env` 在浏览器中不可用导致的错误
-- 修复 Web 开发模式下登录认证流程（Basic Auth + CSRF Token）
-- 修复 Skills API 因远程仓库获取超时导致的 AbortError
-- 修复 ComposioHQ/awesome-claude-skills 仓库分支名配置（main → master）
+- 修复 Web 模式下未知命令导致 405 错误（移除 `/api/tauri/*` fallback）
+- 修复 Web 模式下健康检查和导出配置 401 错误（添加认证头）
+- 修复登录校验逻辑（改用 `response.ok`）
+- 修复 App.tsx 中 useEffect 竞态条件（正确清理 cancelled 标记）
+- 修复 usePromptActions.ts 闭包陷阱（深拷贝 + 函数式更新）
+- 修复 handleAutoFailover 未处理的 Promise rejection
+- 修复 useHealthCheck 生产环境日志污染（仅开发环境输出）
+- 修复 Safari 隐私模式下 localStorage 崩溃
+- 修复 checkUpdate 错误处理（不再抛出异常）
+- 修复 SettingsDialog 依赖项遗漏
 
 ### ⚡ 改进
-- Skills API 现在返回警告信息，远程仓库获取失败时仍显示本地技能
-- 增加 Skills 仓库下载超时时间（HTTP: 120s，总超时: 180s）
-- 增加前端 API 请求超时时间（30s → 180s）
-- 添加 Web 登录对话框，支持手动输入密码认证
-- 添加 CSRF Token API 端点 `GET /api/system/csrf-token`
+- Docker 构建时间从约 50 分钟优化到约 2 分钟（使用预编译二进制）
+- 新增 3 个测试用例（共 142 个）
 
 ---
 
@@ -72,8 +79,8 @@
 
 | 架构 | 下载链接 |
 |------|----------|
-| **Linux x86_64** | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.2/cc-switch-server-linux-x86_64) |
-| **Linux aarch64** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.2/cc-switch-server-linux-aarch64) |
+| **Linux x86_64** | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.3/cc-switch-server-linux-x86_64) |
+| **Linux aarch64** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.3/cc-switch-server-linux-aarch64) |
 
 **一键部署**：
 ```bash
@@ -170,11 +177,11 @@ HOST=0.0.0.0 PORT=3000 ./target/release/examples/server
 
 | 平台 | 下载链接 | 说明 |
 |------|----------|------|
-| **Windows** | [CC-Switch-v0.5.2-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.2/CC-Switch-v0.5.2-Windows.msi) | 安装版（推荐） |
-| | [CC-Switch-v0.5.2-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.2/CC-Switch-v0.5.2-Windows-Portable.zip) | 绿色版（免安装） |
-| **macOS** | [CC-Switch-v0.5.2-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.2/CC-Switch-v0.5.2-macOS.zip) | 通用二进制（Intel + Apple Silicon） |
-| **Linux** | [CC-Switch-v0.5.2-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.2/CC-Switch-v0.5.2-Linux.AppImage) | AppImage（通用） |
-| | [CC-Switch-v0.5.2-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.2/CC-Switch-v0.5.2-Linux.deb) | Debian/Ubuntu 包 |
+| **Windows** | [CC-Switch-v0.5.3-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.3/CC-Switch-v0.5.3-Windows.msi) | 安装版（推荐） |
+| | [CC-Switch-v0.5.3-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.3/CC-Switch-v0.5.3-Windows-Portable.zip) | 绿色版（免安装） |
+| **macOS** | [CC-Switch-v0.5.3-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.3/CC-Switch-v0.5.3-macOS.zip) | 通用二进制（Intel + Apple Silicon） |
+| **Linux** | [CC-Switch-v0.5.3-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.3/CC-Switch-v0.5.3-Linux.AppImage) | AppImage（通用） |
+| | [CC-Switch-v0.5.3-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.3/CC-Switch-v0.5.3-Linux.deb) | Debian/Ubuntu 包 |
 
 **macOS 提示**：如遇"已损坏"警告，在终端执行：`xattr -cr "/Applications/CC Switch.app"`
 
@@ -196,7 +203,7 @@ curl -fsSL https://raw.githubusercontent.com/Laliet/CC-Switch-Web/main/scripts/i
 **高级选项**：
 ```bash
 # 安装指定版本
-VERSION=v0.5.2 curl -fsSL https://...install.sh | bash
+VERSION=v0.5.3 curl -fsSL https://...install.sh | bash
 
 # 跳过校验
 NO_CHECKSUM=1 curl -fsSL https://...install.sh | bash
@@ -306,7 +313,7 @@ pnpm test
 
 ## 更新日志
 
-参见 [CHANGELOG.md](CHANGELOG.md) — 当前版本：**v0.5.2**
+参见 [CHANGELOG.md](CHANGELOG.md) — 当前版本：**v0.5.3**
 
 ---
 

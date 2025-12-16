@@ -28,21 +28,28 @@ Whether you're working locally or in a headless cloud environment, CC-Switch-Web
 
 ---
 
-## What's New in v0.5.2
+## What's New in v0.5.3
+
+### 🔒 Security Fixes
+- **Fixed API Key logging leak** - DeepLinkImportDialog now masks sensitive data in logs
+- **Fixed XSS vulnerability** - ApiKeySection blocks `javascript:` and other dangerous URL schemes
+- **Added URL schema validation** - Only `http/https` protocols allowed in provider URLs
 
 ### 🐛 Bug Fixes
-- Fixed `crypto.randomUUID` unavailable in non-secure context (HTTP) for Web mode
-- Fixed `process.env` unavailable in browser causing errors
-- Fixed Web dev mode login authentication flow (Basic Auth + CSRF Token)
-- Fixed Skills API AbortError caused by remote repo fetch timeout
-- Fixed ComposioHQ/awesome-claude-skills repo branch name (main → master)
+- Fixed 405 error for unknown commands in Web mode (removed `/api/tauri/*` fallback)
+- Fixed 401 error in health check and config export (added auth headers for Web mode)
+- Fixed login validation logic (`response.ok` instead of status check)
+- Fixed useEffect race condition in App.tsx (proper cleanup with cancelled flag)
+- Fixed closure trap in usePromptActions.ts (deep clone + functional updates)
+- Fixed unhandled Promise rejection in handleAutoFailover
+- Fixed production log pollution in useHealthCheck (DEV-only logging)
+- Fixed localStorage crash in Safari private mode
+- Fixed checkUpdate error handling (no longer throws)
+- Fixed missing dependency in SettingsDialog
 
 ### ⚡ Improvements
-- Skills API now returns warnings; local skills still display when remote fetch fails
-- Increased Skills repo download timeout (HTTP: 120s, total: 180s)
-- Increased frontend API request timeout (30s → 180s)
-- Added Web login dialog with manual password authentication
-- Added CSRF Token API endpoint `GET /api/system/csrf-token`
+- Docker build optimized from ~50min to ~2min (uses prebuilt binaries)
+- Added 3 new tests (142 total)
 
 ---
 
@@ -72,8 +79,8 @@ Download precompiled server binary—no compilation required:
 
 | Architecture | Download |
 |--------------|----------|
-| **Linux x86_64** | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.2/cc-switch-server-linux-x86_64) |
-| **Linux aarch64** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.2/cc-switch-server-linux-aarch64) |
+| **Linux x86_64** | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.3/cc-switch-server-linux-x86_64) |
+| **Linux aarch64** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.3/cc-switch-server-linux-aarch64) |
 
 **One-Line Deploy**:
 ```bash
@@ -170,11 +177,11 @@ Full-featured desktop app with graphical interface, built with Tauri.
 
 | Platform | Download | Description |
 |----------|----------|-------------|
-| **Windows** | [CC-Switch-v0.5.2-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.2/CC-Switch-v0.5.2-Windows.msi) | Installer (recommended) |
-| | [CC-Switch-v0.5.2-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.2/CC-Switch-v0.5.2-Windows-Portable.zip) | Portable (no install) |
-| **macOS** | [CC-Switch-v0.5.2-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.2/CC-Switch-v0.5.2-macOS.zip) | Universal binary (Intel + Apple Silicon) |
-| **Linux** | [CC-Switch-v0.5.2-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.2/CC-Switch-v0.5.2-Linux.AppImage) | AppImage (universal) |
-| | [CC-Switch-v0.5.2-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.2/CC-Switch-v0.5.2-Linux.deb) | Debian/Ubuntu package |
+| **Windows** | [CC-Switch-v0.5.3-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.3/CC-Switch-v0.5.3-Windows.msi) | Installer (recommended) |
+| | [CC-Switch-v0.5.3-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.3/CC-Switch-v0.5.3-Windows-Portable.zip) | Portable (no install) |
+| **macOS** | [CC-Switch-v0.5.3-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.3/CC-Switch-v0.5.3-macOS.zip) | Universal binary (Intel + Apple Silicon) |
+| **Linux** | [CC-Switch-v0.5.3-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.3/CC-Switch-v0.5.3-Linux.AppImage) | AppImage (universal) |
+| | [CC-Switch-v0.5.3-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.3/CC-Switch-v0.5.3-Linux.deb) | Debian/Ubuntu package |
 
 **macOS Note**: If you see "damaged" warning, run: `xattr -cr "/Applications/CC Switch.app"`
 
