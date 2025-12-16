@@ -444,7 +444,7 @@ jobs:
   docker-publish:
     name: Build and publish Docker image
     runs-on: ubuntu-22.04
-    needs: release
+    needs: [release, build-web-server]
     permissions:
       contents: read
       packages: write
@@ -473,11 +473,35 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Prepare GH CLI
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euxo pipefail
+          gh --version || (type -p curl >/dev/null && sudo apt-get update && sudo apt-get install -y gh)
+
+      - name: Download prebuilt server binaries from release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euxo pipefail
+          mkdir -p release-assets
+          gh release download "${GITHUB_REF_NAME}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --dir release-assets \
+            --pattern "cc-switch-server-linux-*"
+          ls -la release-assets
+          test -f release-assets/cc-switch-server-linux-x86_64
+          test -f release-assets/cc-switch-server-linux-aarch64
+          chmod +x release-assets/cc-switch-server-linux-x86_64 release-assets/cc-switch-server-linux-aarch64
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: Dockerfile
+          file: Dockerfile.release
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |

@@ -1,0 +1,23 @@
+# syntax=docker/dockerfile:1.7
+FROM debian:bookworm-slim
+
+ARG TARGETARCH
+
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates libssl3 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd -m ccswitch
+
+RUN --mount=type=bind,source=release-assets,target=/release-assets,readonly \
+    set -eux; \
+    case "${TARGETARCH}" in \
+      amd64) install -m 0755 /release-assets/cc-switch-server-linux-x86_64 /usr/local/bin/cc-switch-server ;; \
+      arm64) install -m 0755 /release-assets/cc-switch-server-linux-aarch64 /usr/local/bin/cc-switch-server ;; \
+      *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac
+
+USER ccswitch
+WORKDIR /home/ccswitch
+ENV HOST=0.0.0.0 PORT=3000
+EXPOSE 3000
+CMD ["cc-switch-server"]
