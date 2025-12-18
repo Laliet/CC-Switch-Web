@@ -1,5 +1,7 @@
 # CC-Switch-Web
 
+<sub>🙏 This project is a fork of [anthropics/claude-code-config](https://github.com/anthropics/claude-code-config) (also known as CC-Switch). Thanks to the original authors for their excellent work. This fork adds Web Server mode for cloud/headless deployment.</sub>
+
 [![Release](https://img.shields.io/github/v/release/Laliet/CC-Switch-Web?style=flat-square&logo=github&label=Release)](https://github.com/Laliet/CC-Switch-Web/releases/latest)
 [![License](https://img.shields.io/github/license/Laliet/CC-Switch-Web?style=flat-square)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-0078D6?style=flat-square&logo=windows&logoColor=white)](https://github.com/Laliet/CC-Switch-Web/releases/latest)
