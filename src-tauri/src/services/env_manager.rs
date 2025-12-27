@@ -113,7 +113,7 @@ fn validate_shell_config_path(path: &Path) -> Result<PathBuf, String> {
             allowed.push(canonical);
         }
     }
-    if !allowed.iter().any(|allowed_path| *allowed_path == candidate) {
+    if !allowed.contains(&candidate) {
         return Err("文件路径不在允许的配置文件范围内".to_string());
     }
     Ok(candidate)

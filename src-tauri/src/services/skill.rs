@@ -622,7 +622,7 @@ impl SkillService {
             description = meta.description;
         }
 
-        let body = body.trim_start_matches(|c| c == '\n' || c == '\r');
+        let body = body.trim_start_matches(['\n', '\r']);
         if name.is_none() || description.is_none() {
             let (heading, summary) = Self::extract_markdown_heading_and_summary(body);
             if name.is_none() {
@@ -679,11 +679,9 @@ impl SkillService {
                 }
             }
 
-            if heading.is_some() && summary.is_none() {
-                if !trimmed.starts_with('#') {
-                    summary = Some(trimmed.to_string());
-                    break;
-                }
+            if heading.is_some() && summary.is_none() && !trimmed.starts_with('#') {
+                summary = Some(trimmed.to_string());
+                break;
             }
 
             if heading.is_none() && summary.is_none() && !trimmed.starts_with('#') {

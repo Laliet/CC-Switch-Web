@@ -1,4 +1,4 @@
-/// MCP 服务器配置验证模块
+//! MCP 服务器配置验证模块
 
 use serde_json::Value;
 use crate::error::AppError;

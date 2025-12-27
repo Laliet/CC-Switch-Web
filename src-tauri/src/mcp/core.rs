@@ -425,7 +425,6 @@ pub fn import_from_codex(config: &mut MultiAppConfig) -> Result<usize, AppError>
 /// - 仅写入启用项；无启用项时清理 mcp_servers 表
 ///
 /// 注：实现已迁移至 sync 模块，此处通过 pub use 重新导出以保持 API 兼容性
-
 /// 从 ~/.gemini/settings.json 导入 mcpServers 到统一结构（v3.7.0+）
 /// 已存在的服务器将启用 Gemini 应用，不覆盖其他字段和应用状态
 pub fn import_from_gemini(config: &mut MultiAppConfig) -> Result<usize, AppError> {

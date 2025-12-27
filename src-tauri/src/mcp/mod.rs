@@ -9,7 +9,6 @@
 /// - `conversion`: 配置格式转换
 /// - `normalization`: 配置数据规范化
 /// - `validation`: 配置验证
-
 // 核心功能模块（从原 mcp.rs 迁移）
 mod core;
 
