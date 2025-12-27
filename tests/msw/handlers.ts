@@ -22,6 +22,10 @@ import {
   setMcpServerEnabled,
   upsertMcpServer,
   deleteMcpServer,
+  getUnifiedMcpServers,
+  upsertUnifiedMcpServer,
+  deleteUnifiedMcpServer,
+  toggleMcpAppState,
   getSkillsState,
   installSkillState,
   uninstallSkillState,
@@ -155,6 +159,8 @@ export const handlers = [
     return success(getMcpConfig(app));
   }),
 
+  http.post(`${TAURI_ENDPOINT}/get_mcp_servers`, () => success(getUnifiedMcpServers())),
+
   http.post(`${TAURI_ENDPOINT}/import_mcp_from_claude`, () => success(1)),
   http.post(`${TAURI_ENDPOINT}/import_mcp_from_codex`, () => success(1)),
 
@@ -165,6 +171,28 @@ export const handlers = [
       enabled: boolean;
     }>(request);
     setMcpServerEnabled(app, id, enabled);
+    return success(true);
+  }),
+
+  http.post(`${TAURI_ENDPOINT}/toggle_mcp_app`, async ({ request }) => {
+    const { serverId, app, enabled } = await withJson<{
+      serverId: string;
+      app: AppId;
+      enabled: boolean;
+    }>(request);
+    toggleMcpAppState(serverId, app, enabled);
+    return success(true);
+  }),
+
+  http.post(`${TAURI_ENDPOINT}/upsert_mcp_server`, async ({ request }) => {
+    const { server } = await withJson<{ server: McpServer }>(request);
+    upsertUnifiedMcpServer(server);
+    return success(true);
+  }),
+
+  http.post(`${TAURI_ENDPOINT}/delete_mcp_server`, async ({ request }) => {
+    const { id } = await withJson<{ id: string }>(request);
+    deleteUnifiedMcpServer(id);
     return success(true);
   }),
 
@@ -185,6 +213,8 @@ export const handlers = [
   }),
 
   http.post(`${TAURI_ENDPOINT}/restart_app`, () => success(true)),
+
+  http.post(`${TAURI_ENDPOINT}/check_env_conflicts`, () => success([])),
 
   http.post(`${TAURI_ENDPOINT}/get_settings`, () => success(getSettings())),
 

@@ -282,6 +282,8 @@ export const providerPresets: ProviderPreset[] = [
     name: "DMXAPI",
     websiteUrl: "https://www.dmxapi.cn",
     apiKeyUrl: "https://www.dmxapi.cn",
+    // 说明：该供应商使用 ANTHROPIC_API_KEY（而非 ANTHROPIC_AUTH_TOKEN）
+    apiKeyField: "ANTHROPIC_API_KEY",
     settingsConfig: {
       env: {
         ANTHROPIC_BASE_URL: "https://www.dmxapi.cn",
@@ -289,7 +291,7 @@ export const providerPresets: ProviderPreset[] = [
       },
     },
     // 请求地址候选（用于地址管理/测速），用户可自行选择/覆盖
-    endpointCandidates: ["https://aihubmix.com", "https://api.aihubmix.com"],
+    endpointCandidates: ["https://www.dmxapi.cn"],
     category: "aggregator",
   },
   {
@@ -310,5 +312,305 @@ export const providerPresets: ProviderPreset[] = [
     category: "third_party",
     isPartner: true, // 合作伙伴
     partnerPromotionKey: "packycode", // 促销信息 i18n key
+  },
+  {
+    name: "88code",
+    websiteUrl: "https://www.88code.ai",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://www.88code.ai/api",
+        ANTHROPIC_AUTH_TOKEN: "",
+      },
+    },
+    endpointCandidates: ["https://www.88code.ai/api"],
+    category: "third_party",
+  },
+  {
+    name: "AICodeMirror",
+    websiteUrl: "https://www.aicodemirror.com",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://api.aicodemirror.com/api/claudecode",
+        ANTHROPIC_AUTH_TOKEN: "",
+      },
+    },
+    endpointCandidates: ["https://api.aicodemirror.com/api/claudecode"],
+    category: "third_party",
+  },
+  {
+    name: "AIMZ",
+    websiteUrl: "https://mzlone.top",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://mzlone.top",
+        ANTHROPIC_AUTH_TOKEN: "",
+      },
+    },
+    endpointCandidates: ["https://mzlone.top"],
+    category: "third_party",
+  },
+  {
+    name: "Anyrouter",
+    websiteUrl: "https://anyrouter.top",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://anyrouter.top",
+        ANTHROPIC_AUTH_TOKEN: "",
+      },
+    },
+    endpointCandidates: ["https://anyrouter.top"],
+    category: "third_party",
+  },
+  {
+    name: "CCFly",
+    websiteUrl: "https://ccfly.online",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://apic.cikew.site/api",
+        ANTHROPIC_AUTH_TOKEN: "",
+      },
+    },
+    endpointCandidates: ["https://apic.cikew.site/api"],
+    category: "third_party",
+  },
+  {
+    name: "ClaudeCN",
+    websiteUrl: "https://claudecn.top",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://claudecn.top",
+        ANTHROPIC_AUTH_TOKEN: "",
+      },
+    },
+    endpointCandidates: ["https://claudecn.top"],
+    category: "third_party",
+  },
+  {
+    name: "ClaudePro",
+    websiteUrl: "https://pro.aipor.cc",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://pro.aipor.cc/api",
+        ANTHROPIC_AUTH_TOKEN: "",
+      },
+    },
+    endpointCandidates: ["https://pro.aipor.cc/api"],
+    category: "third_party",
+  },
+  {
+    name: "CodeCli",
+    websiteUrl: "https://code-cli.cn",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://code-cli.cn/api/claudecode",
+        ANTHROPIC_AUTH_TOKEN: "",
+      },
+    },
+    endpointCandidates: ["https://code-cli.cn/api/claudecode"],
+    category: "third_party",
+  },
+  {
+    name: "EasyChat",
+    websiteUrl: "https://easychat.site",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://server.easychat.site",
+        ANTHROPIC_AUTH_TOKEN: "",
+      },
+    },
+    endpointCandidates: ["https://server.easychat.site"],
+    category: "third_party",
+  },
+  {
+    name: "FastCode",
+    websiteUrl: "https://api.timebackward.com",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://api.timebackward.com",
+        ANTHROPIC_AUTH_TOKEN: "",
+      },
+    },
+    endpointCandidates: ["https://api.timebackward.com"],
+    category: "third_party",
+  },
+  {
+    name: "FoxCode",
+    websiteUrl: "https://foxcode.rjj.cc",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://code.newcli.com/claude/aws",
+        ANTHROPIC_AUTH_TOKEN: "",
+      },
+    },
+    endpointCandidates: ["https://code.newcli.com/claude/aws"],
+    category: "third_party",
+  },
+  {
+    name: "GalaxyCode",
+    websiteUrl: "https://nf.video",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://relay.nf.video",
+        ANTHROPIC_AUTH_TOKEN: "",
+      },
+    },
+    endpointCandidates: ["https://relay.nf.video"],
+    category: "third_party",
+  },
+  {
+    name: "HuggingCode",
+    websiteUrl: "https://huggingcode.cc",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://huggingcode.cc",
+        ANTHROPIC_AUTH_TOKEN: "",
+      },
+    },
+    endpointCandidates: ["https://huggingcode.cc"],
+    category: "third_party",
+  },
+  {
+    name: "JikeAI",
+    websiteUrl: "https://magic666.top",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://magic666.top",
+        ANTHROPIC_AUTH_TOKEN: "",
+      },
+    },
+    endpointCandidates: ["https://magic666.top"],
+    category: "third_party",
+  },
+  {
+    name: "LinkAPI",
+    websiteUrl: "https://linkapi.ai",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://api.linkapi.ai",
+        ANTHROPIC_AUTH_TOKEN: "",
+      },
+    },
+    endpointCandidates: ["https://api.linkapi.ai"],
+    category: "third_party",
+  },
+  {
+    name: "MikuCode",
+    websiteUrl: "https://mikucode.xyz",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://mikucode.xyz",
+        ANTHROPIC_AUTH_TOKEN: "",
+      },
+    },
+    endpointCandidates: ["https://mikucode.xyz"],
+    category: "third_party",
+  },
+  {
+    name: "OCC",
+    websiteUrl: "https://www.openclaudecode.cn",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://www.openclaudecode.cn",
+        ANTHROPIC_AUTH_TOKEN: "",
+      },
+    },
+    endpointCandidates: ["https://www.openclaudecode.cn"],
+    category: "third_party",
+  },
+  {
+    name: "SSSAiCode",
+    websiteUrl: "https://www.sssaicode.com",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://claude3.sssaicode.com/api",
+        ANTHROPIC_AUTH_TOKEN: "",
+      },
+    },
+    endpointCandidates: ["https://claude3.sssaicode.com/api"],
+    category: "third_party",
+  },
+  {
+    name: "YesCode",
+    websiteUrl: "https://co.yes.vg",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://co.yes.vg",
+        ANTHROPIC_AUTH_TOKEN: "",
+      },
+    },
+    endpointCandidates: ["https://co.yes.vg"],
+    category: "third_party",
+  },
+  {
+    name: "cubence",
+    websiteUrl: "https://cubence.com",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://api-dmit.cubence.com",
+        ANTHROPIC_AUTH_TOKEN: "",
+      },
+    },
+    endpointCandidates: ["https://api-dmit.cubence.com"],
+    category: "third_party",
+  },
+  {
+    name: "duckcoding",
+    websiteUrl: "https://duckcoding.com",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://jp.duckcoding.com",
+        ANTHROPIC_AUTH_TOKEN: "",
+      },
+    },
+    endpointCandidates: ["https://jp.duckcoding.com"],
+    category: "third_party",
+  },
+  {
+    name: "ikuncode",
+    websiteUrl: "https://api.ikuncode.cc",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://api.ikuncode.cc",
+        ANTHROPIC_AUTH_TOKEN: "",
+      },
+    },
+    endpointCandidates: ["https://api.ikuncode.cc"],
+    category: "third_party",
+  },
+  {
+    name: "privnode",
+    websiteUrl: "https://privnode.com",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://privnode.com",
+        ANTHROPIC_AUTH_TOKEN: "",
+      },
+    },
+    endpointCandidates: ["https://privnode.com"],
+    category: "third_party",
+  },
+  {
+    name: "uucode",
+    websiteUrl: "https://www.uucode.org",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://api.uucode.org",
+        ANTHROPIC_AUTH_TOKEN: "",
+      },
+    },
+    endpointCandidates: ["https://api.uucode.org"],
+    category: "third_party",
+  },
+  {
+    name: "xyai",
+    websiteUrl: "https://new.xychatai.com",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://new.xychatai.com/claude_api",
+        ANTHROPIC_AUTH_TOKEN: "",
+      },
+    },
+    endpointCandidates: ["https://new.xychatai.com/claude_api"],
+    category: "third_party",
   },
 ];

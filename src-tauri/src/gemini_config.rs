@@ -352,6 +352,13 @@ pub fn write_packycode_settings() -> Result<(), AppError> {
     update_selected_type("gemini-api-key")
 }
 
+/// 为使用 API Key 的 Gemini 供应商写入 settings.json
+///
+/// 与 Packycode 相同，设置 `selectedType = "gemini-api-key"`，保留其他字段。
+pub fn write_api_key_settings() -> Result<(), AppError> {
+    update_selected_type("gemini-api-key")
+}
+
 /// 为 Google 官方 Gemini 供应商写入 settings.json（OAuth 模式）
 ///
 /// 设置 `~/.gemini/settings.json` 中的：

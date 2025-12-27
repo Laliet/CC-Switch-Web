@@ -1,6 +1,5 @@
 #![cfg(feature = "web-server")]
 
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use axum::{
@@ -72,7 +71,7 @@ pub async fn export_config(
     let file_path = payload
         .file_path
         .ok_or_else(|| ApiError::bad_request("filePath is required"))?;
-    let target_path = PathBuf::from(&file_path);
+    let target_path = ConfigService::sanitize_transfer_path(&file_path).map_err(ApiError::from)?;
     ConfigService::export_config_to_path(&target_path).map_err(ApiError::from)?;
 
     Ok(Json(serde_json::json!(ConfigTransferResult {
@@ -125,6 +124,7 @@ pub async fn import_config(
         .map_err(|e| ApiError::bad_request(format!("invalid payload: {e}")))?;
     let mut file_path_ret = payload.file_path.clone();
 
+    let mut updated_state = false;
     let (new_config, backup_id) = if let Some(content) = payload.content {
         let config_path = resolve_app_config_path();
         let backup_id = ConfigService::create_backup(&config_path).map_err(ApiError::from)?;
@@ -133,13 +133,17 @@ pub async fn import_config(
         atomic_write(&config_path, content.as_bytes()).map_err(ApiError::from)?;
         (parsed, backup_id)
     } else if let Some(file_path) = &payload.file_path {
-        let path_buf = PathBuf::from(file_path);
-        ConfigService::load_config_for_import(&path_buf).map_err(ApiError::from)?
+        let path_buf = ConfigService::sanitize_transfer_path(file_path).map_err(ApiError::from)?;
+        let parsed = ConfigService::load_config_for_import(&path_buf).map_err(ApiError::from)?;
+        let backup_id = ConfigService::apply_import_config(parsed.clone(), state.as_ref())
+            .map_err(ApiError::from)?;
+        updated_state = true;
+        (parsed, backup_id)
     } else {
         return Err(ApiError::bad_request("filePath or content is required"));
     };
 
-    {
+    if !updated_state {
         let mut guard = state
             .config
             .write()

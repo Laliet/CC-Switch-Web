@@ -165,10 +165,6 @@ export function useCodexConfigState({ initialData }: UseCodexConfigStateProps) {
       const sanitized = url.trim().replace(/\/+$/, "");
       setCodexBaseUrl(sanitized);
 
-      if (!sanitized) {
-        return;
-      }
-
       isUpdatingCodexBaseUrlRef.current = true;
       setCodexConfig((prev) => setCodexBaseUrlInConfig(prev, sanitized));
       setTimeout(() => {
@@ -183,10 +179,6 @@ export function useCodexConfigState({ initialData }: UseCodexConfigStateProps) {
     (modelName: string) => {
       const trimmed = modelName.trim();
       setCodexModelName(trimmed);
-
-      if (!trimmed) {
-        return;
-      }
 
       isUpdatingCodexModelNameRef.current = true;
       setCodexConfig((prev) => setCodexModelNameInConfig(prev, trimmed));
@@ -229,9 +221,7 @@ export function useCodexConfigState({ initialData }: UseCodexConfigStateProps) {
       setCodexConfig(config);
 
       const baseUrl = extractCodexBaseUrl(config);
-      if (baseUrl) {
-        setCodexBaseUrl(baseUrl);
-      }
+      setCodexBaseUrl(baseUrl ?? "");
 
       const modelName = extractCodexModelName(config);
       if (modelName) {

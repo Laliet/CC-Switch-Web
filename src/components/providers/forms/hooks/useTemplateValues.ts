@@ -116,14 +116,13 @@ const applyTemplateValuesToConfigString = (
   presetConfig: any,
   currentConfigString: string,
   values: TemplateValueMap,
+  templateKeys: string[],
+  placeholderPaths: TemplatePath[],
 ) => {
   const replacedConfig = applyTemplateValues(presetConfig, values);
-  const templateKeys = Object.keys(values);
   if (templateKeys.length === 0) {
     return JSON.stringify(replacedConfig, null, 2);
   }
-
-  const placeholderPaths = collectTemplatePaths(presetConfig, templateKeys);
 
   try {
     const parsedConfig = currentConfigString.trim()
@@ -193,6 +192,20 @@ export function useTemplateValues({
     >;
   }, [selectedPreset]);
 
+  const templateKeys = useMemo(() => {
+    if (!selectedPreset?.templateValues) {
+      return [];
+    }
+    return Object.keys(selectedPreset.templateValues);
+  }, [selectedPreset]);
+
+  const placeholderPaths = useMemo(() => {
+    if (!selectedPreset || templateKeys.length === 0) {
+      return [];
+    }
+    return collectTemplatePaths(selectedPreset.settingsConfig, templateKeys);
+  }, [selectedPreset, templateKeys]);
+
   // 当选择预设时，初始化模板值
   useEffect(() => {
     if (selectedPreset?.templateValues) {
@@ -241,6 +254,8 @@ export function useTemplateValues({
             selectedPreset.settingsConfig,
             settingsConfig,
             nextValues,
+            templateKeys,
+            placeholderPaths,
           );
           onConfigChange(configString);
         } catch (err) {
@@ -250,7 +265,13 @@ export function useTemplateValues({
         return nextValues;
       });
     },
-    [selectedPreset, settingsConfig, onConfigChange],
+    [
+      selectedPreset,
+      settingsConfig,
+      onConfigChange,
+      templateKeys,
+      placeholderPaths,
+    ],
   );
 
   // 验证所有模板值是否已填写

@@ -3,7 +3,7 @@ use crate::config::get_home_dir;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[cfg(target_os = "windows")]
 use winreg::enums::*;
@@ -72,6 +72,53 @@ fn get_backup_dir() -> Result<PathBuf, String> {
     Ok(home.join(".cc-switch").join("backups"))
 }
 
+fn validate_backup_path(path: &Path) -> Result<PathBuf, String> {
+    let backup_dir = get_backup_dir()?;
+    let backup_dir = fs::canonicalize(&backup_dir).map_err(|e| {
+        format!(
+            "规范化备份目录失败 {}: {e}",
+            backup_dir.display()
+        )
+    })?;
+    let candidate = fs::canonicalize(path)
+        .map_err(|e| format!("规范化备份文件路径失败 {}: {e}", path.display()))?;
+    if !candidate.starts_with(&backup_dir) {
+        return Err("备份文件路径不在允许的备份目录内".to_string());
+    }
+    Ok(candidate)
+}
+
+#[cfg(not(target_os = "windows"))]
+fn get_allowed_shell_config_files() -> Result<Vec<PathBuf>, String> {
+    let home = get_home_dir().ok_or("无法获取用户主目录")?;
+    Ok(vec![
+        home.join(".bashrc"),
+        home.join(".bash_profile"),
+        home.join(".zshrc"),
+        home.join(".zprofile"),
+        home.join(".profile"),
+        PathBuf::from("/etc/profile"),
+        PathBuf::from("/etc/bashrc"),
+    ])
+}
+
+#[cfg(not(target_os = "windows"))]
+fn validate_shell_config_path(path: &Path) -> Result<PathBuf, String> {
+    let candidate = fs::canonicalize(path)
+        .map_err(|e| format!("规范化文件路径失败 {}: {e}", path.display()))?;
+    let allowed_files = get_allowed_shell_config_files()?;
+    let mut allowed = Vec::new();
+    for allowed_path in allowed_files {
+        if let Ok(canonical) = fs::canonicalize(&allowed_path) {
+            allowed.push(canonical);
+        }
+    }
+    if !allowed.iter().any(|allowed_path| *allowed_path == candidate) {
+        return Err("文件路径不在允许的配置文件范围内".to_string());
+    }
+    Ok(candidate)
+}
+
 /// Delete a single environment variable
 #[cfg(target_os = "windows")]
 fn delete_single_env(conflict: &EnvConflict) -> Result<(), String> {
@@ -112,11 +159,12 @@ fn delete_single_env(conflict: &EnvConflict) -> Result<(), String> {
                 return Err("无效的文件路径格式".to_string());
             }
 
-            let file_path = parts[0];
+            let file_path = PathBuf::from(parts[0]);
+            let file_path = validate_shell_config_path(&file_path)?;
 
             // Read file content
-            let content = fs::read_to_string(file_path)
-                .map_err(|e| format!("读取文件失败 {file_path}: {e}"))?;
+            let content = fs::read_to_string(&file_path)
+                .map_err(|e| format!("读取文件失败 {}: {e}", file_path.display()))?;
 
             // Filter out the line containing the environment variable
             let new_content: Vec<String> = content
@@ -137,8 +185,8 @@ fn delete_single_env(conflict: &EnvConflict) -> Result<(), String> {
                 .collect();
 
             // Write back to file
-            fs::write(file_path, new_content.join("\n"))
-                .map_err(|e| format!("写入文件失败 {file_path}: {e}"))?;
+            fs::write(&file_path, new_content.join("\n"))
+                .map_err(|e| format!("写入文件失败 {}: {e}", file_path.display()))?;
 
             Ok(())
         }
@@ -167,6 +215,8 @@ fn delete_single_env(conflict: &EnvConflict) -> Result<(), String> {
 
 /// Restore environment variables from backup
 pub fn restore_from_backup(backup_path: String) -> Result<(), String> {
+    let backup_path = validate_backup_path(Path::new(&backup_path))?;
+
     // Read backup file
     let content = fs::read_to_string(&backup_path).map_err(|e| format!("读取备份文件失败: {e}"))?;
 
@@ -222,18 +272,20 @@ fn restore_single_env(conflict: &EnvConflict) -> Result<(), String> {
                 return Err("无效的文件路径格式".to_string());
             }
 
-            let file_path = parts[0];
+            let file_path = PathBuf::from(parts[0]);
+            let file_path = validate_shell_config_path(&file_path)?;
 
             // Read file content
-            let mut content = fs::read_to_string(file_path)
-                .map_err(|e| format!("读取文件失败 {file_path}: {e}"))?;
+            let mut content = fs::read_to_string(&file_path)
+                .map_err(|e| format!("读取文件失败 {}: {e}", file_path.display()))?;
 
             // Append the environment variable line
             let export_line = format!("\nexport {}={}", conflict.var_name, conflict.var_value);
             content.push_str(&export_line);
 
             // Write back to file
-            fs::write(file_path, content).map_err(|e| format!("写入文件失败 {file_path}: {e}"))?;
+            fs::write(&file_path, content)
+                .map_err(|e| format!("写入文件失败 {}: {e}", file_path.display()))?;
 
             Ok(())
         }

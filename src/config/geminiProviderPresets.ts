@@ -33,7 +33,9 @@ export const geminiProviderPresets: GeminiProviderPreset[] = [
     websiteUrl: "https://ai.google.dev/",
     apiKeyUrl: "https://aistudio.google.com/apikey",
     settingsConfig: {
-      env: {},
+      env: {
+        GEMINI_MODEL: "gemini-3-pro-preview",
+      },
     },
     description: "Google 官方 Gemini API (OAuth)",
     category: "official",
@@ -51,6 +53,7 @@ export const geminiProviderPresets: GeminiProviderPreset[] = [
     settingsConfig: {
       env: {
         GOOGLE_GEMINI_BASE_URL: "https://www.packyapi.com",
+        GEMINI_API_KEY: "",
         GEMINI_MODEL: "gemini-3-pro-preview",
       },
     },
@@ -66,17 +69,41 @@ export const geminiProviderPresets: GeminiProviderPreset[] = [
     ],
   },
   {
-    name: "自定义",
-    websiteUrl: "",
+    name: "AiHubMix",
+    websiteUrl: "https://aihubmix.com",
+    apiKeyUrl: "https://aihubmix.com",
     settingsConfig: {
       env: {
-        GOOGLE_GEMINI_BASE_URL: "",
+        GOOGLE_GEMINI_BASE_URL: "https://aihubmix.com/gemini",
+        GEMINI_API_KEY: "",
         GEMINI_MODEL: "gemini-3-pro-preview",
       },
     },
+    baseURL: "https://aihubmix.com/gemini",
     model: "gemini-3-pro-preview",
-    description: "自定义 Gemini API 端点",
-    category: "custom",
+    description: "AiHubMix",
+    category: "third_party",
+    endpointCandidates: [
+      "https://aihubmix.com/gemini",
+      "https://api.aihubmix.com/gemini",
+    ],
+  },
+  {
+    name: "DMXAPI",
+    websiteUrl: "https://www.dmxapi.cn",
+    apiKeyUrl: "https://www.dmxapi.cn",
+    settingsConfig: {
+      env: {
+        GOOGLE_GEMINI_BASE_URL: "https://www.dmxapi.cn",
+        GEMINI_API_KEY: "",
+        GEMINI_MODEL: "gemini-3-pro-preview",
+      },
+    },
+    baseURL: "https://www.dmxapi.cn",
+    model: "gemini-3-pro-preview",
+    description: "DMXAPI",
+    category: "third_party",
+    endpointCandidates: ["https://www.dmxapi.cn"],
   },
 ];
 

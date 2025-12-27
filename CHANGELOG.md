@@ -5,6 +5,148 @@ All notable changes to CC Switch will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2025-12-26
+
+### 🔒 Security / 安全修复
+
+**Critical / 严重 (5个)：**
+- **修复 Config 路径遍历漏洞** - `services/config.rs`: `/config/export` 和 `/config/import` 接受用户控制的 `filePath`，可导致任意文件读写。添加路径消毒、规范化和白名单校验
+- **修复 Skills 路径遍历漏洞** - `services/skill.rs`, `web_api/handlers/skills.rs`: `directory` 参数未规范化，`../` 可删除任意目录。添加中央验证器，拒绝 `..`、空值和绝对路径
+- **修复 XSS 漏洞** - `lib/api/adapter.ts:649`: `open_external` 可打开 `javascript:`/`data:` URL 执行脚本。添加 URL scheme 验证，只允许 http/https
+- **修复 env_manager 路径遍历** - `services/env_manager.rs`: 备份/恢复路径可被用户控制修改任意文件。添加规范化路径验证，限制到备份目录和已知 shell 配置文件
+- **修复非幂等操作重试** - `lib/api/adapter.ts:677`: 重试循环适用于突变操作可能双重应用副作用。限制重试只对 GET/HEAD 请求
+
+**High / 高优先级 (7个)：**
+- **修复资源泄漏** - `services/skill.rs`: 临时目录在错误路径/超时时未清理，泄漏 `/tmp`。改用 RAII 临时目录，自动 drop 清理
+- **修复阻塞异步** - `services/skill.rs:842`: CPU 密集的 zip 解压阻塞 tokio 运行时。使用 `spawn_blocking` 移到阻塞线程池
+- **修复备份 ID 冲突** - `services/config.rs:21`: 秒级时间戳可能覆盖同秒内的备份。改用毫秒时间戳+单调计数器
+- **修复导入竞态条件** - `services/config.rs:111,123`: 导入路径未与 AppState 同步，并发操作可能数据丢失。添加 AppState 写锁下解析再应用
+- **修复静默数据丢失** - `services/config.rs:191`: 非字符串 `config` 被视为 `None`，写空文件。添加类型验证
+- **修复 app_config 竞态** - `app_config.rs:343,375`: 读-修改-写无文件锁。添加 `config.json.lock` 文件锁
+- **修复配置文件权限** - `config.rs:107,293,312`: 配置文件和备份写入时未硬化权限，可能泄露 API 密钥。添加敏感路径检测和私有权限强制（Unix 0600）
+
+### 🐛 Bug Fixes / Bug 修复
+
+**MCP 组件修复 (8个)：**
+- **修复 McpFormModal 错误残留** - `:236` TOML 验证通过后未清除 `configError`；`:196,218,305` 设置 `formId` 后从未重置 `idError`
+- **修复 McpFormModal 内存泄漏** - `:412` 异步操作 `finally` 中 setState 可能作用于已卸载组件。添加 `isMounted` 守卫
+- **修复 McpFormModal 无效类型** - `:385,395` 无效 `type` 值可能被保存。添加显式类型验证
+- **修复 wizard 不必要解析** - `:143` wizard 关闭时仍解析 TOML/JSON。延迟到 `isWizardOpen` 时
+- **修复 UnifiedMcpPanel null** - `:67` 假设 `server.apps` 总存在，旧配置崩溃。添加 optional chaining
+- **修复 UnifiedMcpPanel 卸载** - `:91` 异步 setState 在卸载后。添加 `isMountedRef` 守卫
+- **修复 McpListItem null** - `:98` 同上，`server.apps` 可能 undefined。默认 `false`
+- **修复 MCP 类型验证** - `validation.rs:13` 非字符串 `type` 默认为 stdio 允许恶意配置；`useMcpValidation.ts:61` JSON 解析两次。单次解析+严格类型校验
+
+**MCP 后端修复 (4个)：**
+- **修复 MCP 转换验证** - `conversion.rs:99,142,174`: `json_server_to_toml_table` 从不验证 spec。转换前调用 `validate_server_spec`
+- **修复 MCP 同步验证** - `sync.rs:37,58,112,132`: 同步路径不验证必需字段，无效 spec 传播到活动配置。同步前验证，跳过无效条目
+
+**Skills 组件修复 (3个)：**
+- **修复 SkillsPage 竞态** - `:158` `loadSkills` 无条件更新，重叠调用覆盖新数据导致 UI 过期。添加请求 ID 门控
+- **修复 SkillsPage 错误边界** - `:32` 无错误边界，渲染错误会导致整个页面崩溃。添加本地 `ErrorBoundary`
+- **修复 SkillCard 卸载** - `:38,47` `setLoading(false)` 在 `finally` 中，卸载后可能 setState。添加 `isMounted` 守卫
+
+**API 和网络修复 (5个)：**
+- **修复 healthCheck 超时** - `:142` GUI/Tauri 路径无超时，后端挂起导致 promise 永不 resolve；`:147` 超时只覆盖初始 fetch 不覆盖响应体读取。添加 `withTimeout` helper
+- **修复 adapter 错误解析** - `:685` 非 OK 响应总是读取为文本，丢失结构化错误信息。解析 JSON 错误 payload
+- **修复 adapter 空字符串** - `:558` 空字符串 `content` 被丢弃，web 模式空配置导入失败。严格字符串检查
+- **修复 adapter 参数验证** - `:279` `update_providers_sort_order` 不验证参数，undefined 变成 `{}`。添加 `requireArg`
+- **修复 web_api 404** - `mod.rs:211` 根 `/*path` 捕获所有，未知 API 路径返回 SPA HTML 而非 404。添加 API fallback handler
+
+**CORS 修复 (2个)：**
+- **修复 CORS 配置** - `mod.rs:145,196` `CORS_ALLOW_ORIGINS="*"` 被忽略但中间件仍启用，CORS 失败。修复逻辑
+- **修复 CORS HEAD 方法** - `mod.rs:135` `allow_methods` 遗漏 HEAD。添加 HEAD
+
+**错误处理修复 (5个)：**
+- **修复 prompt.rs 错误忽略** - `:80` `read_to_string` 错误静默忽略；`:81` 仅空白内容被视为空；`:106` `trim()` 去重忽略空白变更。返回读取错误，比较原始内容
+- **修复 prompt.rs panic** - `:97,112,175` `duration_since(UNIX_EPOCH).unwrap()` 系统时间异常时 panic。添加 `unix_timestamp` helper
+- **修复 app_config panic** - `:514` 同上。处理 `Err` 并 fallback 到 0
+- **修复 skillErrorParser** - `:19` code-only 错误回退到原始文本；`:20` 解析的 JSON 未验证类型。验证 JSON 形状，规范化 context
+- **修复 adapter 类型安全** - `:5` `CommandArgs` 是 `Record<string, any>`；`:624` web invoke 返回 null 转为 T。使用 `unknown` 类型，添加 null 处理
+
+**配置预设修复 (5个)：**
+- **修复 DMXAPI apiKeyField** - `claudeProviderPresets.ts:286` 使用 `ANTHROPIC_API_KEY` 但未设 `apiKeyField`
+- **修复 AiHubMix/DMXAPI endpoints** - `:278,292` `endpointCandidates` 搞反了
+- **修复 healthCheckMapping** - `:108` `aihubmix.com` 映射到 `dmxapi`，与专用预设冲突。添加 AiHubMix 映射
+- **修复 Codex 配置清空不同步** - `providerConfigUtils.ts:511`, `useCodexConfigState.ts:162,216`, `useBaseUrlState.ts:112`: Base URL/Model 清空后被回写成旧值。修复写回逻辑和预设切换时的 reset 逻辑
+- **修复 Gemini OAuth 切换** - `services/provider.rs:1636`, `gemini_config.rs:355`: 切换到通用 API Key 供应商时 `settings.json` 仍保留 `oauth-personal`。添加显式 auth type 写入
+
+### ♿ Accessibility / 无障碍
+
+- **修复 PromptListItem 无障碍** - `:36` Prompt toggle 无无障碍名称；`:54,63` 图标按钮依赖 `title`。添加 `aria-label`
+- **修复 PromptToggle** - 接受 `label` prop 以支持无障碍
+- **修复 WebLoginDialog 无障碍** - `WebLoginDialog.tsx:117-127`: 密码表单缺少用户名字段导致 Chrome 警告。添加隐藏的 username 字段支持密码管理器
+- **修复 DialogContent 无障碍** - `App.tsx:603`: Skills 对话框缺少 `DialogDescription` 导致 Radix UI 警告。添加 screen-reader-only 描述
+- **新增 favicon** - `src/public/favicon.ico`, `src/index.html:7`: 添加网站图标解决 404
+
+### ⚡ Performance / 性能优化
+
+- **优化 RepoManager** - `:42` `getSkillCount` 每次渲染 O(repos*skills)。使用 `useMemo` 预计算 skill counts
+- **优化 ProviderForm** - `:675,738` `shouldShowApiKey` 每次渲染/按键触发 JSON 解析。memoize API key 可见性
+- **优化 useTemplateValues** - `:126` `collectTemplatePaths` 每次变更遍历完整配置。缓存 template 路径
+
+### 🧪 Tests / 测试
+
+- 新增 `services/skill.rs` 路径验证测试
+- Rust 单元测试：49 个全部通过
+- 前端单元测试：58 个全部通过
+- TypeScript 类型检查通过
+
+### 📁 Changed Files / 变更文件
+
+**Rust 后端 (src-tauri/src/):**
+- `app_config.rs` - 文件锁、时间戳安全处理
+- `services/config.rs` - 路径遍历防护、备份 ID、竞态修复、权限硬化
+- `services/skill.rs` - 路径验证、RAII 临时目录、spawn_blocking
+- `services/prompt.rs` - 错误处理、时间戳安全
+- `services/env_manager.rs` - 路径规范化验证
+- `services/provider.rs` - Gemini OAuth 切换修复
+- `gemini_config.rs` - API Key 写入助手
+- `web_api/mod.rs` - API 404 处理、CORS 修复
+- `web_api/handlers/config.rs` - 路径消毒
+- `web_api/handlers/skills.rs` - 目录验证
+- `mcp/validation.rs` - 类型验证
+- `mcp/conversion.rs` - spec 验证
+- `mcp/sync.rs` - 同步前验证
+- `commands/import_export.rs` - 导入流程修复
+
+**前端 (src/):**
+- `lib/api/adapter.ts` - XSS 防护、重试逻辑、类型安全
+- `lib/api/healthCheck.ts` - 超时处理
+- `lib/errors/skillErrorParser.ts` - 错误解析验证
+- `components/mcp/McpFormModal.tsx` - 状态管理、卸载守卫
+- `components/mcp/UnifiedMcpPanel.tsx` - null 检查、卸载守卫
+- `components/mcp/McpListItem.tsx` - null 检查
+- `components/mcp/useMcpValidation.ts` - 类型验证
+- `components/skills/SkillsPage.tsx` - 竞态处理、错误边界
+- `components/skills/SkillCard.tsx` - 卸载守卫
+- `components/skills/RepoManager.tsx` - 性能优化
+- `components/prompts/PromptListItem.tsx` - 无障碍
+- `components/prompts/PromptToggle.tsx` - 无障碍
+- `components/providers/forms/ProviderForm.tsx` - 性能优化
+- `components/providers/forms/hooks/useTemplateValues.ts` - 性能优化
+- `components/providers/forms/hooks/useCodexConfigState.ts` - Codex 配置清空修复
+- `components/providers/forms/hooks/useBaseUrlState.ts` - Base URL 清空修复
+- `components/WebLoginDialog.tsx` - 密码表单无障碍
+- `utils/providerConfigUtils.ts` - 配置写回逻辑修复
+- `config/claudeProviderPresets.ts` - 配置修复
+- `config/healthCheckMapping.ts` - 映射修复
+- `App.tsx` - DialogContent 无障碍
+- `public/favicon.ico` - 新增网站图标
+- `index.html` - favicon 引用
+- `i18n/locales/en.json` - 新增验证消息
+- `i18n/locales/zh.json` - 新增验证消息
+
+**配置:**
+- `vite.config.mts` - publicDir 配置
+- `vite.config.web.mts` - publicDir 配置
+
+**测试:**
+- `tests/msw/state.ts` - 新增 MCP/环境冲突 mock
+- `tests/msw/handlers.ts` - 新增统一 MCP handler
+
+---
+
 ## [0.5.4] - 2025-12-17
 
 ### 🐛 Bug Fixes / Bug 修复

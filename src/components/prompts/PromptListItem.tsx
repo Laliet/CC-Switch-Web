@@ -23,6 +23,13 @@ const PromptListItem: React.FC<PromptListItemProps> = ({
   const { t } = useTranslation();
 
   const enabled = prompt.enabled === true;
+  const deleteDisabled = enabled;
+  const deleteTitle = deleteDisabled
+    ? t("prompts.deleteEnabledHint")
+    : t("common.delete");
+  const toggleLabel = enabled ? t("prompts.enabled") : t("prompts.enable");
+  const editLabel = t("prompts.edit");
+  const deleteLabel = deleteTitle;
 
   return (
     <div className="h-16 rounded-lg border border-border-default bg-card p-4 transition-[border-color,box-shadow] duration-200 hover:border-border-hover hover:shadow-sm">
@@ -32,6 +39,7 @@ const PromptListItem: React.FC<PromptListItemProps> = ({
           <PromptToggle
             enabled={enabled}
             onChange={(newEnabled) => onToggle(id, newEnabled)}
+            ariaLabel={`${toggleLabel}: ${prompt.name}`}
           />
         </div>
 
@@ -53,6 +61,7 @@ const PromptListItem: React.FC<PromptListItemProps> = ({
             size="icon"
             onClick={() => onEdit(id)}
             title={t("common.edit")}
+            aria-label={editLabel}
           >
             <Edit3 size={16} />
           </Button>
@@ -62,7 +71,9 @@ const PromptListItem: React.FC<PromptListItemProps> = ({
             size="icon"
             onClick={() => onDelete(id)}
             className="hover:text-red-500 hover:bg-red-100 dark:hover:text-red-400 dark:hover:bg-red-500/10"
-            title={t("common.delete")}
+            title={deleteTitle}
+            disabled={deleteDisabled}
+            aria-label={deleteLabel}
           >
             <Trash2 size={16} />
           </Button>

@@ -44,7 +44,7 @@ function validateAndNormalizeBaseUrl(baseUrl: string): string {
     throw new Error("Base URL must start with http:// or https://");
   }
 
-  return parsed.toString();
+  return parsed.toString().replace(/\/+$/, "");
 }
 
 /**
@@ -94,8 +94,13 @@ export const codexProviderPresets: CodexProviderPreset[] = [
     websiteUrl: "https://chatgpt.com/codex",
     isOfficial: true,
     category: "official",
-    auth: {},
-    config: ``,
+    auth: generateThirdPartyAuth(""),
+    config: generateThirdPartyConfig(
+      "openai",
+      "https://api.openai.com/v1",
+      "gpt-5-codex",
+    ),
+    endpointCandidates: ["https://api.openai.com/v1"],
     theme: {
       icon: "codex",
       backgroundColor: "#1F2937", // gray-800
@@ -172,5 +177,199 @@ requires_openai_auth = true`,
     ],
     isPartner: true, // 合作伙伴
     partnerPromotionKey: "packycode", // 促销信息 i18n key
+  },
+  {
+    name: "88code",
+    websiteUrl: "https://www.88code.ai",
+    category: "third_party",
+    auth: generateThirdPartyAuth(""),
+    config: generateThirdPartyConfig(
+      "88code",
+      "https://www.88code.ai/openai/v1",
+      "gpt-5-codex",
+    ),
+    endpointCandidates: ["https://www.88code.ai/openai/v1"],
+  },
+  {
+    name: "AICodeMirror",
+    websiteUrl: "https://www.aicodemirror.com",
+    category: "third_party",
+    auth: generateThirdPartyAuth(""),
+    config: generateThirdPartyConfig(
+      "aicodemirror",
+      "https://api.aicodemirror.com/api/codex/backend-api/codex",
+      "gpt-5-codex",
+    ),
+    endpointCandidates: [
+      "https://api.aicodemirror.com/api/codex/backend-api/codex",
+    ],
+  },
+  {
+    name: "AIMZ",
+    websiteUrl: "https://mzlone.top",
+    category: "third_party",
+    auth: generateThirdPartyAuth(""),
+    config: generateThirdPartyConfig(
+      "aimz",
+      "https://mzlone.top/v1",
+      "gpt-5-codex",
+    ),
+    endpointCandidates: ["https://mzlone.top/v1"],
+  },
+  {
+    name: "CodeCli",
+    websiteUrl: "https://code-cli.cn",
+    category: "third_party",
+    auth: generateThirdPartyAuth(""),
+    config: generateThirdPartyConfig(
+      "codecli",
+      "https://code-cli.cn/api/codex",
+      "gpt-5-codex",
+    ),
+    endpointCandidates: ["https://code-cli.cn/api/codex"],
+  },
+  {
+    name: "EasyChat",
+    websiteUrl: "https://easychat.site",
+    category: "third_party",
+    auth: generateThirdPartyAuth(""),
+    config: generateThirdPartyConfig(
+      "easychat",
+      "https://server.easychat.site/v1",
+      "gpt-5-codex",
+    ),
+    endpointCandidates: ["https://server.easychat.site/v1"],
+  },
+  {
+    name: "FoxCode",
+    websiteUrl: "https://foxcode.rjj.cc",
+    category: "third_party",
+    auth: generateThirdPartyAuth(""),
+    config: generateThirdPartyConfig(
+      "foxcode",
+      "https://code.newcli.com/codex/v1",
+      "gpt-5-codex",
+    ),
+    endpointCandidates: ["https://code.newcli.com/codex/v1"],
+  },
+  {
+    name: "GalaxyCode",
+    websiteUrl: "https://nf.video",
+    category: "third_party",
+    auth: generateThirdPartyAuth(""),
+    config: generateThirdPartyConfig(
+      "galaxycode",
+      "https://relay.nf.video/v1",
+      "gpt-5-codex",
+    ),
+    endpointCandidates: ["https://relay.nf.video/v1"],
+  },
+  {
+    name: "JikeAI",
+    websiteUrl: "https://magic666.top",
+    category: "third_party",
+    auth: generateThirdPartyAuth(""),
+    config: generateThirdPartyConfig(
+      "jikeai",
+      "https://magic666.top/v1",
+      "gpt-5-codex",
+    ),
+    endpointCandidates: ["https://magic666.top/v1"],
+  },
+  {
+    name: "Privnode",
+    websiteUrl: "https://privnode.com",
+    category: "third_party",
+    auth: generateThirdPartyAuth(""),
+    config: generateThirdPartyConfig(
+      "privnode",
+      "https://privnode.com/v1",
+      "gpt-5-codex",
+    ),
+    endpointCandidates: ["https://privnode.com/v1"],
+  },
+  {
+    name: "SSSAiCode",
+    websiteUrl: "https://www.sssaicode.com",
+    category: "third_party",
+    auth: generateThirdPartyAuth(""),
+    config: generateThirdPartyConfig(
+      "sssaicode",
+      "https://codex2.sssaicode.com/api/v1",
+      "gpt-5-codex",
+    ),
+    endpointCandidates: ["https://codex2.sssaicode.com/api/v1"],
+  },
+  {
+    name: "YesCode",
+    websiteUrl: "https://co.yes.vg",
+    category: "third_party",
+    auth: generateThirdPartyAuth(""),
+    config: generateThirdPartyConfig(
+      "yescode",
+      "https://co.yes.vg/v1",
+      "gpt-5-codex",
+    ),
+    endpointCandidates: ["https://co.yes.vg/v1"],
+  },
+  {
+    name: "duckcoding",
+    websiteUrl: "https://duckcoding.com",
+    category: "third_party",
+    auth: generateThirdPartyAuth(""),
+    config: generateThirdPartyConfig(
+      "duckcoding",
+      "https://jp.duckcoding.com/v1",
+      "gpt-5-codex",
+    ),
+    endpointCandidates: ["https://jp.duckcoding.com/v1"],
+  },
+  {
+    name: "ikuncode",
+    websiteUrl: "https://api.ikuncode.cc",
+    category: "third_party",
+    auth: generateThirdPartyAuth(""),
+    config: generateThirdPartyConfig(
+      "ikuncode",
+      "https://api.ikuncode.cc/v1",
+      "gpt-5-codex",
+    ),
+    endpointCandidates: ["https://api.ikuncode.cc/v1"],
+  },
+  {
+    name: "right",
+    websiteUrl: "https://right.codes",
+    category: "third_party",
+    auth: generateThirdPartyAuth(""),
+    config: generateThirdPartyConfig(
+      "right",
+      "https://right.codes/codex/v1",
+      "gpt-5-codex",
+    ),
+    endpointCandidates: ["https://right.codes/codex/v1"],
+  },
+  {
+    name: "uucode",
+    websiteUrl: "https://www.uucode.org",
+    category: "third_party",
+    auth: generateThirdPartyAuth(""),
+    config: generateThirdPartyConfig(
+      "uucode",
+      "https://api.uucode.org",
+      "gpt-5-codex",
+    ),
+    endpointCandidates: ["https://api.uucode.org"],
+  },
+  {
+    name: "xyai",
+    websiteUrl: "https://new.xychatai.com",
+    category: "third_party",
+    auth: generateThirdPartyAuth(""),
+    config: generateThirdPartyConfig(
+      "xyai",
+      "https://new.xychatai.com/codex/v1",
+      "gpt-5-codex",
+    ),
+    endpointCandidates: ["https://new.xychatai.com/codex/v1"],
   },
 ];

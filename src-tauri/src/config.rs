@@ -5,6 +5,9 @@ use std::path::{Path, PathBuf};
 
 use crate::error::AppError;
 
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+
 /// 获取用户主目录。
 ///
 /// 在 Windows 上，`dirs::home_dir()` 使用 Windows API 而非环境变量，
@@ -99,6 +102,67 @@ pub fn get_app_config_dir() -> PathBuf {
 /// 获取应用配置文件路径
 pub fn get_app_config_path() -> PathBuf {
     get_app_config_dir().join("config.json")
+}
+
+fn get_codex_config_dir_for_permissions() -> Option<PathBuf> {
+    if let Some(custom) = crate::settings::get_codex_override_dir() {
+        return Some(custom);
+    }
+
+    get_home_dir().map(|home| home.join(".codex"))
+}
+
+fn get_gemini_config_dir_for_permissions() -> Option<PathBuf> {
+    if let Some(custom) = crate::settings::get_gemini_override_dir() {
+        return Some(custom);
+    }
+
+    get_home_dir().map(|home| home.join(".gemini"))
+}
+
+fn should_enforce_private_permissions(path: &Path) -> bool {
+    let mut dirs = Vec::new();
+    dirs.push(get_app_config_dir());
+    dirs.push(get_claude_config_dir());
+    if let Some(dir) = get_codex_config_dir_for_permissions() {
+        dirs.push(dir);
+    }
+    if let Some(dir) = get_gemini_config_dir_for_permissions() {
+        dirs.push(dir);
+    }
+
+    if dirs.iter().any(|dir| path.starts_with(dir)) {
+        return true;
+    }
+
+    path == get_claude_mcp_path()
+}
+
+#[cfg(unix)]
+fn enforce_private_permissions(path: &Path) -> std::io::Result<()> {
+    fs::set_permissions(path, PermissionsExt::from_mode(0o600))
+}
+
+#[cfg(windows)]
+fn enforce_private_permissions(path: &Path) -> std::io::Result<()> {
+    use std::process::Command;
+
+    let path_str = path.to_string_lossy();
+    let output = Command::new("icacls")
+        .args([&*path_str, "/inheritance:r", "/grant:r", "*S-1-3-4:F"])
+        .output()?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        log::warn!("Failed to set Windows file permissions: {}", stderr);
+    }
+
+    Ok(())
+}
+
+#[cfg(all(not(unix), not(windows)))]
+fn enforce_private_permissions(_path: &Path) -> std::io::Result<()> {
+    Ok(())
 }
 
 /// 清理供应商名称，确保文件名安全
@@ -225,6 +289,16 @@ pub fn atomic_write(path: &Path, data: &[u8]) -> Result<(), AppError> {
             source: e,
         })?;
     }
+
+    if should_enforce_private_permissions(path) {
+        if let Err(err) = enforce_private_permissions(path) {
+            log::warn!(
+                "Failed to enforce private permissions on {}: {}",
+                path.display(),
+                err
+            );
+        }
+    }
     Ok(())
 }
 
@@ -234,6 +308,16 @@ pub fn copy_file(from: &Path, to: &Path) -> Result<(), AppError> {
         context: format!("复制文件失败 ({} -> {})", from.display(), to.display()),
         source: e,
     })?;
+
+    if should_enforce_private_permissions(to) {
+        if let Err(err) = enforce_private_permissions(to) {
+            log::warn!(
+                "Failed to enforce private permissions on {}: {}",
+                to.display(),
+                err
+            );
+        }
+    }
     Ok(())
 }
 

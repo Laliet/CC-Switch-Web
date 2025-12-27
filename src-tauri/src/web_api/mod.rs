@@ -13,7 +13,7 @@ use axum::{
         header::{
             self, ACCEPT, AUTHORIZATION, CONTENT_TYPE, STRICT_TRANSPORT_SECURITY, WWW_AUTHENTICATE,
         },
-        HeaderValue, Method, Request, StatusCode,
+        HeaderMap, HeaderValue, Method, Request, StatusCode,
     },
     middleware,
     response::{IntoResponse, Response},
@@ -50,7 +50,11 @@ struct WebTokens {
 }
 
 /// Serve embedded static assets with index.html fallback for SPA routes.
-async fn serve_static(path: Option<Path<String>>, tokens: Arc<WebTokens>) -> impl IntoResponse {
+async fn serve_static(
+    path: Option<Path<String>>,
+    headers: HeaderMap,
+    tokens: Arc<WebTokens>,
+) -> impl IntoResponse {
     let requested_path = path.map(|Path(p)| p).unwrap_or_default();
     let requested_path = requested_path.trim_start_matches('/');
     let target_path = if requested_path.is_empty() {
@@ -59,13 +63,29 @@ async fn serve_static(path: Option<Path<String>>, tokens: Arc<WebTokens>) -> imp
         requested_path
     };
 
-    // Try the requested file first; fall back to index.html so SPA routes resolve client-side.
+    // Try the requested file first; fall back to index.html for SPA routes.
     let (asset, served_path) = match WebAssets::get(target_path) {
         Some(content) => (content, target_path),
-        None => match WebAssets::get("index.html") {
-            Some(content) => (content, "index.html"),
-            None => return StatusCode::NOT_FOUND.into_response(),
-        },
+        None => {
+            let has_extension = StdPath::new(target_path)
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .map(|ext| !ext.is_empty())
+                .unwrap_or(false);
+            let accepts_html = headers
+                .get(ACCEPT)
+                .and_then(|v| v.to_str().ok())
+                .map(|value| value.to_ascii_lowercase().contains("text/html"))
+                .unwrap_or(false);
+            if !has_extension || accepts_html {
+                match WebAssets::get("index.html") {
+                    Some(content) => (content, "index.html"),
+                    None => return StatusCode::NOT_FOUND.into_response(),
+                }
+            } else {
+                return StatusCode::NOT_FOUND.into_response();
+            }
+        }
     };
 
     let mime = mime_guess::from_path(served_path).first_or(mime::APPLICATION_OCTET_STREAM);
@@ -105,7 +125,7 @@ window.__CC_SWITCH_TOKENS__ = {{
     response
 }
 
-fn cors_layer() -> CorsLayer {
+fn cors_layer() -> Option<CorsLayer> {
     // Production-safe CORS defaults. Enable explicitly via env when cross-origin access is needed.
     let allow_origins = env::var("CORS_ALLOW_ORIGINS").ok();
     let allow_credentials = env::var("CORS_ALLOW_CREDENTIALS")
@@ -113,7 +133,13 @@ fn cors_layer() -> CorsLayer {
         .unwrap_or(false);
 
     let mut layer = CorsLayer::new()
-        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
+        .allow_methods([
+            Method::GET,
+            Method::HEAD,
+            Method::POST,
+            Method::PUT,
+            Method::DELETE,
+        ])
         .allow_headers([
             ACCEPT,
             AUTHORIZATION,
@@ -125,7 +151,7 @@ fn cors_layer() -> CorsLayer {
         Some("*") => {
             // 显式禁止生产中的通配符，防止意外放开
             log::warn!("CORS_ALLOW_ORIGINS='*' 已被忽略，请使用逗号分隔的白名单");
-            return layer;
+            return None;
         }
         Some(list) => {
             let origins: Vec<HeaderValue> = list
@@ -141,13 +167,13 @@ fn cors_layer() -> CorsLayer {
                 .collect();
 
             if origins.is_empty() {
-                return layer;
+                return None;
             }
             layer = layer.allow_origin(origins);
         }
         None => {
             // No CORS allow-list provided -> rely on same-origin; do not loosen automatically.
-            return layer;
+            return None;
         }
     }
 
@@ -155,7 +181,7 @@ fn cors_layer() -> CorsLayer {
         layer = layer.allow_credentials(true);
     }
 
-    layer
+    Some(layer)
 }
 
 /// Construct the axum router with all API routes and middleware.
@@ -170,36 +196,45 @@ pub fn create_router(state: SharedState, password: String) -> Router {
     let auth_validator = AuthValidator::new(password, Some(tokens.csrf_token.clone()));
 
     let router = routes::create_router(state)
+        .fallback(api_not_found)
         .layer(Extension(csrf_token))
-        .layer(ValidateRequestHeaderLayer::custom(auth_validator))
-        .layer(middleware::from_fn({
-            let hsts_enabled = hsts_enabled;
-            move |req, next| add_hsts_header(hsts_enabled, req, next)
-        }));
+        .layer(ValidateRequestHeaderLayer::custom(auth_validator.clone()));
 
-    // Only apply CORS when explicitly configured via env; default to same-origin.
-    let router = if env::var("CORS_ALLOW_ORIGINS").is_ok() {
-        router.layer(cors_layer())
+    // Only apply CORS when a valid allow-list is configured; default to same-origin.
+    let router = if let Some(cors) = cors_layer() {
+        router.layer(cors)
     } else {
         router
     };
 
-    Router::new()
-        .nest("/api", router)
+    let static_router = Router::new()
         .route(
             "/",
             get({
                 let tokens = tokens.clone();
-                move |path| serve_static(path, tokens.clone())
+                move |path, headers| serve_static(path, headers, tokens.clone())
             }),
         )
         .route(
             "/*path",
             get({
                 let tokens = tokens.clone();
-                move |path| serve_static(path, tokens.clone())
+                move |path, headers| serve_static(path, headers, tokens.clone())
             }),
         )
+        .layer(ValidateRequestHeaderLayer::custom(auth_validator));
+
+    Router::new()
+        .nest("/api", router)
+        .merge(static_router)
+        .layer(middleware::from_fn({
+            let hsts_enabled = hsts_enabled;
+            move |req, next| add_hsts_header(hsts_enabled, req, next)
+        }))
+}
+
+async fn api_not_found() -> StatusCode {
+    StatusCode::NOT_FOUND
 }
 
 #[derive(Clone)]
@@ -347,7 +382,16 @@ fn enforce_permissions(_path: &StdPath) -> std::io::Result<()> {
 }
 
 fn load_or_generate_tokens() -> WebTokens {
-    let env_csrf = env::var("WEB_CSRF_TOKEN").ok();
+    let env_csrf = env::var("WEB_CSRF_TOKEN")
+        .ok()
+        .and_then(|val| {
+            let trimmed = val.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_string())
+            }
+        });
 
     if let Some(csrf) = env_csrf {
         return WebTokens { csrf_token: csrf };
@@ -358,7 +402,10 @@ fn load_or_generate_tokens() -> WebTokens {
             let mut csrf = None;
             for line in content.lines() {
                 if let Some(val) = line.strip_prefix("WEB_CSRF_TOKEN=") {
-                    csrf = Some(val.trim().to_string());
+                    let trimmed = val.trim();
+                    if !trimmed.is_empty() {
+                        csrf = Some(trimmed.to_string());
+                    }
                 }
             }
             if let Some(csrf_val) = csrf {

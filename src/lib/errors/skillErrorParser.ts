@@ -9,6 +9,34 @@ export interface SkillError {
   suggestion?: string;
 }
 
+const ERROR_I18N_KEY_MAP: Record<string, string> = {
+  SKILL_NOT_FOUND: "skills.error.skillNotFound",
+  MISSING_REPO_INFO: "skills.error.missingRepoInfo",
+  DOWNLOAD_TIMEOUT: "skills.error.downloadTimeout",
+  DOWNLOAD_FAILED: "skills.error.downloadFailed",
+  SKILL_PATH_INVALID: "skills.error.skillPathInvalid",
+  SKILL_DIR_NOT_FOUND: "skills.error.skillDirNotFound",
+  EMPTY_ARCHIVE: "skills.error.emptyArchive",
+  GET_HOME_DIR_FAILED: "skills.error.getHomeDirFailed",
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const normalizeContext = (
+  value: Record<string, unknown>,
+): Record<string, string> => {
+  const context: Record<string, string> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (entry === undefined || entry === null) continue;
+    context[key] = typeof entry === "string" ? entry : String(entry);
+  }
+  return context;
+};
+
+const isKnownErrorCode = (code: string) =>
+  Object.prototype.hasOwnProperty.call(ERROR_I18N_KEY_MAP, code);
+
 /**
  * 尝试解析后端返回的错误字符串
  * 如果是 JSON 格式，返回结构化错误；否则返回 null
@@ -16,11 +44,23 @@ export interface SkillError {
 export function parseSkillError(errorString: string): SkillError | null {
   try {
     const parsed = JSON.parse(errorString);
-    if (parsed.code && parsed.context) {
-      return parsed as SkillError;
+    if (typeof parsed === "string" && isKnownErrorCode(parsed)) {
+      return { code: parsed, context: {} };
+    }
+    if (isRecord(parsed) && typeof parsed.code === "string") {
+      const context = isRecord(parsed.context)
+        ? normalizeContext(parsed.context)
+        : {};
+      const suggestion =
+        typeof parsed.suggestion === "string" ? parsed.suggestion : undefined;
+      return { code: parsed.code, context, suggestion };
     }
   } catch {
     // 不是 JSON 格式，返回 null
+  }
+  const codeCandidate = errorString.trim();
+  if (codeCandidate && isKnownErrorCode(codeCandidate)) {
+    return { code: codeCandidate, context: {} };
   }
   return null;
 }
@@ -29,17 +69,7 @@ export function parseSkillError(errorString: string): SkillError | null {
  * 将错误码映射到 i18n key
  */
 function getErrorI18nKey(code: string): string {
-  const mapping: Record<string, string> = {
-    SKILL_NOT_FOUND: "skills.error.skillNotFound",
-    MISSING_REPO_INFO: "skills.error.missingRepoInfo",
-    DOWNLOAD_TIMEOUT: "skills.error.downloadTimeout",
-    DOWNLOAD_FAILED: "skills.error.downloadFailed",
-    SKILL_DIR_NOT_FOUND: "skills.error.skillDirNotFound",
-    EMPTY_ARCHIVE: "skills.error.emptyArchive",
-    GET_HOME_DIR_FAILED: "skills.error.getHomeDirFailed",
-  };
-
-  return mapping[code] || "skills.error.unknownError";
+  return ERROR_I18N_KEY_MAP[code] || "skills.error.unknownError";
 }
 
 /**

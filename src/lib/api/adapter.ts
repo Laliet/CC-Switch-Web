@@ -1,7 +1,8 @@
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
+import { toast } from "sonner";
 
-type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
-type CommandArgs = Record<string, any>;
+type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "HEAD";
+type CommandArgs = Record<string, unknown>;
 
 interface Endpoint {
   url: string;
@@ -14,6 +15,37 @@ const API_BASE = "/api";
 // Storage keys - exported for use across modules
 export const WEB_AUTH_STORAGE_KEY = "cc-switch-web-auth";
 export const WEB_CSRF_STORAGE_KEY = "cc-switch-csrf-token";
+
+const WEB_UNSUPPORTED_COMMANDS: Record<string, string> = {
+  read_live_provider_settings:
+    "Web 端暂不支持读取 VSCode 实时配置，请使用桌面版。",
+  test_api_endpoints: "Web 端暂不支持端点测速，请使用桌面版。",
+  get_custom_endpoints: "Web 端暂不支持获取 VSCode 自定义端点，请使用桌面版。",
+  add_custom_endpoint: "Web 端暂不支持添加 VSCode 自定义端点，请使用桌面版。",
+  remove_custom_endpoint: "Web 端暂不支持删除 VSCode 自定义端点，请使用桌面版。",
+  update_endpoint_last_used:
+    "Web 端暂不支持记录端点使用情况，请使用桌面版。",
+  parse_deeplink: "Web 端暂不支持 Deeplink 解析，请使用桌面版。",
+  import_from_deeplink: "Web 端暂不支持 Deeplink 导入，请使用桌面版。",
+};
+
+const webUnsupportedNotices = new Set<string>();
+
+const notifyWebUnsupported = (cmd: string, message: string): never => {
+  if (typeof window !== "undefined") {
+    if (!webUnsupportedNotices.has(cmd)) {
+      webUnsupportedNotices.add(cmd);
+      try {
+        toast.error(message);
+      } catch {
+        console.warn(`cc-switch: ${message}`);
+      }
+    } else {
+      console.warn(`cc-switch: ${message}`);
+    }
+  }
+  throw new Error(message);
+};
 
 const getEnvNumber = (value: unknown, fallback: number) => {
   const parsed = Number(value);
@@ -34,14 +66,35 @@ const WEB_FETCH_RETRY_DELAY_MS = Math.max(
 
 const encode = (value: unknown) => encodeURIComponent(String(value));
 
-const requireArg = (args: CommandArgs, key: string, cmd: string) => {
-  const value = args?.[key];
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const isAllowedExternalUrl = (value: string): boolean => {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  try {
+    const base =
+      typeof window !== "undefined" ? window.location.origin : undefined;
+    const parsed = new URL(trimmed, base);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+};
+
+const requireArg = <T = unknown>(args: unknown, key: string, cmd: string): T => {
+  if (!isRecord(args)) {
+    throw new Error(
+      `Missing argument "${key}" for command "${cmd}" in web mode`,
+    );
+  }
+  const value = args[key];
   if (value === undefined || value === null) {
     throw new Error(
       `Missing argument "${key}" for command "${cmd}" in web mode`,
     );
   }
-  return value;
+  return value as T;
 };
 
 export function isWeb(): boolean {
@@ -99,6 +152,33 @@ async function fetchWithTimeout(
 }
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const getErrorMessage = (payload: unknown): string => {
+  if (!payload) return "";
+  if (typeof payload === "string") {
+    return payload;
+  }
+  if (typeof payload === "object") {
+    const obj = payload as Record<string, unknown>;
+    const candidate = obj.message ?? obj.error ?? obj.detail;
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate;
+    }
+    const nested = obj.payload;
+    if (typeof nested === "string" && nested.trim()) {
+      return nested;
+    }
+    if (nested && typeof nested === "object") {
+      const nestedObj = nested as Record<string, unknown>;
+      const nestedCandidate =
+        nestedObj.message ?? nestedObj.error ?? nestedObj.detail;
+      if (typeof nestedCandidate === "string" && nestedCandidate.trim()) {
+        return nestedCandidate;
+      }
+    }
+  }
+  return "";
+};
 
 /**
  * Base64 encode a UTF-8 string, with fallbacks for different environments.
@@ -206,9 +286,17 @@ export function commandToEndpoint(
     }
     case "update_provider": {
       const app = requireArg(args, "app", cmd);
-      const provider = requireArg(args, "provider", cmd);
+      const provider = requireArg<Record<string, unknown>>(
+        args,
+        "provider",
+        cmd,
+      );
       const providerId =
-        (provider && (provider.id ?? provider.providerId)) ?? args.id;
+        (provider.id ?? provider.providerId ?? args.id) as
+          | string
+          | number
+          | null
+          | undefined;
       if (!providerId) {
         throw new Error(`Missing provider id for command "${cmd}" in web mode`);
       }
@@ -246,10 +334,11 @@ export function commandToEndpoint(
     }
     case "update_providers_sort_order": {
       const app = requireArg(args, "app", cmd);
+      const updates = requireArg(args, "updates", cmd);
       return {
         method: "PUT",
         url: `${API_BASE}/providers/${encode(app)}/sort-order`,
-        body: { updates: args.updates },
+        body: { updates },
       };
     }
     case "queryProviderUsage": {
@@ -523,7 +612,7 @@ export function commandToEndpoint(
         filePath: requireArg(args, "filePath", cmd),
       };
       // Web 模式下需要传递文件内容，因为浏览器无法访问服务器文件系统
-      if (args.content && typeof args.content === "string") {
+      if (typeof args.content === "string") {
         body.content = args.content;
       }
       return {
@@ -574,21 +663,40 @@ export function commandToEndpoint(
   }
 }
 
+export async function invoke(
+  cmd: "check_for_updates",
+  args?: CommandArgs,
+): Promise<null>;
+export async function invoke(
+  cmd: "get_env_var",
+  args?: CommandArgs,
+): Promise<null>;
+export async function invoke(
+  cmd: "set_env_var",
+  args?: CommandArgs,
+): Promise<null>;
+export async function invoke<T>(
+  cmd: string,
+  args?: CommandArgs,
+): Promise<T>;
 export async function invoke<T>(
   cmd: string,
   args: CommandArgs = {},
-): Promise<T> {
+): Promise<T | null> {
   if (!isWeb()) {
     return tauriInvoke<T>(cmd, args);
+  }
+
+  const unsupportedMessage = WEB_UNSUPPORTED_COMMANDS[cmd];
+  if (unsupportedMessage) {
+    return notifyWebUnsupported(cmd, unsupportedMessage);
   }
 
   switch (cmd) {
     case "update_tray_menu":
       return true as T;
-    case "read_live_provider_settings":
-      return null as T;
     case "check_for_updates":
-      return null as T;
+      return null;
     case "restart_app":
       return undefined as T;
     case "is_portable_mode":
@@ -605,11 +713,16 @@ export async function invoke<T>(
       return undefined as T;
     case "get_env_var":
     case "set_env_var":
-      return null as T;
+      return null;
     case "open_external": {
       const url = args.url as string | undefined;
-      if (typeof window !== "undefined" && url) {
-        window.open(url, "_blank", "noopener,noreferrer");
+      if (typeof window !== "undefined" && typeof url === "string") {
+        const trimmed = url.trim();
+        if (isAllowedExternalUrl(trimmed)) {
+          window.open(trimmed, "_blank", "noopener,noreferrer");
+        } else {
+          console.warn("cc-switch: blocked unsafe open_external url");
+        }
       }
       return true as T;
     }
@@ -637,7 +750,10 @@ export async function invoke<T>(
     init.body = JSON.stringify(endpoint.body);
   }
 
-  for (let attempt = 0; attempt <= WEB_FETCH_MAX_RETRIES; attempt += 1) {
+  const canRetry = endpoint.method === "GET" || endpoint.method === "HEAD";
+  const maxRetries = canRetry ? WEB_FETCH_MAX_RETRIES : 0;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
     try {
       const response = await fetchWithTimeout(
         endpoint.url,
@@ -646,10 +762,31 @@ export async function invoke<T>(
       );
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          errorText || `Request failed with status ${response.status}`,
-        );
+        const contentType = response.headers.get("content-type") || "";
+        const rawText = await response.text();
+        let errorPayload: unknown;
+        if (contentType.includes("application/json") && rawText.trim()) {
+          try {
+            errorPayload = JSON.parse(rawText);
+          } catch {
+            errorPayload = undefined;
+          }
+        }
+        if (errorPayload !== undefined) {
+          const message =
+            getErrorMessage(errorPayload) ||
+            `Request failed with status ${response.status}`;
+          const error = new Error(message);
+          (error as any).payload = errorPayload;
+          (error as any).status = response.status;
+          throw error;
+        }
+        const message = rawText.trim()
+          ? rawText
+          : `Request failed with status ${response.status}`;
+        const error = new Error(message);
+        (error as any).status = response.status;
+        throw error;
       }
 
       if (response.status === 204) {
@@ -668,7 +805,7 @@ export async function invoke<T>(
       const isAbortError = errorName === "AbortError";
       const isNetworkError = error instanceof TypeError;
       const shouldRetry =
-        attempt < WEB_FETCH_MAX_RETRIES && (isAbortError || isNetworkError);
+        canRetry && attempt < maxRetries && (isAbortError || isNetworkError);
 
       if (!shouldRetry) {
         throw error;

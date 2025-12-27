@@ -3,6 +3,7 @@ import { validateToml, tomlToMcpServer } from "@/utils/tomlUtils";
 
 export function useMcpValidation() {
   const { t } = useTranslation();
+  const allowedTypes = new Set(["stdio", "http", "sse"]);
 
   // JSON basic validation (returns i18n text)
   const validateJson = (text: string): string => {
@@ -38,11 +39,12 @@ export function useMcpValidation() {
     if (value.trim()) {
       try {
         const server = tomlToMcpServer(value);
-        if (server.type === "stdio" && !server.command?.trim()) {
+        const typ = server.type || "stdio";
+        if (typ === "stdio" && !server.command?.trim()) {
           return t("mcp.error.commandRequired");
         }
         if (
-          (server.type === "http" || server.type === "sse") &&
+          (typ === "http" || typ === "sse") &&
           !server.url?.trim()
         ) {
           return t("mcp.wizard.urlRequired");
@@ -58,30 +60,34 @@ export function useMcpValidation() {
 
   // Full JSON validation (including structure checks)
   const validateJsonConfig = (value: string): string => {
-    const baseErr = validateJson(value);
-    if (baseErr) {
-      return baseErr;
-    }
-
     // Further structure validation
     if (value.trim()) {
       try {
         const obj = JSON.parse(value);
-        if (obj && typeof obj === "object") {
-          if (Object.prototype.hasOwnProperty.call(obj, "mcpServers")) {
-            return t("mcp.error.singleServerObjectRequired");
-          }
+        if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
+          return t("mcp.error.jsonInvalid");
+        }
+        if (Object.prototype.hasOwnProperty.call(obj, "mcpServers")) {
+          return t("mcp.error.singleServerObjectRequired");
+        }
 
-          const typ = (obj as any)?.type;
-          if (typ === "stdio" && !(obj as any)?.command?.trim()) {
-            return t("mcp.error.commandRequired");
-          }
-          if ((typ === "http" || typ === "sse") && !(obj as any)?.url?.trim()) {
-            return t("mcp.wizard.urlRequired");
-          }
+        const rawType = (obj as any)?.type;
+        if (
+          Object.prototype.hasOwnProperty.call(obj, "type") &&
+          (typeof rawType !== "string" || !allowedTypes.has(rawType))
+        ) {
+          return t("mcp.error.typeInvalid");
+        }
+
+        const typ = typeof rawType === "string" ? rawType : "stdio";
+        if (typ === "stdio" && !(obj as any)?.command?.trim()) {
+          return t("mcp.error.commandRequired");
+        }
+        if ((typ === "http" || typ === "sse") && !(obj as any)?.url?.trim()) {
+          return t("mcp.wizard.urlRequired");
         }
       } catch {
-        // Parse errors already covered by base validation
+        return t("mcp.error.jsonInvalid");
       }
     }
 

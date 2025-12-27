@@ -114,10 +114,22 @@ export function WebLoginDialog({ open, onLoginSuccess }: WebLoginDialogProps) {
             void handleLogin();
           }}
         >
+          {/* Hidden username field for accessibility and password managers */}
+          <input
+            type="text"
+            name="username"
+            autoComplete="username"
+            value="admin"
+            readOnly
+            aria-hidden="true"
+            tabIndex={-1}
+            className="sr-only"
+          />
           <div className="space-y-2">
             <Label htmlFor="cc-switch-web-password">密码</Label>
             <Input
               id="cc-switch-web-password"
+              name="password"
               type="password"
               autoComplete="current-password"
               autoFocus

@@ -1636,7 +1636,13 @@ impl ProviderService {
         match auth_type {
             GeminiAuthType::GoogleOfficial => Self::ensure_google_oauth_security_flag(provider)?,
             GeminiAuthType::Packycode => Self::ensure_packycode_security_flag(provider)?,
-            GeminiAuthType::Generic => {}
+            GeminiAuthType::Generic => {
+                settings::ensure_security_auth_selected_type(
+                    Self::PACKYCODE_SECURITY_SELECTED_TYPE,
+                )?;
+                use crate::gemini_config::write_api_key_settings;
+                write_api_key_settings()?;
+            }
         }
 
         Ok(())

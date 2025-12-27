@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Card,
@@ -10,9 +10,20 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Download, Trash2, Loader2 } from "lucide-react";
+import {
+  ExternalLink,
+  Download,
+  Trash2,
+  Loader2,
+  ChevronDown,
+} from "lucide-react";
 import { settingsApi } from "@/lib/api";
 import type { Skill } from "@/lib/api/skills";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface SkillCardProps {
   skill: Skill;
@@ -23,13 +34,22 @@ interface SkillCardProps {
 export function SkillCard({ skill, onInstall, onUninstall }: SkillCardProps) {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const handleInstall = async () => {
     setLoading(true);
     try {
       await onInstall(skill.directory);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -38,7 +58,9 @@ export function SkillCard({ skill, onInstall, onUninstall }: SkillCardProps) {
     try {
       await onUninstall(skill.directory);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -55,10 +77,21 @@ export function SkillCard({ skill, onInstall, onUninstall }: SkillCardProps) {
   const showDirectory =
     Boolean(skill.directory) &&
     skill.directory.trim().toLowerCase() !== skill.name.trim().toLowerCase();
+  const parentPath = skill.parentPath?.trim();
+  const depth =
+    typeof skill.depth === "number" && !Number.isNaN(skill.depth)
+      ? Math.max(0, skill.depth)
+      : null;
+  const indentStyle =
+    depth !== null && depth > 0
+      ? { paddingLeft: `${24 + depth * 12}px` }
+      : undefined;
+  const commands = skill.commands ?? [];
+  const hasCommands = commands.length > 0;
 
   return (
     <Card className="flex flex-col h-full border-border-default bg-card transition-[border-color,box-shadow] duration-200 hover:border-border-hover hover:shadow-md">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-3" style={indentStyle}>
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <CardTitle className="text-base font-semibold truncate">
@@ -90,12 +123,62 @@ export function SkillCard({ skill, onInstall, onUninstall }: SkillCardProps) {
           )}
         </div>
       </CardHeader>
-      <CardContent className="flex-1 pt-0">
-        <p className="text-sm text-muted-foreground/90 line-clamp-4 leading-relaxed">
-          {skill.description || t("skills.noDescription")}
-        </p>
+      <CardContent className="flex-1 pt-0" style={indentStyle}>
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground/90 line-clamp-4 leading-relaxed">
+            {skill.description || t("skills.noDescription")}
+          </p>
+          {(parentPath || depth !== null) && (
+            <div className="space-y-1 text-xs text-muted-foreground/90">
+              {parentPath && (
+                <div className="flex items-start gap-2 min-w-0">
+                  <span className="shrink-0 font-medium text-foreground/80">
+                    {t("skills.parentPath")}
+                  </span>
+                  <span className="truncate">{parentPath}</span>
+                </div>
+              )}
+              {depth !== null && (
+                <div className="flex items-center gap-2">
+                  <span className="shrink-0 font-medium text-foreground/80">
+                    {t("skills.depth")}
+                  </span>
+                  <span>{depth}</span>
+                </div>
+              )}
+            </div>
+          )}
+          {hasCommands && (
+            <Collapsible className="rounded-md border border-border-default/60 bg-muted/20">
+              <CollapsibleTrigger className="group flex w-full items-center justify-between px-2.5 py-2 text-xs font-medium text-muted-foreground transition hover:text-foreground">
+                <span>
+                  {t("skills.workflows")} ({commands.length})
+                </span>
+                <ChevronDown className="h-3.5 w-3.5 transition-transform group-data-[state=open]:rotate-180" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-2 border-t border-border-default/60 px-2.5 py-2">
+                {commands.map((command, index) => (
+                  <div
+                    key={`${command.name}-${command.filePath}-${index}`}
+                    className="rounded-md border border-border-default/60 bg-card/60 px-2.5 py-2"
+                  >
+                    <div className="text-xs font-semibold text-foreground">
+                      {command.name}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {command.description || t("skills.noDescription")}
+                    </div>
+                  </div>
+                ))}
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+        </div>
       </CardContent>
-      <CardFooter className="flex gap-2 pt-3 border-t border-border-default">
+      <CardFooter
+        className="flex gap-2 pt-3 border-t border-border-default"
+        style={indentStyle}
+      >
         {skill.readmeUrl && (
           <Button
             variant="ghost"

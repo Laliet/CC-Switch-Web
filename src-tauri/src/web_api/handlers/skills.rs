@@ -13,7 +13,12 @@ use serde::Serialize;
 use crate::{
     error::format_skill_error,
     error::AppError,
-    services::{Skill, SkillRepo, SkillService},
+    services::{
+        skill::SkillCommand as ServiceSkillCommand,
+        Skill as ServiceSkill,
+        SkillRepo,
+        SkillService,
+    },
     store::AppState,
 };
 
@@ -21,9 +26,72 @@ use super::{ApiError, ApiResult};
 
 #[derive(Serialize)]
 pub struct SkillsResponse {
-    pub skills: Vec<Skill>,
+    pub skills: Vec<SkillResponse>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub warnings: Vec<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillCommand {
+    pub name: String,
+    pub description: String,
+    pub file_path: String,
+}
+
+impl From<ServiceSkillCommand> for SkillCommand {
+    fn from(command: ServiceSkillCommand) -> Self {
+        Self {
+            name: command.name,
+            description: command.description,
+            file_path: command.file_path,
+        }
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillResponse {
+    pub key: String,
+    pub name: String,
+    pub description: String,
+    pub directory: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_path: Option<String>,
+    pub depth: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub readme_url: Option<String>,
+    pub installed: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub repo_owner: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub repo_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub repo_branch: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub skills_path: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub commands: Vec<SkillCommand>,
+}
+
+impl From<ServiceSkill> for SkillResponse {
+    fn from(skill: ServiceSkill) -> Self {
+        Self {
+            key: skill.key,
+            name: skill.name,
+            description: skill.description,
+            directory: skill.directory,
+            parent_path: skill.parent_path,
+            depth: skill.depth,
+            readme_url: skill.readme_url,
+            installed: skill.installed,
+            repo_owner: skill.repo_owner,
+            repo_name: skill.repo_name,
+            repo_branch: skill.repo_branch,
+            skills_path: skill.skills_path,
+            commands: skill.commands.into_iter().map(SkillCommand::from).collect(),
+        }
+    }
 }
 
 pub async fn list_skills(State(state): State<Arc<AppState>>) -> ApiResult<SkillsResponse> {
@@ -38,6 +106,7 @@ pub async fn list_skills(State(state): State<Arc<AppState>>) -> ApiResult<Skills
 
     let service = SkillService::new().map_err(internal_error)?;
     let (skills, warnings) = service.list_skills(repos).await.map_err(internal_error)?;
+    let skills = skills.into_iter().map(SkillResponse::from).collect();
     Ok(Json(SkillsResponse { skills, warnings }))
 }
 
@@ -123,6 +192,8 @@ pub async fn uninstall_skill(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<InstallPayload>,
 ) -> ApiResult<bool> {
+    SkillService::validate_skill_directory(&payload.directory)
+        .map_err(|err| ApiError::bad_request(err.to_string()))?;
     let service = SkillService::new().map_err(internal_error)?;
     service
         .uninstall_skill(payload.directory.clone())

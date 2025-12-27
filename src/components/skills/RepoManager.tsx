@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Dialog,
@@ -13,6 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Trash2, ExternalLink, Plus } from "lucide-react";
 import { settingsApi } from "@/lib/api";
 import type { Skill, SkillRepo } from "@/lib/api/skills";
+
+const normalizeBranch = (value?: string) => (value ?? "").trim();
 
 interface RepoManagerProps {
   open: boolean;
@@ -37,25 +39,33 @@ export function RepoManager({
   const [skillsPath, setSkillsPath] = useState("");
   const [error, setError] = useState("");
 
-  const getSkillCount = (repo: SkillRepo) =>
-    skills.filter(
-      (skill) =>
-        skill.repoOwner === repo.owner &&
-        skill.repoName === repo.name &&
-        (skill.repoBranch || "main") === (repo.branch || "main"),
-    ).length;
+  const skillCountByRepo = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const skill of skills) {
+      const key = `${skill.repoOwner}/${skill.repoName}:${normalizeBranch(
+        skill.repoBranch,
+      )}`;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return counts;
+  }, [skills]);
 
   const parseRepoUrl = (
     url: string,
   ): { owner: string; name: string } | null => {
     // 支持格式:
     // - https://github.com/owner/name
-    // - owner/name
+    // - https://github.com/owner/name/
     // - https://github.com/owner/name.git
+    // - git@github.com:owner/name.git
+    // - owner/name
 
     let cleaned = url.trim();
-    cleaned = cleaned.replace(/^https?:\/\/github\.com\//, "");
-    cleaned = cleaned.replace(/\.git$/, "");
+    cleaned = cleaned.replace(/^git@github\.com:/i, "");
+    cleaned = cleaned.replace(/^https?:\/\/github\.com\//i, "");
+    cleaned = cleaned.replace(/\/+$/, "");
+    cleaned = cleaned.replace(/\.git$/i, "");
+    cleaned = cleaned.replace(/\/+$/, "");
 
     const parts = cleaned.split("/");
     if (parts.length === 2 && parts[0] && parts[1]) {
@@ -75,10 +85,12 @@ export function RepoManager({
     }
 
     try {
+      const normalizedBranch = normalizeBranch(branch);
+
       await onAdd({
         owner: parsed.owner,
         name: parsed.name,
-        branch: branch || "main",
+        branch: normalizedBranch,
         enabled: true,
         skillsPath: skillsPath.trim() || undefined, // 仅在有值时传递
       });
@@ -170,7 +182,11 @@ export function RepoManager({
                           {repo.owner}/{repo.name}
                         </div>
                         <div className="mt-1 text-xs text-muted-foreground">
-                          {t("skills.repo.branch")}: {repo.branch || "main"}
+                          {t("skills.repo.branch")}:{" "}
+                          {normalizeBranch(repo.branch) ||
+                            t("skills.repo.defaultBranch", {
+                              defaultValue: "default",
+                            })}
                           {repo.skillsPath && (
                             <>
                               <span className="mx-2">•</span>
@@ -179,7 +195,12 @@ export function RepoManager({
                           )}
                           <span className="ml-3 inline-flex items-center rounded-full border border-border-default px-2 py-0.5 text-[11px]">
                             {t("skills.repo.skillCount", {
-                              count: getSkillCount(repo),
+                              count:
+                                skillCountByRepo.get(
+                                  `${repo.owner}/${repo.name}:${normalizeBranch(
+                                    repo.branch,
+                                  )}`,
+                                ) ?? 0,
                             })}
                           </span>
                         </div>

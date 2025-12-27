@@ -514,7 +514,12 @@ export const setCodexBaseUrl = (
 ): string => {
   const trimmed = baseUrl.trim();
   if (!trimmed) {
-    return configText;
+    const normalizedText = normalizeQuotes(configText);
+    const stripped = normalizedText.replace(
+      /^base_url\s*=\s*.*(?:\r?\n)?/gm,
+      "",
+    );
+    return stripped;
   }
   // 归一化原文本中的引号（既能匹配，也能输出稳定格式）
   const normalizedText = normalizeQuotes(configText);
@@ -561,7 +566,12 @@ export const setCodexModelName = (
 ): string => {
   const trimmed = modelName.trim();
   if (!trimmed) {
-    return configText;
+    const normalizedText = normalizeQuotes(configText);
+    const stripped = normalizedText.replace(
+      /^model\s*=\s*.*(?:\r?\n)?/gm,
+      "",
+    );
+    return stripped;
   }
 
   // 归一化原文本中的引号（既能匹配，也能输出稳定格式）

@@ -34,7 +34,7 @@ pub async fn import_config_from_file(
     #[allow(non_snake_case)] filePath: String,
     state: State<'_, AppState>,
 ) -> Result<Value, String> {
-    let (new_config, backup_id) = tauri::async_runtime::spawn_blocking(move || {
+    let new_config = tauri::async_runtime::spawn_blocking(move || {
         let path_buf = PathBuf::from(&filePath);
         ConfigService::load_config_for_import(&path_buf)
     })
@@ -42,13 +42,8 @@ pub async fn import_config_from_file(
     .map_err(|e| format!("导入配置失败: {e}"))?
     .map_err(|e: AppError| e.to_string())?;
 
-    {
-        let mut guard = state
-            .config
-            .write()
-            .map_err(|e| AppError::from(e).to_string())?;
-        *guard = new_config;
-    }
+    let backup_id = ConfigService::apply_import_config(new_config, state.inner())
+        .map_err(|e: AppError| e.to_string())?;
 
     Ok(json!({
         "success": true,

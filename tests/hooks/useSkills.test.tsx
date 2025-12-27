@@ -3,7 +3,7 @@ import { renderHook, act, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, it, expect, vi, beforeEach, afterAll } from "vitest";
 import { http, HttpResponse } from "msw";
-import type { Skill } from "@/lib/api/skills";
+import type { SkillsResponse } from "@/lib/api/skills";
 import {
   useAllSkills,
   useInstallSkill,
@@ -82,8 +82,8 @@ describe("useSkills hooks", () => {
       await queryClient.refetchQueries({ queryKey: ["skills", "all"] });
     });
 
-    const updated = queryClient.getQueryData<Skill[]>(["skills", "all"]);
-    expect(updated?.find((skill) => skill.directory === directory)?.installed).toBe(true);
+    const updated = queryClient.getQueryData<SkillsResponse>(["skills", "all"]);
+    expect(updated?.skills?.find((skill) => skill.directory === directory)?.installed).toBe(true);
   });
 
   it("uninstalls a skill and invalidates the skills query", async () => {
@@ -106,8 +106,8 @@ describe("useSkills hooks", () => {
       await queryClient.refetchQueries({ queryKey: ["skills", "all"] });
     });
 
-    const updated = queryClient.getQueryData<Skill[]>(["skills", "all"]);
-    expect(updated?.find((skill) => skill.directory === directory)?.installed).toBe(false);
+    const updated = queryClient.getQueryData<SkillsResponse>(["skills", "all"]);
+    expect(updated?.skills?.find((skill) => skill.directory === directory)?.installed).toBe(false);
   });
 
   it("surfaces errors from install mutation", async () => {

@@ -308,9 +308,10 @@ type = "stdio"
     fireEvent.click(screen.getByText("common.add"));
 
     await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith("mcp.error.tomlInvalid", {
-        duration: 3000,
-      }),
+      expect(toastErrorMock).toHaveBeenCalledWith(
+        expect.stringContaining("mcp.error.tomlInvalid"),
+        { duration: 3000 },
+      ),
     );
     expect(upsertMock).not.toHaveBeenCalled();
   });

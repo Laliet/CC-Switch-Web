@@ -1,6 +1,6 @@
 {
   "name": "cc-switch-web",
-  "version": "0.5.4",
+  "version": "0.6.0",
   "description": "All-in-One Assistant for Claude Code, Codex & Gemini CLI",
   "scripts": {
     "dev": "pnpm tauri dev",

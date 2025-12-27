@@ -30,11 +30,28 @@ import type { Provider } from "@/types";
 export const PROVIDER_NAME_MAPPING: Record<string, string> = {
   // 第三方 API 服务商（Relay-Pulse 监控）
   "88code": "88code",
+  aicodemirror: "aicodemirror",
+  aimz: "aimz",
+  anyrouter: "anyrouter",
+  ccfly: "ccfly",
+  claudecn: "claudecn",
+  claudepro: "claudepro",
+  codecli: "codecli",
+  dmxapi: "dmxapi",
+  aihubmix: "aihubmix",
+  easychat: "easychat",
+  fastcode: "fastcode",
+  huggingcode: "huggingcode",
+  jikeai: "jikeai",
+  linkapi: "linkapi",
+  mikucode: "mikucode",
+  occ: "occ",
+  sssaicode: "sssaicode",
   duckcoding: "duckcoding",
   "duck coding": "duckcoding",
   privnode: "privnode",
   packycode: "packycode",
-  "paky code": "packycode",
+  "packy code": "packycode",
   foxcode: "foxcode",
   "fox code": "foxcode",
   galaxycode: "galaxycode",
@@ -54,6 +71,7 @@ export const PROVIDER_NAME_MAPPING: Record<string, string> = {
   "run anytime": "runanytime",
   "right.codes": "right.codes",
   rightcodes: "right.codes",
+  right: "right.codes",
   xychatai: "xychatai",
 };
 
@@ -62,6 +80,67 @@ export const PROVIDER_NAME_MAPPING: Record<string, string> = {
  * 用于从用户配置中提取的 Base URL 反向查找供应商
  */
 export const URL_TO_PROVIDER_MAPPING: Record<string, string> = {
+  // 88code
+  "88code.ai": "88code",
+
+  // AICodeMirror
+  "aicodemirror.com": "aicodemirror",
+  "api.aicodemirror.com": "aicodemirror",
+
+  // AIMZ
+  "mzlone.top": "aimz",
+
+  // Anyrouter
+  "anyrouter.top": "anyrouter",
+
+  // CCFly
+  "ccfly.online": "ccfly",
+  "apic.cikew.site": "ccfly",
+
+  // ClaudeCN
+  "claudecn.top": "claudecn",
+
+  // ClaudePro
+  "pro.aipor.cc": "claudepro",
+
+  // CodeCli
+  "code-cli.cn": "codecli",
+
+  // DMXAPI
+  "dmxapi.cn": "dmxapi",
+
+  // AiHubMix
+  "aihubmix.com": "aihubmix",
+  "api.aihubmix.com": "aihubmix",
+
+  // EasyChat
+  "easychat.site": "easychat",
+  "server.easychat.site": "easychat",
+
+  // FastCode
+  "api.timebackward.com": "fastcode",
+
+  // HuggingCode
+  "huggingcode.cc": "huggingcode",
+
+  // JikeAI
+  "magic666.top": "jikeai",
+
+  // LinkAPI
+  "linkapi.ai": "linkapi",
+  "api.linkapi.ai": "linkapi",
+
+  // MikuCode
+  "mikucode.xyz": "mikucode",
+
+  // OCC
+  "openclaudecode.cn": "occ",
+
+  // SSSAiCode
+  "sssaicode.com": "sssaicode",
+  "claude3.sssaicode.com": "sssaicode",
+  "codex2.sssaicode.com": "sssaicode",
+
   // 88code
   "api.88code.com": "88code",
   "88code.com": "88code",
@@ -83,14 +162,19 @@ export const URL_TO_PROVIDER_MAPPING: Record<string, string> = {
   // FoxCode
   "api.foxcode.io": "foxcode",
   "foxcode.io": "foxcode",
+  "foxcode.rjj.cc": "foxcode",
+  "code.newcli.com": "foxcode",
 
   // GalaxyCode
   "api.galaxycode.io": "galaxycode",
   "galaxycode.io": "galaxycode",
+  "nf.video": "galaxycode",
+  "relay.nf.video": "galaxycode",
 
   // YesCode
   "api.yescode.io": "yescode",
   "yescode.io": "yescode",
+  "co.yes.vg": "yescode",
 
   // Augmunt
   "api.augmunt.com": "augmunt",
@@ -99,18 +183,24 @@ export const URL_TO_PROVIDER_MAPPING: Record<string, string> = {
   // ikuncode
   "api.ikuncode.com": "ikuncode",
   "ikuncode.com": "ikuncode",
+  "api.ikuncode.cc": "ikuncode",
+  "ikuncode.cc": "ikuncode",
 
   // uucode
   "api.uucode.io": "uucode",
   "uucode.io": "uucode",
+  "api.uucode.org": "uucode",
+  "uucode.org": "uucode",
 
   // xyai
   "api.xyai.io": "xyai",
   "xyai.io": "xyai",
+  "new.xychatai.com": "xyai",
 
   // cubence
   "api.cubence.com": "cubence",
   "cubence.com": "cubence",
+  "api-dmit.cubence.com": "cubence",
 
   // right.codes
   "api.right.codes": "right.codes",
@@ -119,6 +209,9 @@ export const URL_TO_PROVIDER_MAPPING: Record<string, string> = {
   // xychatai
   "api.xychatai.com": "xychatai",
   "xychatai.com": "xychatai",
+
+  // duckcoding
+  "jp.duckcoding.com": "duckcoding",
 };
 
 /**
@@ -140,8 +233,14 @@ export function getRelayPulseProvider(
  */
 export function getRelayPulseProviderFromUrl(url: string): string | undefined {
   try {
-    const urlObj = new URL(url);
-    const host = urlObj.host.toLowerCase();
+    const normalizedUrl = url.trim();
+    if (!normalizedUrl) return undefined;
+
+    const urlObj =
+      normalizedUrl.includes("://")
+        ? new URL(normalizedUrl)
+        : new URL(`https://${normalizedUrl}`);
+    const host = urlObj.hostname.toLowerCase();
 
     // 直接匹配
     if (URL_TO_PROVIDER_MAPPING[host]) {

@@ -115,7 +115,7 @@ export function useBaseUrlState({
       const sanitized = url.trim().replace(/\/+$/, "");
       setCodexBaseUrl(sanitized);
 
-      if (!sanitized || !onCodexConfigChange) {
+      if (!onCodexConfigChange) {
         return;
       }
 

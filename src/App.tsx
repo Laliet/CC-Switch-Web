@@ -35,6 +35,7 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
+  DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
@@ -604,6 +605,11 @@ function AppContent() {
           <DialogHeader className="sr-only">
             <VisuallyHidden>
               <DialogTitle>{t("skills.title")}</DialogTitle>
+              <DialogDescription>
+                {t("skills.description", {
+                  defaultValue: "管理技能库条目并配置仓库来源。",
+                })}
+              </DialogDescription>
             </VisuallyHidden>
           </DialogHeader>
           <SkillsPage onClose={() => setIsSkillsOpen(false)} />

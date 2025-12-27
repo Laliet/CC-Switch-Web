@@ -101,13 +101,13 @@ describe("adapter auth (web mode)", () => {
     ).toBe(false);
   });
 
-  it("invoke returns null for read_live_provider_settings in web mode", async () => {
+  it("invoke rejects with clear error for read_live_provider_settings in web mode", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     const { invoke } = await importAdapter();
 
     await expect(
       invoke("read_live_provider_settings", { app: "claude" }),
-    ).resolves.toBeNull();
+    ).rejects.toThrow("Web 端暂不支持读取 VSCode 实时配置");
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 

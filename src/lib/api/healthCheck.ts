@@ -81,6 +81,28 @@ function calculateAvailability(
   return sum / validPoints.length;
 }
 
+function createTimeoutError(timeoutMs: number): Error {
+  const error = new Error(`Request timed out after ${timeoutMs}ms`);
+  (error as { name?: string }).name = "AbortError";
+  return error;
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    return promise;
+  }
+
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(createTimeoutError(timeoutMs));
+    }, timeoutMs);
+
+    promise
+      .then(resolve, reject)
+      .finally(() => clearTimeout(timer));
+  });
+}
+
 export { statusToHealth, calculateAvailability, mergeHealth };
 
 function getStoredWebCredentials(): string | undefined {
@@ -103,8 +125,8 @@ function mergeHealth(
   const statusPriority: Record<HealthStatus, number> = {
     unavailable: 0,
     degraded: 1,
-    available: 2,
-    unknown: 3,
+    unknown: 2,
+    available: 3,
   };
 
   const worseStatus =
@@ -141,33 +163,35 @@ export async function fetchAllHealthStatus(): Promise<
     let data: RelayPulseResponse;
     if (!isWeb()) {
       // GUI 模式：通过 Tauri 命令代理请求 Relay-Pulse（无需 Authorization header）
-      data = await invoke<RelayPulseResponse>("check_relay_pulse");
+      data = await withTimeout(
+        invoke<RelayPulseResponse>("check_relay_pulse"),
+        HEALTHCHECK_TIMEOUT_MS,
+      );
     } else {
       // Web 模式：通过内置 web-server 代理路由访问（支持 Basic Auth）
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), HEALTHCHECK_TIMEOUT_MS);
 
-      let response: Response;
       try {
         const headers: Record<string, string> = { Accept: "application/json" };
         const storedAuth = getStoredWebCredentials();
         if (storedAuth) {
           headers.Authorization = `Basic ${storedAuth}`;
         }
-        response = await fetch(RELAY_PULSE_API, {
+        const response = await fetch(RELAY_PULSE_API, {
           headers,
           signal: controller.signal,
         });
+
+        if (!response.ok) {
+          console.warn(`[HealthCheck] API returned ${response.status}`);
+          return healthCache; // 返回旧缓存
+        }
+
+        data = await response.json();
       } finally {
         clearTimeout(timer);
       }
-
-      if (!response.ok) {
-        console.warn(`[HealthCheck] API returned ${response.status}`);
-        return healthCache; // 返回旧缓存
-      }
-
-      data = await response.json();
     }
 
     lastFetchTime = now;

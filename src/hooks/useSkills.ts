@@ -1,16 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { skillsApi, type Skill, type SkillRepo } from "@/lib/api/skills";
+import { skillsApi, type SkillRepo, type SkillsResponse } from "@/lib/api/skills";
 
 /**
  * 查询所有技能
  */
 export function useAllSkills() {
-  return useQuery<Skill[]>({
+  return useQuery<SkillsResponse>({
     queryKey: ["skills", "all"],
-    queryFn: async () => {
-      const { skills } = await skillsApi.getAll();
-      return skills;
-    },
+    queryFn: () => skillsApi.getAll(),
   });
 }
 

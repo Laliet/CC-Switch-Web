@@ -30,7 +30,7 @@ Whether you're working locally or in a headless cloud environment, CC-Switch-Web
 
 ---
 
-## What's New in v0.5.3
+## What's New in v0.6.0
 
 ### 🔒 Security Fixes
 - **Fixed API Key logging leak** - DeepLinkImportDialog now masks sensitive data in logs
@@ -81,8 +81,8 @@ Download precompiled server binary—no compilation required:
 
 | Architecture | Download |
 |--------------|----------|
-| **Linux x86_64** | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.3/cc-switch-server-linux-x86_64) |
-| **Linux aarch64** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.3/cc-switch-server-linux-aarch64) |
+| **Linux x86_64** | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.6.0/cc-switch-server-linux-x86_64) |
+| **Linux aarch64** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.6.0/cc-switch-server-linux-aarch64) |
 
 **One-Line Deploy**:
 ```bash
@@ -179,11 +179,11 @@ Full-featured desktop app with graphical interface, built with Tauri.
 
 | Platform | Download | Description |
 |----------|----------|-------------|
-| **Windows** | [CC-Switch-v0.5.3-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.3/CC-Switch-v0.5.3-Windows.msi) | Installer (recommended) |
-| | [CC-Switch-v0.5.3-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.3/CC-Switch-v0.5.3-Windows-Portable.zip) | Portable (no install) |
-| **macOS** | [CC-Switch-v0.5.3-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.3/CC-Switch-v0.5.3-macOS.zip) | Universal binary (Intel + Apple Silicon) |
-| **Linux** | [CC-Switch-v0.5.3-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.3/CC-Switch-v0.5.3-Linux.AppImage) | AppImage (universal) |
-| | [CC-Switch-v0.5.3-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.5.3/CC-Switch-v0.5.3-Linux.deb) | Debian/Ubuntu package |
+| **Windows** | [CC-Switch-v0.6.0-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.6.0/CC-Switch-v0.6.0-Windows.msi) | Installer (recommended) |
+| | [CC-Switch-v0.6.0-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.6.0/CC-Switch-v0.6.0-Windows-Portable.zip) | Portable (no install) |
+| **macOS** | [CC-Switch-v0.6.0-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.6.0/CC-Switch-v0.6.0-macOS.zip) | Universal binary (Intel + Apple Silicon) |
+| **Linux** | [CC-Switch-v0.6.0-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.6.0/CC-Switch-v0.6.0-Linux.AppImage) | AppImage (universal) |
+| | [CC-Switch-v0.6.0-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.6.0/CC-Switch-v0.6.0-Linux.deb) | Debian/Ubuntu package |
 
 **macOS Note**: If you see "damaged" warning, run: `xattr -cr "/Applications/CC Switch.app"`
 

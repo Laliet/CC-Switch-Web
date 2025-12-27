@@ -138,6 +138,81 @@ use crate::config::{copy_file, get_app_config_dir, get_app_config_path, write_js
 use crate::error::AppError;
 use crate::prompt_files::prompt_file_path;
 use crate::provider::ProviderManager;
+use std::io::Write;
+use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
+
+const CONFIG_LOCK_RETRY_DELAY: Duration = Duration::from_millis(50);
+const CONFIG_LOCK_TIMEOUT: Duration = Duration::from_secs(5);
+const CONFIG_LOCK_STALE: Duration = Duration::from_secs(30);
+
+struct AppConfigLock {
+    path: PathBuf,
+    file: Option<std::fs::File>,
+}
+
+impl AppConfigLock {
+    fn acquire() -> Result<Self, AppError> {
+        let lock_path = get_app_config_dir().join("config.json.lock");
+        if let Some(parent) = lock_path.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| AppError::io(parent, e))?;
+        }
+
+        let start = Instant::now();
+        loop {
+            match std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&lock_path)
+            {
+                Ok(mut file) => {
+                    let _ = writeln!(file, "pid={}", std::process::id());
+                    return Ok(Self {
+                        path: lock_path,
+                        file: Some(file),
+                    });
+                }
+                Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => {
+                    if is_stale_lock(&lock_path) {
+                        log::warn!(
+                            "检测到过期的配置锁，尝试移除: {}",
+                            lock_path.display()
+                        );
+                        let _ = std::fs::remove_file(&lock_path);
+                        continue;
+                    }
+                    if start.elapsed() >= CONFIG_LOCK_TIMEOUT {
+                        return Err(AppError::Lock(format!(
+                            "获取配置锁超时: {}",
+                            lock_path.display()
+                        )));
+                    }
+                    std::thread::sleep(CONFIG_LOCK_RETRY_DELAY);
+                }
+                Err(err) => return Err(AppError::io(&lock_path, err)),
+            }
+        }
+    }
+}
+
+impl Drop for AppConfigLock {
+    fn drop(&mut self) {
+        self.file.take();
+        let _ = std::fs::remove_file(&self.path);
+    }
+}
+
+fn is_stale_lock(path: &Path) -> bool {
+    let metadata = match std::fs::metadata(path) {
+        Ok(value) => value,
+        Err(_) => return false,
+    };
+    let modified = match metadata.modified() {
+        Ok(value) => value,
+        Err(_) => return false,
+    };
+    modified.elapsed().unwrap_or_default() >= CONFIG_LOCK_STALE
+}
 
 /// 应用类型
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -258,35 +333,8 @@ impl Default for MultiAppConfig {
 }
 
 impl MultiAppConfig {
-    /// 从文件加载配置（仅支持 v2 结构）
-    pub fn load() -> Result<Self, AppError> {
-        let config_path = get_app_config_path();
-
-        if !config_path.exists() {
-            log::info!("配置文件不存在，创建新的多应用配置并自动导入提示词");
-            // 使用新的方法，支持自动导入提示词
-            let config = Self::default_with_auto_import()?;
-            // 立即保存到磁盘
-            config.save()?;
-            return Ok(config);
-        }
-
-        // 尝试读取文件
-        let content =
-            std::fs::read_to_string(&config_path).map_err(|e| AppError::io(&config_path, e))?;
-
-        // 先解析为 Value，以便严格判定是否为 v1 结构；
-        // 满足：顶层同时包含 providers(object) + current(string)，且不包含 version/apps/mcp 关键键，即视为 v1
-        let value: serde_json::Value =
-            serde_json::from_str(&content).map_err(|e| AppError::json(&config_path, e))?;
-        let is_v1 = value.as_object().is_some_and(|map| {
-            let has_providers = map.get("providers").map(|v| v.is_object()).unwrap_or(false);
-            let has_current = map.get("current").map(|v| v.is_string()).unwrap_or(false);
-            // v1 的充分必要条件：有 providers 和 current，且 apps 不存在（version/mcp 可能存在但不作为 v2 判据）
-            let has_apps = map.contains_key("apps");
-            has_providers && has_current && !has_apps
-        });
-        if is_v1 {
+    pub(crate) fn ensure_not_v1_value(value: &serde_json::Value) -> Result<(), AppError> {
+        if Self::is_v1_value(value) {
             return Err(AppError::localized(
                 "config.unsupported_v1",
                 "检测到旧版 v1 配置格式。当前版本已不再支持运行时自动迁移。\n\n解决方案：\n1. 安装 v3.2.x 版本进行一次性自动迁移\n2. 或手动编辑 ~/.cc-switch/config.json，将顶层结构调整为：\n   {\"version\": 2, \"claude\": {...}, \"codex\": {...}, \"mcp\": {...}}\n\n",
@@ -294,13 +342,23 @@ impl MultiAppConfig {
             ));
         }
 
-        let has_skills_in_config = value
-            .as_object()
-            .is_some_and(|map| map.contains_key("skills"));
+        Ok(())
+    }
 
-        // 解析 v2 结构
-        let mut config: Self =
-            serde_json::from_value(value).map_err(|e| AppError::json(&config_path, e))?;
+    fn is_v1_value(value: &serde_json::Value) -> bool {
+        value.as_object().is_some_and(|map| {
+            let has_providers = map.get("providers").map(|v| v.is_object()).unwrap_or(false);
+            let has_current = map.get("current").map(|v| v.is_string()).unwrap_or(false);
+            // v1 的充分必要条件：有 providers 和 current，且 apps 不存在（version/mcp 可能存在但不作为 v2 判据）
+            let has_apps = map.contains_key("apps");
+            has_providers && has_current && !has_apps
+        })
+    }
+
+    pub(crate) fn normalize_after_load(
+        &mut self,
+        has_skills_in_config: bool,
+    ) -> Result<bool, AppError> {
         let mut updated = false;
 
         if !has_skills_in_config {
@@ -309,7 +367,7 @@ impl MultiAppConfig {
                 match std::fs::read_to_string(&skills_path) {
                     Ok(content) => match serde_json::from_str::<SkillStore>(&content) {
                         Ok(store) => {
-                            config.skills = store;
+                            self.skills = store;
                             updated = true;
                             log::info!("已从旧版 skills.json 导入 Claude Skills 配置");
                         }
@@ -325,15 +383,14 @@ impl MultiAppConfig {
         }
 
         // 确保 gemini 应用存在（兼容旧配置文件）
-        if !config.apps.contains_key("gemini") {
-            config
-                .apps
+        if !self.apps.contains_key("gemini") {
+            self.apps
                 .insert("gemini".to_string(), ProviderManager::default());
             updated = true;
         }
 
         // 执行 MCP 迁移（v3.6.x → v3.7.0）
-        let migrated = config.migrate_mcp_to_unified()?;
+        let migrated = self.migrate_mcp_to_unified()?;
         if migrated {
             log::info!("MCP 配置已迁移到 v3.7.0 统一结构，保存配置...");
             updated = true;
@@ -341,23 +398,59 @@ impl MultiAppConfig {
 
         // 对于已经存在的配置文件，如果此前版本还没有 Prompt 功能，
         // 且 prompts 仍然是空的，则尝试自动导入现有提示词文件。
-        let imported_prompts = config.maybe_auto_import_prompts_for_existing_config()?;
+        let imported_prompts = self.maybe_auto_import_prompts_for_existing_config()?;
         if imported_prompts {
             updated = true;
         }
 
         // 迁移通用配置片段：claude_common_config_snippet → common_config_snippets.claude
-        if let Some(old_claude_snippet) = config.claude_common_config_snippet.take() {
+        if let Some(old_claude_snippet) = self.claude_common_config_snippet.take() {
             log::info!(
                 "迁移通用配置：claude_common_config_snippet → common_config_snippets.claude"
             );
-            config.common_config_snippets.claude = Some(old_claude_snippet);
+            self.common_config_snippets.claude = Some(old_claude_snippet);
             updated = true;
         }
 
+        Ok(updated)
+    }
+
+    /// 从文件加载配置（仅支持 v2 结构）
+    pub fn load() -> Result<Self, AppError> {
+        let config_path = get_app_config_path();
+        let _lock = AppConfigLock::acquire()?;
+
+        if !config_path.exists() {
+            log::info!("配置文件不存在，创建新的多应用配置并自动导入提示词");
+            // 使用新的方法，支持自动导入提示词
+            let config = Self::default_with_auto_import()?;
+            // 立即保存到磁盘
+            config.save_unlocked()?;
+            return Ok(config);
+        }
+
+        // 尝试读取文件
+        let content =
+            std::fs::read_to_string(&config_path).map_err(|e| AppError::io(&config_path, e))?;
+
+        // 先解析为 Value，以便严格判定是否为 v1 结构；
+        // 满足：顶层同时包含 providers(object) + current(string)，且不包含 version/apps/mcp 关键键，即视为 v1
+        let value: serde_json::Value =
+            serde_json::from_str(&content).map_err(|e| AppError::json(&config_path, e))?;
+        Self::ensure_not_v1_value(&value)?;
+
+        let has_skills_in_config = value
+            .as_object()
+            .is_some_and(|map| map.contains_key("skills"));
+
+        // 解析 v2 结构
+        let mut config: Self =
+            serde_json::from_value(value).map_err(|e| AppError::json(&config_path, e))?;
+        let updated = config.normalize_after_load(has_skills_in_config)?;
+
         if updated {
             log::info!("配置结构已更新（包括 MCP 迁移或 Prompt 自动导入），保存配置...");
-            config.save()?;
+            config.save_unlocked()?;
         }
 
         Ok(config)
@@ -365,6 +458,11 @@ impl MultiAppConfig {
 
     /// 保存配置到文件
     pub fn save(&self) -> Result<(), AppError> {
+        let _lock = AppConfigLock::acquire()?;
+        self.save_unlocked()
+    }
+
+    fn save_unlocked(&self) -> Result<(), AppError> {
         let config_path = get_app_config_path();
         // 先备份旧版（若存在）到 ~/.cc-switch/config.json.bak，再写入新内容
         if config_path.exists() {
@@ -494,8 +592,11 @@ impl MultiAppConfig {
         // 创建提示词对象
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs() as i64;
+            .map(|duration| duration.as_secs() as i64)
+            .unwrap_or_else(|err| {
+                log::warn!("系统时间早于 UNIX_EPOCH，使用默认时间戳: {err}");
+                0
+            });
 
         let id = format!("auto-imported-{timestamp}");
         let prompt = crate::prompt::Prompt {

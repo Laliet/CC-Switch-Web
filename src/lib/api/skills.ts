@@ -1,10 +1,19 @@
 import { invoke } from "./adapter";
 
+export interface SkillCommand {
+  name: string;
+  description: string;
+  filePath: string;
+}
+
 export interface Skill {
   key: string;
   name: string;
   description: string;
   directory: string;
+  parentPath?: string;
+  depth?: number;
+  commands?: SkillCommand[];
   readmeUrl?: string;
   installed: boolean;
   repoOwner?: string;

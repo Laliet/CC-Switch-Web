@@ -1,11 +1,12 @@
 import type { AppId } from "@/lib/api/types";
 import type { McpServer, Provider, Settings } from "@/types";
-import type { Skill, SkillRepo } from "@/lib/api/skills";
+import type { Skill, SkillRepo, SkillsResponse } from "@/lib/api/skills";
 
 type ProvidersByApp = Record<AppId, Record<string, Provider>>;
 type CurrentProviderState = Record<AppId, string>;
 type BackupProviderState = Record<AppId, string | null>;
 type McpConfigState = Record<AppId, Record<string, McpServer>>;
+type McpServersState = Record<string, McpServer>;
 type SkillsState = Skill[];
 type SkillReposState = SkillRepo[];
 
@@ -156,6 +157,29 @@ let mcpConfigs: McpConfigState = {
   },
   gemini: {},
 };
+const buildUnifiedMcpServers = (configs: McpConfigState): McpServersState => {
+  const merged: McpServersState = {};
+  (Object.keys(configs) as AppId[]).forEach((app) => {
+    const servers = configs[app];
+    Object.values(servers).forEach((server) => {
+      const existing = merged[server.id];
+      if (!existing) {
+        merged[server.id] = JSON.parse(JSON.stringify(server)) as McpServer;
+        return;
+      }
+      merged[server.id] = {
+        ...existing,
+        apps: {
+          claude: existing.apps?.claude || server.apps?.claude || false,
+          codex: existing.apps?.codex || server.apps?.codex || false,
+          gemini: existing.apps?.gemini || server.apps?.gemini || false,
+        },
+      };
+    });
+  });
+  return merged;
+};
+let mcpServers: McpServersState = buildUnifiedMcpServers(mcpConfigs);
 
 const cloneProviders = (value: ProvidersByApp) =>
   JSON.parse(JSON.stringify(value)) as ProvidersByApp;
@@ -208,6 +232,7 @@ export const resetProviderState = () => {
     },
     gemini: {},
   };
+  mcpServers = buildUnifiedMcpServers(mcpConfigs);
 };
 
 export const getProviders = (appType: AppId) =>
@@ -271,7 +296,10 @@ export const updateSortOrder = (
 export const listProviders = (appType: AppId) =>
   JSON.parse(JSON.stringify(providers[appType] ?? {})) as Record<string, Provider>;
 
-export const getSkillsState = () => cloneSkills(skills);
+export const getSkillsState = (): SkillsResponse => ({
+  skills: cloneSkills(skills),
+  warnings: [],
+});
 
 export const installSkillState = (directory: string) => {
   const existing = skills.find((item) => item.directory === directory);
@@ -366,4 +394,32 @@ export const upsertMcpServer = (
 export const deleteMcpServer = (appType: AppId, id: string) => {
   if (!mcpConfigs[appType]) return;
   delete mcpConfigs[appType][id];
+};
+
+export const getUnifiedMcpServers = () =>
+  JSON.parse(JSON.stringify(mcpServers)) as McpServersState;
+
+export const upsertUnifiedMcpServer = (server: McpServer) => {
+  mcpServers[server.id] = JSON.parse(JSON.stringify(server)) as McpServer;
+};
+
+export const deleteUnifiedMcpServer = (id: string) => {
+  delete mcpServers[id];
+};
+
+export const toggleMcpAppState = (
+  id: string,
+  app: AppId,
+  enabled: boolean,
+) => {
+  if (!mcpServers[id]) return;
+  mcpServers[id] = {
+    ...mcpServers[id],
+    apps: {
+      claude: mcpServers[id].apps?.claude || false,
+      codex: mcpServers[id].apps?.codex || false,
+      gemini: mcpServers[id].apps?.gemini || false,
+      [app]: enabled,
+    },
+  };
 };

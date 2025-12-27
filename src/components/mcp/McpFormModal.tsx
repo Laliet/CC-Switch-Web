@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
@@ -68,6 +68,14 @@ const McpFormModal: React.FC<McpFormModalProps> = ({
     useMcpValidation();
 
   const upsertMutation = useUpsertMcpServer();
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const [formId, setFormId] = useState(
     () => editingId || initialData?.id || "",
@@ -142,6 +150,9 @@ const McpFormModal: React.FC<McpFormModalProps> = ({
 
   const wizardInitialSpec = useMemo(() => {
     const fallback = initialData?.server;
+    if (!isWizardOpen) {
+      return fallback;
+    }
     if (!formConfig.trim()) {
       return fallback;
     }
@@ -163,7 +174,7 @@ const McpFormModal: React.FC<McpFormModalProps> = ({
     } catch {
       return fallback;
     }
-  }, [formConfig, initialData, useToml]);
+  }, [formConfig, initialData, isWizardOpen, useToml]);
 
   // 预设选择状态（仅新增模式显示；-1 表示自定义）
   const [selectedPreset, setSelectedPreset] = useState<number | null>(
@@ -194,7 +205,7 @@ const McpFormModal: React.FC<McpFormModalProps> = ({
     const presetWithDesc = getMcpPresetWithDescription(preset, t);
 
     const id = ensureUniqueId(presetWithDesc.id);
-    setFormId(id);
+    handleIdChange(id);
     setFormName(presetWithDesc.name || presetWithDesc.id);
     setFormDescription(presetWithDesc.description || "");
     setFormHomepage(presetWithDesc.homepage || "");
@@ -218,7 +229,7 @@ const McpFormModal: React.FC<McpFormModalProps> = ({
   const applyCustom = () => {
     setSelectedPreset(-1);
     // 恢复到空白模板
-    setFormId("");
+    handleIdChange("");
     setFormName("");
     setFormDescription("");
     setFormHomepage("");
@@ -240,12 +251,13 @@ const McpFormModal: React.FC<McpFormModalProps> = ({
         setConfigError(err);
         return;
       }
+      setConfigError("");
 
       // Try to extract ID (if user hasn't filled it yet)
       if (nextValue.trim() && !formId.trim()) {
         const extractedId = extractIdFromToml(nextValue);
         if (extractedId) {
-          setFormId(extractedId);
+          handleIdChange(extractedId);
         }
       }
     } else {
@@ -265,7 +277,7 @@ const McpFormModal: React.FC<McpFormModalProps> = ({
         // 自动填充提取的 id（仅当表单 id 为空且不在编辑模式时）
         if (result.id && !formId.trim() && !isEditing) {
           const uniqueId = ensureUniqueId(result.id);
-          setFormId(uniqueId);
+          handleIdChange(uniqueId);
 
           // 如果 name 也为空，同时填充 name
           if (!formName.trim()) {
@@ -303,7 +315,7 @@ const McpFormModal: React.FC<McpFormModalProps> = ({
   };
 
   const handleWizardApply = (title: string, json: string) => {
-    setFormId(title);
+    handleIdChange(title);
     if (!formName.trim()) {
       setFormName(title);
     }
@@ -333,6 +345,11 @@ const McpFormModal: React.FC<McpFormModalProps> = ({
     // 新增模式：阻止提交重名 ID
     if (!isEditing && existingIds.includes(trimmedId)) {
       setIdError(t("mcp.error.idExists"));
+      return;
+    }
+
+    if (configError) {
+      toast.error(configError, { duration: 3000 });
       return;
     }
 
@@ -367,25 +384,40 @@ const McpFormModal: React.FC<McpFormModalProps> = ({
       }
     } else {
       // JSON mode
-      if (!formConfig.trim()) {
-        // Empty configuration
-        serverSpec = {
-          type: "stdio",
-          command: "",
-          args: [],
-        };
-      } else {
-        try {
-          // 使用智能解析器，支持带外层键的格式
-          const result = parseSmartMcpJson(formConfig);
-          serverSpec = result.config as McpServerSpec;
-        } catch (e: any) {
-          const errorMessage = e?.message || String(e);
-          setConfigError(t("mcp.error.jsonInvalid") + ": " + errorMessage);
-          toast.error(t("mcp.error.jsonInvalid"), { duration: 4000 });
+      try {
+        // 使用智能解析器，支持带外层键的格式
+        const result = parseSmartMcpJson(formConfig);
+        const configJson = JSON.stringify(result.config);
+        const jsonError = validateJsonConfig(configJson);
+        setConfigError(jsonError);
+        if (jsonError) {
+          toast.error(jsonError, { duration: 3000 });
           return;
         }
+        serverSpec = result.config as McpServerSpec;
+      } catch (e: any) {
+        const errorMessage = e?.message || String(e);
+        const errorText = t("mcp.error.jsonInvalid") + ": " + errorMessage;
+        setConfigError(errorText);
+        toast.error(t("mcp.error.jsonInvalid"), { duration: 4000 });
+        return;
       }
+    }
+
+    const rawType = serverSpec.type;
+    if (
+      rawType !== undefined &&
+      (typeof rawType !== "string" ||
+        !["stdio", "http", "sse"].includes(rawType))
+    ) {
+      const typeError = t("mcp.error.typeInvalid");
+      setConfigError(typeError);
+      toast.error(typeError, { duration: 3000 });
+      return;
+    }
+
+    if (!serverSpec.type) {
+      serverSpec.type = "stdio";
     }
 
     // 前置必填校验
@@ -457,7 +489,9 @@ const McpFormModal: React.FC<McpFormModalProps> = ({
       const msg = mapped || detail || t("mcp.error.saveFailed");
       toast.error(msg, { duration: mapped || detail ? 6000 : 4000 });
     } finally {
-      setSaving(false);
+      if (isMountedRef.current) {
+        setSaving(false);
+      }
     }
   };
 
