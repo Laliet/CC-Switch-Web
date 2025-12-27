@@ -14,10 +14,7 @@ use crate::{
     error::format_skill_error,
     error::AppError,
     services::{
-        skill::SkillCommand as ServiceSkillCommand,
-        Skill as ServiceSkill,
-        SkillRepo,
-        SkillService,
+        skill::SkillCommand as ServiceSkillCommand, Skill as ServiceSkill, SkillRepo, SkillService,
     },
     store::AppState,
 };

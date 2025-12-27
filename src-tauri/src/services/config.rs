@@ -268,10 +268,7 @@ impl ConfigService {
         Ok(backup_id)
     }
 
-    fn save_config_to_path(
-        config: &MultiAppConfig,
-        config_path: &Path,
-    ) -> Result<(), AppError> {
+    fn save_config_to_path(config: &MultiAppConfig, config_path: &Path) -> Result<(), AppError> {
         use crate::config::{copy_file, write_json_file};
 
         if config_path.exists() {

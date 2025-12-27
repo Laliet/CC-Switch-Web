@@ -23,13 +23,7 @@ pub use core::{import_from_claude, import_from_codex, import_from_gemini};
 
 // 从 sync 模块导出同步功能
 pub use sync::{
-    remove_server_from_claude,
-    remove_server_from_codex,
-    remove_server_from_gemini,
-    sync_enabled_to_claude,
-    sync_enabled_to_codex,
-    sync_enabled_to_gemini,
-    sync_single_server_to_claude,
-    sync_single_server_to_codex,
-    sync_single_server_to_gemini,
+    remove_server_from_claude, remove_server_from_codex, remove_server_from_gemini,
+    sync_enabled_to_claude, sync_enabled_to_codex, sync_enabled_to_gemini,
+    sync_single_server_to_claude, sync_single_server_to_codex, sync_single_server_to_gemini,
 };

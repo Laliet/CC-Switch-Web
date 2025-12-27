@@ -5,7 +5,7 @@ use crate::app_config::{AppType, MultiAppConfig};
 use crate::error::AppError;
 
 // 子模块导入
-use super::validation::{validate_server_spec, validate_mcp_entry};
+use super::validation::{validate_mcp_entry, validate_server_spec};
 
 pub fn normalize_servers_for(config: &mut MultiAppConfig, app: &AppType) -> usize {
     let servers = &mut config.mcp_for_mut(app).servers;

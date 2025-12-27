@@ -174,10 +174,7 @@ impl AppConfigLock {
                 }
                 Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => {
                     if is_stale_lock(&lock_path) {
-                        log::warn!(
-                            "检测到过期的配置锁，尝试移除: {}",
-                            lock_path.display()
-                        );
+                        log::warn!("检测到过期的配置锁，尝试移除: {}", lock_path.display());
                         let _ = std::fs::remove_file(&lock_path);
                         continue;
                     }

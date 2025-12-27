@@ -1,7 +1,7 @@
 //! MCP 服务器配置验证模块
 
-use serde_json::Value;
 use crate::error::AppError;
+use serde_json::Value;
 
 /// 基础校验：允许 stdio/http/sse；或省略 type（视为 stdio）。对应必填字段存在
 pub(crate) fn validate_server_spec(spec: &Value) -> Result<(), AppError> {

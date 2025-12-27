@@ -235,9 +235,7 @@ impl SkillService {
             }
         }
 
-        let has_traversal = trimmed
-            .split(['/', '\\'])
-            .any(|segment| segment == "..");
+        let has_traversal = trimmed.split(['/', '\\']).any(|segment| segment == "..");
 
         if !has_component || has_invalid_component || path.is_absolute() || has_traversal {
             return Err(anyhow!(format_skill_error(
@@ -384,20 +382,13 @@ impl SkillService {
         let root_metadata = match fs::symlink_metadata(current_dir) {
             Ok(metadata) => metadata,
             Err(e) => {
-                log::warn!(
-                    "读取扫描目录 {} 元数据失败: {}",
-                    current_dir.display(),
-                    e
-                );
+                log::warn!("读取扫描目录 {} 元数据失败: {}", current_dir.display(), e);
                 return Ok(());
             }
         };
 
         if root_metadata.file_type().is_symlink() {
-            log::warn!(
-                "跳过符号链接目录 {}，避免路径穿越",
-                current_dir.display()
-            );
+            log::warn!("跳过符号链接目录 {}，避免路径穿越", current_dir.display());
             return Ok(());
         }
 
@@ -429,10 +420,7 @@ impl SkillService {
             match fs::symlink_metadata(&skill_md) {
                 Ok(metadata) => {
                     if metadata.file_type().is_symlink() {
-                        log::warn!(
-                            "跳过符号链接文件 {}，避免路径穿越",
-                            skill_md.display()
-                        );
+                        log::warn!("跳过符号链接文件 {}，避免路径穿越", skill_md.display());
                     } else if metadata.is_file() {
                         match self.parse_skill_metadata(&skill_md) {
                             Ok(meta) => {
@@ -576,7 +564,10 @@ impl SkillService {
 
             let path = entry.path();
             let ext = path.extension().and_then(|ext| ext.to_str());
-            if !ext.map(|ext| ext.eq_ignore_ascii_case("md")).unwrap_or(false) {
+            if !ext
+                .map(|ext| ext.eq_ignore_ascii_case("md"))
+                .unwrap_or(false)
+            {
                 continue;
             }
 
@@ -732,10 +723,7 @@ impl SkillService {
             match fs::symlink_metadata(&skill_md) {
                 Ok(metadata) => {
                     if metadata.file_type().is_symlink() {
-                        log::warn!(
-                            "跳过符号链接文件 {}，避免路径穿越",
-                            skill_md.display()
-                        );
+                        log::warn!("跳过符号链接文件 {}，避免路径穿越", skill_md.display());
                     } else if metadata.is_file() {
                         let (directory, parent_path, depth, leaf_name) =
                             Self::build_path_info(&components);
@@ -817,12 +805,7 @@ impl SkillService {
             if !file_type.is_dir() || file_type.is_symlink() {
                 continue;
             }
-            self.merge_local_skills_recursive_inner(
-                scan_root,
-                &entry.path(),
-                skills,
-                depth + 1,
-            )?;
+            self.merge_local_skills_recursive_inner(scan_root, &entry.path(), skills, depth + 1)?;
         }
 
         Ok(())

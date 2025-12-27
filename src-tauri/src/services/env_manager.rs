@@ -74,12 +74,8 @@ fn get_backup_dir() -> Result<PathBuf, String> {
 
 fn validate_backup_path(path: &Path) -> Result<PathBuf, String> {
     let backup_dir = get_backup_dir()?;
-    let backup_dir = fs::canonicalize(&backup_dir).map_err(|e| {
-        format!(
-            "规范化备份目录失败 {}: {e}",
-            backup_dir.display()
-        )
-    })?;
+    let backup_dir = fs::canonicalize(&backup_dir)
+        .map_err(|e| format!("规范化备份目录失败 {}: {e}", backup_dir.display()))?;
     let candidate = fs::canonicalize(path)
         .map_err(|e| format!("规范化备份文件路径失败 {}: {e}", path.display()))?;
     if !candidate.starts_with(&backup_dir) {

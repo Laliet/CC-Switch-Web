@@ -382,16 +382,14 @@ fn enforce_permissions(_path: &StdPath) -> std::io::Result<()> {
 }
 
 fn load_or_generate_tokens() -> WebTokens {
-    let env_csrf = env::var("WEB_CSRF_TOKEN")
-        .ok()
-        .and_then(|val| {
-            let trimmed = val.trim();
-            if trimmed.is_empty() {
-                None
-            } else {
-                Some(trimmed.to_string())
-            }
-        });
+    let env_csrf = env::var("WEB_CSRF_TOKEN").ok().and_then(|val| {
+        let trimmed = val.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    });
 
     if let Some(csrf) = env_csrf {
         return WebTokens { csrf_token: csrf };
