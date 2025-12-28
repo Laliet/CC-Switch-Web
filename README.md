@@ -32,26 +32,41 @@ Whether you're working locally or in a headless cloud environment, CC-Switch-Web
 
 ## What's New in v0.6.0
 
-### 🔒 Security Fixes
-- **Fixed API Key logging leak** - DeepLinkImportDialog now masks sensitive data in logs
-- **Fixed XSS vulnerability** - ApiKeySection blocks `javascript:` and other dangerous URL schemes
-- **Added URL schema validation** - Only `http/https` protocols allowed in provider URLs
+This release focuses on **security hardening** and **stability improvements** with 12 security fixes and 32+ bug fixes.
 
-### 🐛 Bug Fixes
-- Fixed 405 error for unknown commands in Web mode (removed `/api/tauri/*` fallback)
-- Fixed 401 error in health check and config export (added auth headers for Web mode)
-- Fixed login validation logic (`response.ok` instead of status check)
-- Fixed useEffect race condition in App.tsx (proper cleanup with cancelled flag)
-- Fixed closure trap in usePromptActions.ts (deep clone + functional updates)
-- Fixed unhandled Promise rejection in handleAutoFailover
-- Fixed production log pollution in useHealthCheck (DEV-only logging)
-- Fixed localStorage crash in Safari private mode
-- Fixed checkUpdate error handling (no longer throws)
-- Fixed missing dependency in SettingsDialog
+### 🔒 Security Fixes (12)
 
-### ⚡ Improvements
-- Docker build optimized from ~50min to ~2min (uses prebuilt binaries)
-- Added 3 new tests (142 total)
+**Critical (5):**
+- Fixed path traversal vulnerabilities in config import/export, skills directory, and env backup/restore
+- Fixed XSS via `open_external` - now only allows `http/https` URLs
+- Fixed retry logic applying to mutation operations (now GET/HEAD only)
+
+**High (7):**
+- Fixed resource leak in skill temp directories (RAII cleanup)
+- Fixed backup ID collision (millisecond timestamp + counter)
+- Fixed race conditions in config import and app_config read-modify-write
+- Fixed config file permissions hardening (Unix 0600 for sensitive files)
+- Fixed blocking async in zip extraction (`spawn_blocking`)
+- Fixed silent data loss on invalid config type
+
+### 🐛 Bug Fixes (32+)
+
+- **MCP (12):** Form state residue, memory leaks on unmount, null checks for legacy configs, type validation, sync validation
+- **Skills (3):** Race condition in loadSkills, error boundary, unmount guards
+- **API/Network (7):** Health check timeout, CORS `*` handling, HEAD method, 404 for unknown API paths, error parsing
+- **Config (5):** DMXAPI/AiHubMix endpoint swap, Codex config clearing, Gemini OAuth switching
+- **Error Handling (5):** Panic on system time error, silent read errors, type safety improvements
+
+### ♿ Accessibility
+- Added `aria-label` to prompt toggles and icon buttons
+- Fixed password manager support in WebLoginDialog
+- Added favicon
+
+### ⚡ Performance
+- Memoized skill counts, API key visibility, and template paths
+
+### 🧪 Tests
+- Rust: 49 tests passing | Frontend: 58 tests passing
 
 ---
 
