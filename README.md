@@ -315,7 +315,7 @@ pnpm test
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) — Current version: **v0.5.2**
+See [CHANGELOG.md](CHANGELOG.md) — Current version: **v0.6.0**
 
 ---
 
