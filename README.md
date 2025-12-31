@@ -12,7 +12,6 @@
 **All-in-One Assistant for Claude Code, Codex & Gemini CLI**
 
 English | [中文](README_ZH.md) | [Changelog](CHANGELOG.md)（三天左右更新和维护一次）
-If you have any questions, you can contact me here https://linux.do/t/topic/1217545 
 
 ## About / 项目简介
 
@@ -28,8 +27,12 @@ Whether you're working locally or in a headless cloud environment, CC-Switch-Web
 -  **Web server mode** for cloud/headless deployment with Basic Auth
 
 ---
+## Contact /联系
+
+If you have any questions, you can contact me here https://linux.do/t/topic/1217545 
 
 ## What's New in v0.6.0
+
 
 This release focuses on **security hardening** and **stability improvements** with 12 security fixes and 32+ bug fixes.
 
