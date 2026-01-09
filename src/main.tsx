@@ -11,6 +11,52 @@ import { queryClient } from "@/lib/query";
 import { Toaster } from "@/components/ui/sonner";
 import { invoke, isWeb } from "@/lib/api/adapter";
 
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ErrorBoundary extends React.Component<
+  React.PropsWithChildren,
+  ErrorBoundaryState
+> {
+  state: ErrorBoundaryState = { hasError: false, error: null };
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error("ErrorBoundary caught an error", error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen w-full bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+          <div className="flex min-h-screen items-center justify-center px-4">
+            <div className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-6 text-center shadow-sm dark:border-gray-700 dark:bg-gray-800">
+              <h1 className="text-xl font-semibold">应用出错了</h1>
+              <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
+                {this.state.error?.message || "未知错误"}
+              </p>
+              <button
+                type="button"
+                className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+                onClick={() => window.location.reload()}
+              >
+                刷新页面
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 // 根据平台添加 body class，便于平台特定样式
 try {
   const ua = navigator.userAgent || "";
@@ -100,7 +146,9 @@ async function bootstrap() {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider defaultTheme="system" storageKey="cc-switch-theme">
           <UpdateProvider>
-            <App />
+            <ErrorBoundary>
+              <App />
+            </ErrorBoundary>
             <Toaster />
           </UpdateProvider>
         </ThemeProvider>

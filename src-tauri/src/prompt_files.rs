@@ -9,9 +9,9 @@ use crate::gemini_config::get_gemini_dir;
 /// 返回指定应用所使用的提示词文件路径。
 pub fn prompt_file_path(app: &AppType) -> Result<PathBuf, AppError> {
     let base_dir: PathBuf = match app {
-        AppType::Claude => get_base_dir_with_fallback(get_claude_settings_path(), ".claude")?,
-        AppType::Codex => get_base_dir_with_fallback(get_codex_auth_path(), ".codex")?,
-        AppType::Gemini => get_gemini_dir(),
+        AppType::Claude => get_base_dir_with_fallback(get_claude_settings_path()?, ".claude")?,
+        AppType::Codex => get_base_dir_with_fallback(get_codex_auth_path()?, ".codex")?,
+        AppType::Gemini => get_gemini_dir()?,
     };
 
     let filename = match app {

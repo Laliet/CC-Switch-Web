@@ -11,37 +11,38 @@ use std::fs;
 use std::path::Path;
 
 /// 获取 Codex 配置目录路径
-pub fn get_codex_config_dir() -> PathBuf {
+pub fn get_codex_config_dir() -> Result<PathBuf, AppError> {
     if let Some(custom) = crate::settings::get_codex_override_dir() {
-        return custom;
+        return Ok(custom);
     }
 
-    get_home_dir().expect("无法获取用户主目录").join(".codex")
+    let home = get_home_dir().ok_or_else(|| AppError::Config("无法获取用户主目录".into()))?;
+    Ok(home.join(".codex"))
 }
 
 /// 获取 Codex auth.json 路径
-pub fn get_codex_auth_path() -> PathBuf {
-    get_codex_config_dir().join("auth.json")
+pub fn get_codex_auth_path() -> Result<PathBuf, AppError> {
+    Ok(get_codex_config_dir()?.join("auth.json"))
 }
 
 /// 获取 Codex config.toml 路径
-pub fn get_codex_config_path() -> PathBuf {
-    get_codex_config_dir().join("config.toml")
+pub fn get_codex_config_path() -> Result<PathBuf, AppError> {
+    Ok(get_codex_config_dir()?.join("config.toml"))
 }
 
 /// 获取 Codex 供应商配置文件路径
 pub fn get_codex_provider_paths(
     provider_id: &str,
     provider_name: Option<&str>,
-) -> (PathBuf, PathBuf) {
+) -> Result<(PathBuf, PathBuf), AppError> {
     let base_name = provider_name
         .map(sanitize_provider_name)
         .unwrap_or_else(|| sanitize_provider_name(provider_id));
 
-    let auth_path = get_codex_config_dir().join(format!("auth-{base_name}.json"));
-    let config_path = get_codex_config_dir().join(format!("config-{base_name}.toml"));
+    let auth_path = get_codex_config_dir()?.join(format!("auth-{base_name}.json"));
+    let config_path = get_codex_config_dir()?.join(format!("config-{base_name}.toml"));
 
-    (auth_path, config_path)
+    Ok((auth_path, config_path))
 }
 
 /// 删除 Codex 供应商配置文件
@@ -49,7 +50,7 @@ pub fn delete_codex_provider_config(
     provider_id: &str,
     provider_name: &str,
 ) -> Result<(), AppError> {
-    let (auth_path, config_path) = get_codex_provider_paths(provider_id, Some(provider_name));
+    let (auth_path, config_path) = get_codex_provider_paths(provider_id, Some(provider_name))?;
 
     delete_file(&auth_path).ok();
     delete_file(&config_path).ok();
@@ -62,8 +63,8 @@ pub fn write_codex_live_atomic(
     auth: &Value,
     config_text_opt: Option<&str>,
 ) -> Result<(), AppError> {
-    let auth_path = get_codex_auth_path();
-    let config_path = get_codex_config_path();
+    let auth_path = get_codex_auth_path()?;
+    let config_path = get_codex_config_path()?;
 
     if let Some(parent) = auth_path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| AppError::io(parent, e))?;
@@ -109,7 +110,7 @@ pub fn write_codex_live_atomic(
 
 /// 读取 `~/.codex/config.toml`，若不存在返回空字符串
 pub fn read_codex_config_text() -> Result<String, AppError> {
-    let path = get_codex_config_path();
+    let path = get_codex_config_path()?;
     if path.exists() {
         std::fs::read_to_string(&path).map_err(|e| AppError::io(&path, e))
     } else {

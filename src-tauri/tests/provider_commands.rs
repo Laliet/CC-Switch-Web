@@ -1,5 +1,5 @@
 use serde_json::json;
-use std::sync::RwLock;
+use std::{path::PathBuf, sync::RwLock};
 
 use cc_switch_lib::{
     get_codex_auth_path, get_codex_config_path, read_json_file, switch_provider_test_hook,
@@ -9,6 +9,10 @@ use cc_switch_lib::{
 #[path = "support.rs"]
 mod support;
 use support::{ensure_test_home, reset_test_fs, test_mutex};
+
+fn unwrap_path(result: Result<PathBuf, AppError>) -> PathBuf {
+    result.expect("path should resolve")
+}
 
 #[test]
 fn switch_provider_updates_codex_live_and_state() {
@@ -78,8 +82,8 @@ command = "say"
     switch_provider_test_hook(&app_state, AppType::Codex, "new-provider")
         .expect("switch provider should succeed");
 
-    let auth_value: serde_json::Value =
-        read_json_file(&get_codex_auth_path()).expect("read auth.json");
+    let auth_path = unwrap_path(get_codex_auth_path());
+    let auth_value: serde_json::Value = read_json_file(&auth_path).expect("read auth.json");
     assert_eq!(
         auth_value
             .get("OPENAI_API_KEY")
@@ -89,7 +93,8 @@ command = "say"
         "live auth.json should reflect new provider"
     );
 
-    let config_text = std::fs::read_to_string(get_codex_config_path()).expect("read config.toml");
+    let config_path = unwrap_path(get_codex_config_path());
+    let config_text = std::fs::read_to_string(&config_path).expect("read config.toml");
     assert!(
         config_text.contains("mcp_servers.echo-server"),
         "config.toml should contain synced MCP servers"
@@ -161,7 +166,7 @@ fn switch_provider_updates_claude_live_and_state() {
     reset_test_fs();
     let _home = ensure_test_home();
 
-    let settings_path = cc_switch_lib::get_claude_settings_path();
+    let settings_path = unwrap_path(cc_switch_lib::get_claude_settings_path());
     if let Some(parent) = settings_path.parent() {
         std::fs::create_dir_all(parent).expect("create claude settings dir");
     }

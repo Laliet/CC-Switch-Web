@@ -49,6 +49,10 @@ function SkillsPageContent({ onClose: _onClose }: SkillsPageProps = {}) {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [repos, setRepos] = useState<SkillRepo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cacheStatus, setCacheStatus] = useState({
+    cacheHit: false,
+    refreshing: false,
+  });
   const loadSkillsRequestId = useRef(0);
   const [repoManagerOpen, setRepoManagerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -160,6 +164,20 @@ function SkillsPageContent({ onClose: _onClose }: SkillsPageProps = {}) {
     });
   }, [filteredSkills, groupByDepth, t]);
 
+  const statusLabel = useMemo(() => {
+    if (cacheStatus.refreshing) {
+      return t("skills.cacheStatus.refreshing", {
+        defaultValue: "Background refresh",
+      });
+    }
+    if (cacheStatus.cacheHit) {
+      return t("skills.cacheStatus.hit", {
+        defaultValue: "Cache hit",
+      });
+    }
+    return "";
+  }, [cacheStatus.cacheHit, cacheStatus.refreshing, t]);
+
   const hasActiveFilters =
     searchQuery.trim().length > 0 ||
     installFilter !== "all" ||
@@ -183,10 +201,16 @@ function SkillsPageContent({ onClose: _onClose }: SkillsPageProps = {}) {
     const requestId = ++loadSkillsRequestId.current;
     try {
       setLoading(true);
-      const { skills: data, warnings } = await skillsApi.getAll();
+      const {
+        skills: data,
+        warnings,
+        cacheHit = false,
+        refreshing = false,
+      } = await skillsApi.getAll();
       const isLatestRequest = requestId === loadSkillsRequestId.current;
       if (isLatestRequest) {
         setSkills(data);
+        setCacheStatus({ cacheHit, refreshing });
       }
       if (afterLoad) {
         afterLoad(data);
@@ -224,6 +248,7 @@ function SkillsPageContent({ onClose: _onClose }: SkillsPageProps = {}) {
 
       if (isLatestRequest) {
         console.error("Load skills failed:", error);
+        setCacheStatus({ cacheHit: false, refreshing: false });
         return { ok: false, errorMessage, formattedError };
       }
       return { ok: true, stale: true };
@@ -471,6 +496,11 @@ function SkillsPageContent({ onClose: _onClose }: SkillsPageProps = {}) {
         <p className="mt-1.5 text-sm text-gray-500 dark:text-gray-400">
           {t("skills.description")}
         </p>
+        {statusLabel && (
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            {statusLabel}
+          </p>
+        )}
 
         {/* 搜索与过滤 */}
         <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center">

@@ -3,6 +3,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import App from "@/App";
+import {
+  WEB_API_BASE_STORAGE_KEY,
+  WEB_AUTH_STORAGE_KEY,
+} from "@/lib/api/adapter";
 import { resetProviderState } from "../msw/state";
 import { emitTauriEvent } from "../msw/tauriMocks";
 
@@ -206,5 +210,43 @@ describe("App integration with MSW", () => {
 
     expect(toastErrorMock).not.toHaveBeenCalled();
     expect(toastSuccessMock).toHaveBeenCalled();
+  });
+
+  it("validates web credentials via buildWebApiUrl", async () => {
+    const originalTauri = (window as any).__TAURI__;
+    delete (window as any).__TAURI__;
+    const originalApiBase = window.localStorage.getItem(
+      WEB_API_BASE_STORAGE_KEY,
+    );
+    window.localStorage.removeItem(WEB_API_BASE_STORAGE_KEY);
+    window.sessionStorage.setItem(WEB_AUTH_STORAGE_KEY, "encoded");
+
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+    } as Response);
+
+    try {
+      renderApp();
+
+      await waitFor(() =>
+        expect(fetchMock).toHaveBeenCalledWith(
+          "/api/settings",
+          expect.objectContaining({
+            method: "GET",
+            credentials: "include",
+          }),
+        ),
+      );
+    } finally {
+      fetchMock.mockRestore();
+      window.sessionStorage.removeItem(WEB_AUTH_STORAGE_KEY);
+      if (originalApiBase) {
+        window.localStorage.setItem(WEB_API_BASE_STORAGE_KEY, originalApiBase);
+      } else {
+        window.localStorage.removeItem(WEB_API_BASE_STORAGE_KEY);
+      }
+      (window as any).__TAURI__ = originalTauri;
+    }
   });
 });

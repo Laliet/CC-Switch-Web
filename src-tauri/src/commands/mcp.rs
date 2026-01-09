@@ -56,6 +56,7 @@ pub async fn get_mcp_config(
     app: String,
 ) -> Result<McpConfigResponse, String> {
     let config_path = crate::config::get_app_config_path()
+        .map_err(|e| e.to_string())?
         .to_string_lossy()
         .to_string();
     let app_ty = AppType::from_str(&app).map_err(|e| e.to_string())?;

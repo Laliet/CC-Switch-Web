@@ -153,7 +153,7 @@ struct AppConfigLock {
 
 impl AppConfigLock {
     fn acquire() -> Result<Self, AppError> {
-        let lock_path = get_app_config_dir().join("config.json.lock");
+        let lock_path = get_app_config_dir()?.join("config.json.lock");
         if let Some(parent) = lock_path.parent() {
             std::fs::create_dir_all(parent).map_err(|e| AppError::io(parent, e))?;
         }
@@ -359,7 +359,7 @@ impl MultiAppConfig {
         let mut updated = false;
 
         if !has_skills_in_config {
-            let skills_path = get_app_config_dir().join("skills.json");
+            let skills_path = get_app_config_dir()?.join("skills.json");
             if skills_path.exists() {
                 match std::fs::read_to_string(&skills_path) {
                     Ok(content) => match serde_json::from_str::<SkillStore>(&content) {
@@ -414,7 +414,7 @@ impl MultiAppConfig {
 
     /// 从文件加载配置（仅支持 v2 结构）
     pub fn load() -> Result<Self, AppError> {
-        let config_path = get_app_config_path();
+        let config_path = get_app_config_path()?;
         let _lock = AppConfigLock::acquire()?;
 
         if !config_path.exists() {
@@ -460,10 +460,10 @@ impl MultiAppConfig {
     }
 
     fn save_unlocked(&self) -> Result<(), AppError> {
-        let config_path = get_app_config_path();
+        let config_path = get_app_config_path()?;
         // 先备份旧版（若存在）到 ~/.cc-switch/config.json.bak，再写入新内容
         if config_path.exists() {
-            let backup_path = get_app_config_dir().join("config.json.bak");
+            let backup_path = get_app_config_dir()?.join("config.json.bak");
             if let Err(e) = copy_file(&config_path, &backup_path) {
                 log::warn!("备份 config.json 到 .bak 失败: {e}");
             }
@@ -832,7 +832,7 @@ mod tests {
         assert!(prompt.enabled);
         assert_eq!(prompt.content, "# hello");
 
-        let config_path = crate::config::get_app_config_path();
+        let config_path = crate::config::get_app_config_path().expect("config path resolves");
         assert!(
             config_path.exists(),
             "auto import should persist config to disk"

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs, sync::RwLock};
+use std::{collections::HashMap, fs, path::PathBuf, sync::RwLock};
 
 use serde_json::json;
 
@@ -11,13 +11,17 @@ use cc_switch_lib::{
 mod support;
 use support::{ensure_test_home, reset_test_fs, test_mutex};
 
+fn unwrap_path(result: Result<PathBuf, AppError>) -> PathBuf {
+    result.expect("path should resolve")
+}
+
 #[test]
 fn import_default_config_claude_persists_provider() {
     let _guard = test_mutex().lock().expect("acquire test mutex");
     reset_test_fs();
     let home = ensure_test_home();
 
-    let settings_path = get_claude_settings_path();
+    let settings_path = unwrap_path(get_claude_settings_path());
     if let Some(parent) = settings_path.parent() {
         fs::create_dir_all(parent).expect("create claude settings dir");
     }
@@ -100,7 +104,7 @@ fn import_mcp_from_claude_creates_config_and_enables_servers() {
     reset_test_fs();
     let home = ensure_test_home();
 
-    let mcp_path = get_claude_mcp_path();
+    let mcp_path = unwrap_path(get_claude_mcp_path());
     let claude_json = json!({
         "mcpServers": {
             "echo": {
@@ -154,7 +158,7 @@ fn import_mcp_from_claude_invalid_json_preserves_state() {
     reset_test_fs();
     let home = ensure_test_home();
 
-    let mcp_path = get_claude_mcp_path();
+    let mcp_path = unwrap_path(get_claude_mcp_path());
     fs::write(&mcp_path, "{\"mcpServers\":") // 不完整 JSON
         .expect("seed invalid ~/.claude.json");
 
@@ -243,7 +247,7 @@ fn set_mcp_enabled_for_codex_writes_live_config() {
     );
     drop(guard);
 
-    let toml_path = cc_switch_lib::get_codex_config_path();
+    let toml_path = unwrap_path(cc_switch_lib::get_codex_config_path());
     assert!(
         toml_path.exists(),
         "enabling server should trigger sync to ~/.codex/config.toml"

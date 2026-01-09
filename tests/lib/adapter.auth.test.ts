@@ -101,14 +101,17 @@ describe("adapter auth (web mode)", () => {
     ).toBe(false);
   });
 
-  it("invoke rejects with clear error for read_live_provider_settings in web mode", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
+  it("invoke fetches live provider settings in web mode", async () => {
+    const fetchMock = mockFetchJson({ ok: true });
     const { invoke } = await importAdapter();
 
-    await expect(
-      invoke("read_live_provider_settings", { app: "claude" }),
-    ).rejects.toThrow("Web 端暂不支持读取 VSCode 实时配置");
-    expect(fetchSpy).not.toHaveBeenCalled();
+    await invoke("read_live_provider_settings", { app: "claude" });
+
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe("/api/providers/claude/live-settings");
+    expect(init).toBeDefined();
+    expect((init as RequestInit).method).toBe("GET");
+    expect((init as RequestInit).credentials).toBe("include");
   });
 
   it("invoke throws a clear error for unsupported commands in web mode", async () => {

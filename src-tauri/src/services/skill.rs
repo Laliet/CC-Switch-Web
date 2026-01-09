@@ -1,18 +1,20 @@
 use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, Utc};
-use reqwest::Client;
+use reqwest::{header, Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+use std::env;
 use std::fs;
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
 use std::time::Duration;
 use tokio::time::timeout;
 
-use crate::config::get_home_dir;
+use crate::config::{get_app_config_dir, get_home_dir, write_json_file};
 use crate::error::format_skill_error;
 
 const MAX_SKILL_SCAN_DEPTH: usize = 32;
+const DEFAULT_SKILL_CACHE_TTL_SECS: u64 = 0;
 
 /// 技能对象
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -91,6 +93,30 @@ pub struct SkillState {
     pub installed_at: DateTime<Utc>,
 }
 
+/// 仓库技能缓存
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SkillRepoCache {
+    /// 缓存的技能列表
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub skills: Vec<Skill>,
+    /// 缓存时间
+    #[serde(rename = "fetchedAt", alias = "cachedAt")]
+    pub fetched_at: DateTime<Utc>,
+    /// ETag
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub etag: Option<String>,
+    /// Last-Modified
+    #[serde(rename = "lastModified", skip_serializing_if = "Option::is_none")]
+    pub last_modified: Option<String>,
+}
+
+/// 缓存存储结构
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct SkillCacheStore {
+    #[serde(default)]
+    pub repos: HashMap<String, SkillRepoCache>,
+}
+
 /// 持久化存储结构
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SkillStore {
@@ -98,6 +124,17 @@ pub struct SkillStore {
     pub skills: HashMap<String, SkillState>,
     /// 仓库列表
     pub repos: Vec<SkillRepo>,
+    /// 仓库缓存
+    #[serde(default, rename = "repoCache", skip_serializing_if = "HashMap::is_empty")]
+    pub repo_cache: HashMap<String, SkillRepoCache>,
+}
+
+#[derive(Debug, Clone)]
+pub struct SkillListResult {
+    pub skills: Vec<Skill>,
+    pub warnings: Vec<String>,
+    pub cache_hit: bool,
+    pub refreshing: bool,
 }
 
 impl Default for SkillStore {
@@ -127,6 +164,7 @@ impl Default for SkillStore {
                     skills_path: Some("skills".to_string()), // 扫描 skills 子目录
                 },
             ],
+            repo_cache: HashMap::new(),
         }
     }
 }
@@ -147,6 +185,40 @@ struct WorkflowMetadata {
 pub struct SkillService {
     http_client: Client,
     install_dir: PathBuf,
+}
+
+#[derive(Debug, Clone)]
+struct RepoCacheHeaders {
+    etag: Option<String>,
+    last_modified: Option<String>,
+}
+
+struct DownloadedRepo {
+    temp_dir: tempfile::TempDir,
+    etag: Option<String>,
+    last_modified: Option<String>,
+}
+
+enum DownloadOutcome {
+    Downloaded {
+        etag: Option<String>,
+        last_modified: Option<String>,
+    },
+    NotModified,
+}
+
+enum RepoDownloadResult {
+    Downloaded(DownloadedRepo),
+    NotModified,
+}
+
+enum RepoFetchOutcome {
+    Updated {
+        skills: Vec<Skill>,
+        etag: Option<String>,
+        last_modified: Option<String>,
+    },
+    NotModified,
 }
 
 impl SkillService {
@@ -276,30 +348,205 @@ impl SkillService {
         (directory, parent_path, depth, leaf_name)
     }
 
+    fn cache_key(repo: &SkillRepo) -> String {
+        let raw_path = repo.skills_path.as_deref().unwrap_or("");
+        let normalized_path = raw_path
+            .trim()
+            .trim_matches(|c| c == '/' || c == '\\')
+            .replace('\\', "/");
+        if normalized_path.is_empty() {
+            format!("{}/{}/{}", repo.owner, repo.name, repo.branch)
+        } else {
+            format!(
+                "{}/{}/{}:{}",
+                repo.owner, repo.name, repo.branch, normalized_path
+            )
+        }
+    }
+
+    fn cache_ttl() -> Duration {
+        let default_ttl = Duration::from_secs(DEFAULT_SKILL_CACHE_TTL_SECS);
+        let raw = match env::var("CC_SWITCH_SKILLS_CACHE_TTL_SECS") {
+            Ok(value) => value,
+            Err(_) => return default_ttl,
+        };
+
+        match raw.trim().parse::<u64>() {
+            Ok(value) => Duration::from_secs(value),
+            Err(_) => {
+                log::warn!(
+                    "环境变量 CC_SWITCH_SKILLS_CACHE_TTL_SECS 无法解析: {}，使用默认值 {} 秒",
+                    raw,
+                    DEFAULT_SKILL_CACHE_TTL_SECS
+                );
+                default_ttl
+            }
+        }
+    }
+
+    fn is_cache_fresh(fetched_at: DateTime<Utc>) -> bool {
+        let ttl_secs = Self::cache_ttl().as_secs() as i64;
+        if ttl_secs == 0 {
+            return false;
+        }
+        let elapsed = Utc::now().signed_duration_since(fetched_at);
+        elapsed <= chrono::Duration::seconds(ttl_secs)
+    }
+
+    fn load_repo_cache(&self) -> SkillCacheStore {
+        let cache_path = match get_app_config_dir() {
+            Ok(dir) => dir.join("skills-cache.json"),
+            Err(e) => {
+                log::warn!("获取技能缓存目录失败: {}", e);
+                return SkillCacheStore::default();
+            }
+        };
+
+        let content = match fs::read_to_string(&cache_path) {
+            Ok(content) => content,
+            Err(e) => {
+                if e.kind() != ErrorKind::NotFound {
+                    log::warn!("读取技能缓存文件 {} 失败: {}", cache_path.display(), e);
+                }
+                return SkillCacheStore::default();
+            }
+        };
+
+        match serde_json::from_str::<SkillCacheStore>(&content) {
+            Ok(store) => store,
+            Err(e) => {
+                log::warn!("解析技能缓存文件 {} 失败: {}", cache_path.display(), e);
+                SkillCacheStore::default()
+            }
+        }
+    }
+
+    fn save_repo_cache(&self, cache_store: &SkillCacheStore) {
+        let cache_path = match get_app_config_dir() {
+            Ok(dir) => dir.join("skills-cache.json"),
+            Err(e) => {
+                log::warn!("获取技能缓存目录失败: {}", e);
+                return;
+            }
+        };
+
+        if let Err(e) = write_json_file(&cache_path, cache_store) {
+            log::warn!("写入技能缓存文件 {} 失败: {}", cache_path.display(), e);
+        }
+    }
+
     /// 列出所有技能
-    pub async fn list_skills(&self, repos: Vec<SkillRepo>) -> Result<(Vec<Skill>, Vec<String>)> {
+    pub async fn list_skills(
+        &self,
+        repos: Vec<SkillRepo>,
+        repo_cache: &mut HashMap<String, SkillRepoCache>,
+    ) -> Result<SkillListResult> {
         let mut skills = Vec::new();
         let mut warnings = Vec::new();
+        let mut cache_store = self.load_repo_cache();
+        let mut cache_updated = false;
 
-        // 仅使用启用的仓库，并行获取技能列表，避免单个无效仓库拖慢整体刷新
-        let enabled_repos: Vec<SkillRepo> = repos.into_iter().filter(|repo| repo.enabled).collect();
-
-        let fetch_tasks = enabled_repos
-            .iter()
-            .map(|repo| self.fetch_repo_skills(repo));
-
-        let results: Vec<Result<Vec<Skill>>> = futures::future::join_all(fetch_tasks).await;
-
-        for (repo, result) in enabled_repos.into_iter().zip(results.into_iter()) {
-            match result {
-                Ok(repo_skills) => skills.extend(repo_skills),
-                Err(e) => {
-                    let warning = format!("获取仓库 {}/{} 失败: {}", repo.owner, repo.name, e);
-                    log::warn!("{warning}");
-                    warnings.push(warning);
+        if !repo_cache.is_empty() {
+            for (key, entry) in repo_cache.iter() {
+                let should_replace = match cache_store.repos.get(key) {
+                    None => true,
+                    Some(existing) => entry.fetched_at > existing.fetched_at,
+                };
+                if should_replace {
+                    cache_store.repos.insert(key.clone(), entry.clone());
+                    cache_updated = true;
                 }
             }
         }
+
+        // 仅使用启用的仓库，并行获取技能列表，避免单个无效仓库拖慢整体刷新
+        let enabled_repos: Vec<SkillRepo> = repos.into_iter().filter(|repo| repo.enabled).collect();
+        let mut fetch_tasks = Vec::new();
+
+        for repo in enabled_repos.iter().cloned() {
+            let cache_key = Self::cache_key(&repo);
+            let cached_entry = cache_store.repos.get(&cache_key).cloned();
+
+            if let Some(entry) = cached_entry.as_ref() {
+                if Self::is_cache_fresh(entry.fetched_at) {
+                    skills.extend(entry.skills.clone());
+                    continue;
+                }
+            }
+
+            fetch_tasks.push(async move {
+                let result = self
+                    .fetch_repo_skills_with_cache(&repo, cached_entry.as_ref())
+                    .await;
+                (repo, cache_key, cached_entry, result)
+            });
+        }
+
+        let refreshing = !fetch_tasks.is_empty();
+        let cache_hit = !refreshing;
+
+        let results: Vec<(SkillRepo, String, Option<SkillRepoCache>, Result<RepoFetchOutcome>)> =
+            futures::future::join_all(fetch_tasks).await;
+
+        for (repo, cache_key, cached_entry, result) in results {
+            match result {
+                Ok(outcome) => match outcome {
+                    RepoFetchOutcome::Updated {
+                        skills: repo_skills,
+                        etag,
+                        last_modified,
+                    } => {
+                        let fetched_at = Utc::now();
+                        skills.extend(repo_skills.clone());
+                        cache_store.repos.insert(
+                            cache_key,
+                            SkillRepoCache {
+                                fetched_at,
+                                skills: repo_skills,
+                                etag,
+                                last_modified,
+                            },
+                        );
+                        cache_updated = true;
+                    }
+                    RepoFetchOutcome::NotModified => {
+                        if let Some(mut entry) = cached_entry {
+                            entry.fetched_at = Utc::now();
+                            skills.extend(entry.skills.clone());
+                            cache_store.repos.insert(cache_key, entry);
+                            cache_updated = true;
+                        } else {
+                            let warning =
+                                format!("仓库 {}/{} 返回 304，但本地没有缓存", repo.owner, repo.name);
+                            log::warn!("{warning}");
+                            warnings.push(warning);
+                        }
+                    }
+                },
+                Err(e) => {
+                    if let Some(entry) = cached_entry {
+                        let warning = format!(
+                            "获取仓库 {}/{} 失败: {}，使用缓存",
+                            repo.owner, repo.name, e
+                        );
+                        log::warn!("{warning}");
+                        warnings.push(warning);
+                        skills.extend(entry.skills);
+                    } else {
+                        let warning = format!("获取仓库 {}/{} 失败: {}", repo.owner, repo.name, e);
+                        log::warn!("{warning}");
+                        warnings.push(warning);
+                    }
+                }
+            }
+        }
+
+        if cache_updated {
+            self.save_repo_cache(&cache_store);
+        }
+
+        repo_cache.clear();
+        repo_cache.extend(cache_store.repos.clone());
 
         // 合并本地技能
         self.merge_local_skills(&mut skills)?;
@@ -308,26 +555,51 @@ impl SkillService {
         Self::deduplicate_skills(&mut skills);
         skills.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
 
-        Ok((skills, warnings))
+        Ok(SkillListResult {
+            skills,
+            warnings,
+            cache_hit,
+            refreshing,
+        })
     }
 
     /// 从仓库获取技能列表
-    async fn fetch_repo_skills(&self, repo: &SkillRepo) -> Result<Vec<Skill>> {
+    async fn fetch_repo_skills_with_cache(
+        &self,
+        repo: &SkillRepo,
+        cache_entry: Option<&SkillRepoCache>,
+    ) -> Result<RepoFetchOutcome> {
+        let cache_headers = cache_entry.map(|entry| RepoCacheHeaders {
+            etag: entry.etag.clone(),
+            last_modified: entry.last_modified.clone(),
+        });
+
         // 为单个仓库加载增加整体超时，避免无效链接长时间阻塞
-        let temp_dir = timeout(Duration::from_secs(180), self.download_repo(repo))
-            .await
-            .map_err(|_| {
-                anyhow!(format_skill_error(
-                    "DOWNLOAD_TIMEOUT",
-                    &[
-                        ("owner", &repo.owner),
-                        ("name", &repo.name),
-                        ("timeout", "180")
-                    ],
-                    Some("checkNetwork"),
-                ))
-            })??;
-        let temp_path = temp_dir.path().to_path_buf();
+        let download_result = timeout(
+            Duration::from_secs(180),
+            self.download_repo(repo, cache_headers.as_ref()),
+        )
+        .await
+        .map_err(|_| {
+            anyhow!(format_skill_error(
+                "DOWNLOAD_TIMEOUT",
+                &[
+                    ("owner", &repo.owner),
+                    ("name", &repo.name),
+                    ("timeout", "180")
+                ],
+                Some("checkNetwork"),
+            ))
+        })??;
+
+        let download = match download_result {
+            RepoDownloadResult::NotModified => {
+                return Ok(RepoFetchOutcome::NotModified);
+            }
+            RepoDownloadResult::Downloaded(download) => download,
+        };
+
+        let temp_path = download.temp_dir.path().to_path_buf();
         let mut skills = Vec::new();
 
         let normalized_skills_path = match repo.skills_path.as_ref() {
@@ -351,7 +623,11 @@ impl SkillService {
                     repo.name,
                     repo.skills_path.as_deref().unwrap_or_default()
                 );
-                return Ok(skills);
+                return Ok(RepoFetchOutcome::Updated {
+                    skills,
+                    etag: download.etag,
+                    last_modified: download.last_modified,
+                });
             }
             subdir
         } else {
@@ -367,7 +643,11 @@ impl SkillService {
             &mut skills,
         )?;
 
-        Ok(skills)
+        Ok(RepoFetchOutcome::Updated {
+            skills,
+            etag: download.etag,
+            last_modified: download.last_modified,
+        })
     }
 
     /// 递归扫描目录树，查找所有 SKILL.md
@@ -822,7 +1102,11 @@ impl SkillService {
     }
 
     /// 下载仓库
-    async fn download_repo(&self, repo: &SkillRepo) -> Result<tempfile::TempDir> {
+    async fn download_repo(
+        &self,
+        repo: &SkillRepo,
+        cache_headers: Option<&RepoCacheHeaders>,
+    ) -> Result<RepoDownloadResult> {
         // 尝试多个分支
         let branches = if repo.branch.is_empty() {
             vec!["main", "master"]
@@ -838,24 +1122,52 @@ impl SkillService {
                 repo.owner, repo.name, branch
             );
 
-            match self.download_and_extract(&url, temp_dir.path()).await {
-                Ok(_) => {
-                    return Ok(temp_dir);
+            match self
+                .download_and_extract(&url, temp_dir.path(), cache_headers)
+                .await
+            {
+                Ok(DownloadOutcome::Downloaded { etag, last_modified }) => {
+                    return Ok(RepoDownloadResult::Downloaded(DownloadedRepo {
+                        temp_dir,
+                        etag,
+                        last_modified,
+                    }));
+                }
+                Ok(DownloadOutcome::NotModified) => {
+                    return Ok(RepoDownloadResult::NotModified);
                 }
                 Err(e) => {
                     last_error = Some(e);
                     continue;
                 }
-            }
+            };
         }
 
         Err(last_error.unwrap_or_else(|| anyhow::anyhow!("所有分支下载失败")))
     }
 
     /// 下载并解压 ZIP
-    async fn download_and_extract(&self, url: &str, dest: &Path) -> Result<()> {
+    async fn download_and_extract(
+        &self,
+        url: &str,
+        dest: &Path,
+        cache_headers: Option<&RepoCacheHeaders>,
+    ) -> Result<DownloadOutcome> {
         // 下载 ZIP
-        let response = self.http_client.get(url).send().await?;
+        let mut request = self.http_client.get(url);
+        if let Some(headers) = cache_headers {
+            if let Some(etag) = headers.etag.as_deref() {
+                request = request.header(header::IF_NONE_MATCH, etag);
+            }
+            if let Some(last_modified) = headers.last_modified.as_deref() {
+                request = request.header(header::IF_MODIFIED_SINCE, last_modified);
+            }
+        }
+
+        let response = request.send().await?;
+        if response.status() == StatusCode::NOT_MODIFIED {
+            return Ok(DownloadOutcome::NotModified);
+        }
         if !response.status().is_success() {
             let status = response.status().as_u16().to_string();
             return Err(anyhow::anyhow!(format_skill_error(
@@ -870,11 +1182,22 @@ impl SkillService {
             )));
         }
 
+        let etag = response
+            .headers()
+            .get(header::ETAG)
+            .and_then(|value| value.to_str().ok())
+            .map(|value| value.to_string());
+        let last_modified = response
+            .headers()
+            .get(header::LAST_MODIFIED)
+            .and_then(|value| value.to_str().ok())
+            .map(|value| value.to_string());
+
         let bytes = response.bytes().await?.to_vec();
         let dest = dest.to_path_buf();
         tokio::task::spawn_blocking(move || Self::extract_zip_to_dir(bytes, dest)).await??;
 
-        Ok(())
+        Ok(DownloadOutcome::Downloaded { etag, last_modified })
     }
 
     fn extract_zip_to_dir(bytes: Vec<u8>, dest: PathBuf) -> Result<()> {
@@ -959,7 +1282,7 @@ impl SkillService {
         // 下载仓库时增加总超时，防止无效链接导致长时间卡住安装过程
         let temp_dir = timeout(
             std::time::Duration::from_secs(180),
-            self.download_repo(&repo),
+            self.download_repo(&repo, None),
         )
         .await
         .map_err(|_| {
@@ -973,6 +1296,16 @@ impl SkillService {
                 Some("checkNetwork"),
             ))
         })??;
+        let temp_dir = match temp_dir {
+            RepoDownloadResult::Downloaded(download) => download.temp_dir,
+            RepoDownloadResult::NotModified => {
+                return Err(anyhow::anyhow!(format_skill_error(
+                    "DOWNLOAD_FAILED",
+                    &[("status", "304")],
+                    Some("checkNetwork"),
+                )));
+            }
+        };
         let temp_path = temp_dir.path().to_path_buf();
 
         // 根据 skills_path 确定源目录路径

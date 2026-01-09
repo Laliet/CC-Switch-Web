@@ -1,5 +1,5 @@
 use serde_json::json;
-use std::sync::RwLock;
+use std::{path::PathBuf, sync::RwLock};
 
 use cc_switch_lib::{
     get_claude_settings_path, read_json_file, write_codex_live_atomic, AppError, AppState, AppType,
@@ -9,6 +9,10 @@ use cc_switch_lib::{
 #[path = "support.rs"]
 mod support;
 use support::{ensure_test_home, reset_test_fs, test_mutex};
+
+fn unwrap_path(result: Result<PathBuf, AppError>) -> PathBuf {
+    result.expect("path should resolve")
+}
 
 fn sanitize_provider_name(name: &str) -> String {
     name.chars()
@@ -88,16 +92,16 @@ command = "say"
     ProviderService::switch(&state, AppType::Codex, "new-provider")
         .expect("switch provider should succeed");
 
-    let auth_value: serde_json::Value =
-        read_json_file(&cc_switch_lib::get_codex_auth_path()).expect("read auth.json");
+    let auth_path = unwrap_path(cc_switch_lib::get_codex_auth_path());
+    let auth_value: serde_json::Value = read_json_file(&auth_path).expect("read auth.json");
     assert_eq!(
         auth_value.get("OPENAI_API_KEY").and_then(|v| v.as_str()),
         Some("fresh-key"),
         "live auth.json should reflect new provider"
     );
 
-    let config_text =
-        std::fs::read_to_string(cc_switch_lib::get_codex_config_path()).expect("read config.toml");
+    let config_path = unwrap_path(cc_switch_lib::get_codex_config_path());
+    let config_text = std::fs::read_to_string(&config_path).expect("read config.toml");
     assert!(
         config_text.contains("mcp_servers.echo-server"),
         "config.toml should contain synced MCP servers"
@@ -327,7 +331,7 @@ fn provider_service_switch_claude_updates_live_and_state() {
     reset_test_fs();
     let _home = ensure_test_home();
 
-    let settings_path = get_claude_settings_path();
+    let settings_path = unwrap_path(get_claude_settings_path());
     if let Some(parent) = settings_path.parent() {
         std::fs::create_dir_all(parent).expect("create claude settings dir");
     }
@@ -410,6 +414,141 @@ fn provider_service_switch_claude_updates_live_and_state() {
     assert_eq!(
         legacy_provider.settings_config, legacy_live,
         "previous provider should receive backfilled live config"
+    );
+}
+
+#[test]
+fn sync_default_provider_from_live_preserves_current_and_category() {
+    let _guard = test_mutex().lock().expect("acquire test mutex");
+    reset_test_fs();
+    let _home = ensure_test_home();
+
+    let mut config = MultiAppConfig::default();
+    {
+        let manager = config
+            .get_manager_mut(&AppType::Claude)
+            .expect("claude manager");
+        manager.current = "current-provider".to_string();
+        manager.providers.insert(
+            "current-provider".to_string(),
+            Provider::with_id(
+                "current-provider".to_string(),
+                "Current".to_string(),
+                json!({ "env": { "ANTHROPIC_API_KEY": "current-key" } }),
+                None,
+            ),
+        );
+        let mut default_provider = Provider::with_id(
+            "default".to_string(),
+            "Default".to_string(),
+            json!({ "model": "old-model" }),
+            None,
+        );
+        default_provider.category = Some("official".to_string());
+        manager
+            .providers
+            .insert("default".to_string(), default_provider);
+    }
+
+    let state = AppState {
+        config: RwLock::new(config),
+    };
+
+    ProviderService::sync_default_provider_from_live(
+        &state,
+        AppType::Claude,
+        json!({ "model": "claude-3" }),
+    )
+    .expect("sync default provider from live should succeed");
+
+    let guard = state
+        .config
+        .read()
+        .expect("read config after sync default");
+    let manager = guard
+        .get_manager(&AppType::Claude)
+        .expect("claude manager after sync");
+    assert_eq!(
+        manager.current, "current-provider",
+        "current provider should remain unchanged"
+    );
+    let default_provider = manager
+        .providers
+        .get("default")
+        .expect("default provider should exist");
+    assert_eq!(
+        default_provider.settings_config,
+        json!({ "model": "claude-3" }),
+        "default provider settings should be updated from live"
+    );
+    assert_eq!(
+        default_provider.category.as_deref(),
+        Some("official"),
+        "default provider category should be preserved"
+    );
+}
+
+#[test]
+fn sync_default_provider_from_live_creates_default_when_missing() {
+    let _guard = test_mutex().lock().expect("acquire test mutex");
+    reset_test_fs();
+    let _home = ensure_test_home();
+
+    let mut config = MultiAppConfig::default();
+    {
+        let manager = config
+            .get_manager_mut(&AppType::Claude)
+            .expect("claude manager");
+        manager.current = "current-provider".to_string();
+        manager.providers.insert(
+            "current-provider".to_string(),
+            Provider::with_id(
+                "current-provider".to_string(),
+                "Current".to_string(),
+                json!({ "env": { "ANTHROPIC_API_KEY": "current-key" } }),
+                None,
+            ),
+        );
+    }
+
+    let state = AppState {
+        config: RwLock::new(config),
+    };
+
+    ProviderService::sync_default_provider_from_live(
+        &state,
+        AppType::Claude,
+        json!({ "model": "claude-3" }),
+    )
+    .expect("sync default provider from live should succeed");
+
+    let guard = state
+        .config
+        .read()
+        .expect("read config after sync default");
+    let manager = guard
+        .get_manager(&AppType::Claude)
+        .expect("claude manager after sync");
+    assert_eq!(
+        manager.current, "current-provider",
+        "current provider should remain unchanged"
+    );
+    let default_provider = manager
+        .providers
+        .get("default")
+        .expect("default provider should be created");
+    assert_eq!(
+        default_provider.category.as_deref(),
+        Some("custom"),
+        "default provider should be created as custom"
+    );
+    assert_eq!(
+        default_provider
+            .settings_config
+            .get("model")
+            .and_then(|v| v.as_str()),
+        Some("claude-3"),
+        "default provider settings should include model from live"
     );
 }
 

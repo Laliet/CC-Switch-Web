@@ -47,7 +47,7 @@ impl LiveSnapshot {
     fn restore(&self) -> Result<(), AppError> {
         match self {
             LiveSnapshot::Claude { settings } => {
-                let path = get_claude_settings_path();
+                let path = get_claude_settings_path()?;
                 if let Some(value) = settings {
                     write_json_file(&path, value)?;
                 } else if path.exists() {
@@ -55,8 +55,8 @@ impl LiveSnapshot {
                 }
             }
             LiveSnapshot::Codex { auth, config } => {
-                let auth_path = get_codex_auth_path();
-                let config_path = get_codex_config_path();
+                let auth_path = get_codex_auth_path()?;
+                let config_path = get_codex_config_path()?;
                 if let Some(value) = auth {
                     write_json_file(&auth_path, value)?;
                 } else if auth_path.exists() {
@@ -74,14 +74,14 @@ impl LiveSnapshot {
                 use crate::gemini_config::{
                     get_gemini_env_path, get_gemini_settings_path, write_gemini_env_atomic,
                 };
-                let path = get_gemini_env_path();
+                let path = get_gemini_env_path()?;
                 if let Some(env_map) = env {
                     write_gemini_env_atomic(env_map)?;
                 } else if path.exists() {
                     delete_file(&path)?;
                 }
 
-                let settings_path = get_gemini_settings_path();
+                let settings_path = get_gemini_settings_path()?;
                 match self {
                     LiveSnapshot::Gemini {
                         config: Some(cfg), ..
@@ -579,7 +579,7 @@ impl ProviderService {
     ) -> Result<(), AppError> {
         match app_type {
             AppType::Claude => {
-                let settings_path = get_claude_settings_path();
+                let settings_path = get_claude_settings_path()?;
                 if !settings_path.exists() {
                     return Err(AppError::localized(
                         "claude.live.missing",
@@ -600,7 +600,7 @@ impl ProviderService {
                 state.save()?;
             }
             AppType::Codex => {
-                let auth_path = get_codex_auth_path();
+                let auth_path = get_codex_auth_path()?;
                 if !auth_path.exists() {
                     return Err(AppError::localized(
                         "codex.live.missing",
@@ -632,7 +632,7 @@ impl ProviderService {
                     env_to_json, get_gemini_env_path, get_gemini_settings_path, read_gemini_env,
                 };
 
-                let env_path = get_gemini_env_path();
+                let env_path = get_gemini_env_path()?;
                 if !env_path.exists() {
                     return Err(AppError::localized(
                         "gemini.live.missing",
@@ -643,7 +643,7 @@ impl ProviderService {
                 let env_map = read_gemini_env()?;
                 let mut live_after = env_to_json(&env_map);
 
-                let settings_path = get_gemini_settings_path();
+                let settings_path = get_gemini_settings_path()?;
                 let config_value = if settings_path.exists() {
                     read_json_file(&settings_path)?
                 } else {
@@ -671,7 +671,7 @@ impl ProviderService {
     fn capture_live_snapshot(app_type: &AppType) -> Result<LiveSnapshot, AppError> {
         match app_type {
             AppType::Claude => {
-                let path = get_claude_settings_path();
+                let path = get_claude_settings_path()?;
                 let settings = if path.exists() {
                     Some(read_json_file::<Value>(&path)?)
                 } else {
@@ -680,8 +680,8 @@ impl ProviderService {
                 Ok(LiveSnapshot::Claude { settings })
             }
             AppType::Codex => {
-                let auth_path = get_codex_auth_path();
-                let config_path = get_codex_config_path();
+                let auth_path = get_codex_auth_path()?;
+                let config_path = get_codex_config_path()?;
                 let auth = if auth_path.exists() {
                     Some(read_json_file::<Value>(&auth_path)?)
                 } else {
@@ -702,13 +702,13 @@ impl ProviderService {
                 use crate::gemini_config::{
                     get_gemini_env_path, get_gemini_settings_path, read_gemini_env,
                 };
-                let path = get_gemini_env_path();
+                let path = get_gemini_env_path()?;
                 let env = if path.exists() {
                     Some(read_gemini_env()?)
                 } else {
                     None
                 };
-                let settings_path = get_gemini_settings_path();
+                let settings_path = get_gemini_settings_path()?;
                 let config = if settings_path.exists() {
                     Some(read_json_file(&settings_path)?)
                 } else {
@@ -896,7 +896,7 @@ impl ProviderService {
 
         let settings_config = match app_type {
             AppType::Codex => {
-                let auth_path = get_codex_auth_path();
+                let auth_path = get_codex_auth_path()?;
                 if !auth_path.exists() {
                     return Err(AppError::localized(
                         "codex.live.missing",
@@ -909,7 +909,7 @@ impl ProviderService {
                 json!({ "auth": auth, "config": config_str })
             }
             AppType::Claude => {
-                let settings_path = get_claude_settings_path();
+                let settings_path = get_claude_settings_path()?;
                 if !settings_path.exists() {
                     return Err(AppError::localized(
                         "claude.live.missing",
@@ -927,7 +927,7 @@ impl ProviderService {
                 };
 
                 // 读取 .env 文件（环境变量）；如果缺失则使用空配置，避免直接报错
-                let env_path = get_gemini_env_path();
+                let env_path = get_gemini_env_path()?;
                 if !env_path.exists() {
                     log::warn!("Gemini .env file missing when importing defaults; using empty env");
                 }
@@ -937,7 +937,7 @@ impl ProviderService {
                 let env_obj = env_json.get("env").cloned().unwrap_or_else(|| json!({}));
 
                 // 读取 settings.json 文件（MCP 配置等）
-                let settings_path = get_gemini_settings_path();
+                let settings_path = get_gemini_settings_path()?;
                 let config_obj = if settings_path.exists() {
                     read_json_file(&settings_path)?
                 } else {
@@ -975,11 +975,49 @@ impl ProviderService {
         Ok(())
     }
 
+    /// Sync live settings into the default provider without switching current.
+    pub fn sync_default_provider_from_live(
+        state: &AppState,
+        app_type: AppType,
+        mut live_settings: Value,
+    ) -> Result<(), AppError> {
+        if matches!(app_type, AppType::Claude) {
+            let _ = Self::normalize_claude_models_in_value(&mut live_settings);
+        }
+
+        {
+            let mut config = state.config.write().map_err(AppError::from)?;
+            let manager = config
+                .get_manager_mut(&app_type)
+                .ok_or_else(|| Self::app_not_found(&app_type))?;
+            if let Some(existing) = manager.providers.get_mut("default") {
+                existing.settings_config = live_settings;
+                if existing.category.is_none() {
+                    existing.category = Some("custom".to_string());
+                }
+            } else {
+                let mut provider = Provider::with_id(
+                    "default".to_string(),
+                    "default".to_string(),
+                    live_settings,
+                    None,
+                );
+                provider.category = Some("custom".to_string());
+                manager
+                    .providers
+                    .insert(provider.id.clone(), provider);
+            }
+        }
+
+        state.save()?;
+        Ok(())
+    }
+
     /// 读取当前 live 配置
     pub fn read_live_settings(app_type: AppType) -> Result<Value, AppError> {
         match app_type {
             AppType::Codex => {
-                let auth_path = get_codex_auth_path();
+                let auth_path = get_codex_auth_path()?;
                 if !auth_path.exists() {
                     return Err(AppError::localized(
                         "codex.auth.missing",
@@ -992,7 +1030,7 @@ impl ProviderService {
                 Ok(json!({ "auth": auth, "config": cfg_text }))
             }
             AppType::Claude => {
-                let path = get_claude_settings_path();
+                let path = get_claude_settings_path()?;
                 if !path.exists() {
                     return Err(AppError::localized(
                         "claude.live.missing",
@@ -1008,7 +1046,7 @@ impl ProviderService {
                 };
 
                 // 读取 .env 文件（环境变量）；缺失时返回空配置，避免 400
-                let env_path = get_gemini_env_path();
+                let env_path = get_gemini_env_path()?;
                 if !env_path.exists() {
                     log::warn!("Gemini .env file not found when reading live settings; returning empty env");
                 }
@@ -1017,7 +1055,7 @@ impl ProviderService {
                 let env_obj = env_json.get("env").cloned().unwrap_or_else(|| json!({}));
 
                 // 读取 settings.json 文件（MCP 配置等）
-                let settings_path = get_gemini_settings_path();
+                let settings_path = get_gemini_settings_path()?;
                 let config_obj = if settings_path.exists() {
                     read_json_file(&settings_path)?
                 } else {
@@ -1394,13 +1432,13 @@ impl ProviderService {
             return Ok(());
         }
 
-        let auth_path = get_codex_auth_path();
+        let auth_path = get_codex_auth_path()?;
         if !auth_path.exists() {
             return Ok(());
         }
 
         let auth: Value = read_json_file(&auth_path)?;
-        let config_path = get_codex_config_path();
+        let config_path = get_codex_config_path()?;
         let config_text = if config_path.exists() {
             std::fs::read_to_string(&config_path).map_err(|e| AppError::io(&config_path, e))?
         } else {
@@ -1499,7 +1537,7 @@ impl ProviderService {
         config: &mut MultiAppConfig,
         next_provider: &str,
     ) -> Result<(), AppError> {
-        let settings_path = get_claude_settings_path();
+        let settings_path = get_claude_settings_path()?;
         if !settings_path.exists() {
             return Ok(());
         }
@@ -1531,7 +1569,7 @@ impl ProviderService {
             env_to_json, get_gemini_env_path, get_gemini_settings_path, read_gemini_env,
         };
 
-        let env_path = get_gemini_env_path();
+        let env_path = get_gemini_env_path()?;
         if !env_path.exists() {
             return Ok(());
         }
@@ -1547,7 +1585,7 @@ impl ProviderService {
         let env_map = read_gemini_env()?;
         let mut live = env_to_json(&env_map);
 
-        let settings_path = get_gemini_settings_path();
+        let settings_path = get_gemini_settings_path()?;
         let config_value = if settings_path.exists() {
             read_json_file(&settings_path)?
         } else {
@@ -1567,7 +1605,7 @@ impl ProviderService {
     }
 
     fn write_claude_live(provider: &Provider) -> Result<(), AppError> {
-        let settings_path = get_claude_settings_path();
+        let settings_path = get_claude_settings_path()?;
         let mut content = provider.settings_config.clone();
         let _ = Self::normalize_claude_models_in_value(&mut content);
         write_json_file(&settings_path, &content)?;
@@ -1604,7 +1642,7 @@ impl ProviderService {
         };
 
         if config_to_write.is_none() {
-            let settings_path = get_gemini_settings_path();
+            let settings_path = get_gemini_settings_path()?;
             if settings_path.exists() {
                 config_to_write = Some(read_json_file(&settings_path)?);
             }
@@ -1629,7 +1667,7 @@ impl ProviderService {
         }
 
         if let Some(config_value) = config_to_write {
-            let settings_path = get_gemini_settings_path();
+            let settings_path = get_gemini_settings_path()?;
             write_json_file(&settings_path, &config_value)?;
         }
 
@@ -1922,8 +1960,9 @@ impl ProviderService {
             AppType::Claude => {
                 // 兼容旧版本：历史上会在 Claude 目录内为每个供应商生成 settings-*.json 副本
                 // 这里继续清理这些遗留文件，避免堆积过期配置。
-                let by_name = get_provider_config_path(provider_id, Some(&provider_snapshot.name));
-                let by_id = get_provider_config_path(provider_id, None);
+                let by_name =
+                    get_provider_config_path(provider_id, Some(&provider_snapshot.name))?;
+                let by_id = get_provider_config_path(provider_id, None)?;
                 delete_file(&by_name)?;
                 delete_file(&by_id)?;
             }

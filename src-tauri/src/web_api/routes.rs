@@ -36,6 +36,10 @@ fn provider_routes() -> Router<SharedState> {
         )
         .route("/:app/current", get(providers::current_provider))
         .route(
+            "/:app/live-settings",
+            get(providers::read_live_provider_settings),
+        )
+        .route(
             "/:app/:id",
             put(providers::update_provider).delete(providers::delete_provider),
         )

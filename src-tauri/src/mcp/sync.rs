@@ -127,7 +127,7 @@ pub fn sync_enabled_to_codex(config: &MultiAppConfig) -> Result<(), AppError> {
 
     // 6) 写回（仅改 TOML，不触碰 auth.json）；toml_edit 会尽量保留未改区域的注释/空白/顺序
     let new_text = doc.to_string();
-    let path = crate::codex_config::get_codex_config_path();
+    let path = crate::codex_config::get_codex_config_path()?;
     write_text_file(&path, &new_text)?;
     Ok(())
 }
@@ -173,7 +173,7 @@ pub fn sync_single_server_to_codex(
     validate_server_spec(server_spec)?;
 
     // 读取现有的 config.toml
-    let config_path = crate::codex_config::get_codex_config_path();
+    let config_path = crate::codex_config::get_codex_config_path()?;
 
     let mut doc = if config_path.exists() {
         let content =
@@ -250,7 +250,7 @@ pub fn remove_server_from_claude(id: &str) -> Result<(), AppError> {
 /// 从 Codex live 配置中移除单个 MCP 服务器
 /// 从正确的 [mcp_servers] 表中删除，同时清理可能存在于错误位置 [mcp.servers] 的数据
 pub fn remove_server_from_codex(id: &str) -> Result<(), AppError> {
-    let config_path = crate::codex_config::get_codex_config_path();
+    let config_path = crate::codex_config::get_codex_config_path()?;
 
     if !config_path.exists() {
         return Ok(()); // 文件不存在，无需删除

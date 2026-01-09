@@ -17,7 +17,7 @@ pub struct McpStatus {
 }
 
 /// 获取 Gemini MCP 配置文件路径（~/.gemini/settings.json）
-fn user_config_path() -> PathBuf {
+fn user_config_path() -> Result<PathBuf, AppError> {
     get_gemini_settings_path()
 }
 
@@ -41,7 +41,7 @@ fn write_json_value(path: &Path, value: &Value) -> Result<(), AppError> {
 
 /// 读取 Gemini MCP 配置文件的完整 JSON 文本
 pub fn read_mcp_json() -> Result<Option<String>, AppError> {
-    let path = user_config_path();
+    let path = user_config_path()?;
     if !path.exists() {
         return Ok(None);
     }
@@ -51,7 +51,7 @@ pub fn read_mcp_json() -> Result<Option<String>, AppError> {
 
 /// 读取 Gemini settings.json 中的 mcpServers 映射
 pub fn read_mcp_servers_map() -> Result<std::collections::HashMap<String, Value>, AppError> {
-    let path = user_config_path();
+    let path = user_config_path()?;
     if !path.exists() {
         return Ok(std::collections::HashMap::new());
     }
@@ -71,7 +71,7 @@ pub fn read_mcp_servers_map() -> Result<std::collections::HashMap<String, Value>
 pub fn set_mcp_servers_map(
     servers: &std::collections::HashMap<String, Value>,
 ) -> Result<(), AppError> {
-    let path = user_config_path();
+    let path = user_config_path()?;
     let mut root = if path.exists() {
         read_json_value(&path)?
     } else {
@@ -106,6 +106,8 @@ pub fn set_mcp_servers_map(
         obj.remove("tags");
         obj.remove("homepage");
         obj.remove("docs");
+        // Gemini CLI 默认使用 stdio，配置文件中不允许出现 "type" 字段
+        obj.remove("type");
 
         out.insert(id.clone(), Value::Object(obj));
     }

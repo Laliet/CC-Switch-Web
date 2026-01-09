@@ -125,6 +125,7 @@ pub async fn get_config(
 
     let app_ty = AppType::from_str(&app).map_err(|e| ApiError::bad_request(e.to_string()))?;
     let config_path = crate::config::get_app_config_path()
+        .map_err(internal_error)?
         .to_string_lossy()
         .to_string();
     let servers = McpService::get_all_servers(&state)

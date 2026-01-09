@@ -1,5 +1,9 @@
 use serde_json::json;
-use std::{fs, path::Path, sync::RwLock};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    sync::RwLock,
+};
 use tauri::async_runtime;
 
 use cc_switch_lib::{
@@ -10,6 +14,10 @@ use cc_switch_lib::{
 #[path = "support.rs"]
 mod support;
 use support::{ensure_test_home, reset_test_fs, test_mutex};
+
+fn unwrap_path(result: Result<PathBuf, AppError>) -> PathBuf {
+    result.expect("path should resolve")
+}
 
 #[test]
 fn sync_claude_provider_writes_live_settings() {
@@ -43,7 +51,7 @@ fn sync_claude_provider_writes_live_settings() {
 
     ConfigService::sync_current_providers_to_live(&mut config).expect("sync live settings");
 
-    let settings_path = get_claude_settings_path();
+    let settings_path = unwrap_path(get_claude_settings_path());
     assert!(
         settings_path.exists(),
         "live settings should be written to {}",
@@ -110,8 +118,8 @@ fn sync_codex_provider_writes_auth_and_config() {
 
     ConfigService::sync_current_providers_to_live(&mut config).expect("sync codex live");
 
-    let auth_path = cc_switch_lib::get_codex_auth_path();
-    let config_path = cc_switch_lib::get_codex_config_path();
+    let auth_path = unwrap_path(cc_switch_lib::get_codex_auth_path());
+    let config_path = unwrap_path(cc_switch_lib::get_codex_config_path());
 
     assert!(
         auth_path.exists(),
@@ -168,7 +176,7 @@ fn sync_enabled_to_codex_writes_enabled_servers() {
 
     cc_switch_lib::sync_enabled_to_codex(&config).expect("sync codex");
 
-    let path = cc_switch_lib::get_codex_config_path();
+    let path = unwrap_path(cc_switch_lib::get_codex_config_path());
     assert!(path.exists(), "config.toml should be created");
     let text = fs::read_to_string(&path).expect("read config.toml");
     assert!(
@@ -183,7 +191,7 @@ fn sync_enabled_to_codex_preserves_non_mcp_content_and_style() {
     reset_test_fs();
 
     // 预置含有顶层注释与非 MCP 键的 config.toml
-    let path = cc_switch_lib::get_codex_config_path();
+    let path = unwrap_path(cc_switch_lib::get_codex_config_path());
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).expect("create codex dir");
     }
@@ -240,7 +248,7 @@ mode = "dev"
 fn sync_enabled_to_codex_migrates_erroneous_mcp_dot_servers_to_mcp_servers() {
     let _guard = test_mutex().lock().expect("acquire test mutex");
     reset_test_fs();
-    let path = cc_switch_lib::get_codex_config_path();
+    let path = unwrap_path(cc_switch_lib::get_codex_config_path());
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).expect("create codex dir");
     }
@@ -278,7 +286,7 @@ fn sync_enabled_to_codex_migrates_erroneous_mcp_dot_servers_to_mcp_servers() {
 fn sync_enabled_to_codex_removes_servers_when_none_enabled() {
     let _guard = test_mutex().lock().expect("acquire test mutex");
     reset_test_fs();
-    let path = cc_switch_lib::get_codex_config_path();
+    let path = unwrap_path(cc_switch_lib::get_codex_config_path());
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).expect("create codex dir");
     }
@@ -304,7 +312,7 @@ disabled = { type = "stdio", command = "noop" }
 fn sync_enabled_to_codex_returns_error_on_invalid_toml() {
     let _guard = test_mutex().lock().expect("acquire test mutex");
     reset_test_fs();
-    let path = cc_switch_lib::get_codex_config_path();
+    let path = unwrap_path(cc_switch_lib::get_codex_config_path());
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).expect("create codex dir");
     }
@@ -372,11 +380,11 @@ fn sync_codex_provider_missing_auth_returns_error() {
 
     // 确认未产生任何 live 配置文件
     assert!(
-        !cc_switch_lib::get_codex_auth_path().exists(),
+        !unwrap_path(cc_switch_lib::get_codex_auth_path()).exists(),
         "auth.json should not be created on failure"
     );
     assert!(
-        !cc_switch_lib::get_codex_config_path().exists(),
+        !unwrap_path(cc_switch_lib::get_codex_config_path()).exists(),
         "config.toml should not be created on failure"
     );
 }
@@ -397,8 +405,8 @@ args = ["ok"]
     cc_switch_lib::write_codex_live_atomic(&auth, Some(config_text))
         .expect("atomic write should succeed");
 
-    let auth_path = cc_switch_lib::get_codex_auth_path();
-    let config_path = cc_switch_lib::get_codex_config_path();
+    let auth_path = unwrap_path(cc_switch_lib::get_codex_auth_path());
+    let config_path = unwrap_path(cc_switch_lib::get_codex_config_path());
     assert!(auth_path.exists(), "auth.json should be created");
     assert!(config_path.exists(), "config.toml should be created");
 
@@ -418,13 +426,13 @@ fn write_codex_live_atomic_rolls_back_auth_when_config_write_fails() {
     let _guard = test_mutex().lock().expect("acquire test mutex");
     reset_test_fs();
 
-    let auth_path = cc_switch_lib::get_codex_auth_path();
+    let auth_path = unwrap_path(cc_switch_lib::get_codex_auth_path());
     if let Some(parent) = auth_path.parent() {
         std::fs::create_dir_all(parent).expect("create codex dir");
     }
     std::fs::write(&auth_path, r#"{"OPENAI_API_KEY":"legacy"}"#).expect("seed auth");
 
-    let config_path = cc_switch_lib::get_codex_config_path();
+    let config_path = unwrap_path(cc_switch_lib::get_codex_config_path());
     std::fs::create_dir_all(&config_path).expect("create blocking directory");
 
     let auth = json!({ "OPENAI_API_KEY": "new-key" });
@@ -468,7 +476,7 @@ command = "noop"
 fn import_from_codex_adds_servers_from_mcp_servers_table() {
     let _guard = test_mutex().lock().expect("acquire test mutex");
     reset_test_fs();
-    let path = cc_switch_lib::get_codex_config_path();
+    let path = unwrap_path(cc_switch_lib::get_codex_config_path());
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).expect("create codex dir");
     }
@@ -527,7 +535,7 @@ url = "https://example.com"
 fn import_from_codex_merges_into_existing_entries() {
     let _guard = test_mutex().lock().expect("acquire test mutex");
     reset_test_fs();
-    let path = cc_switch_lib::get_codex_config_path();
+    let path = unwrap_path(cc_switch_lib::get_codex_config_path());
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).expect("create codex dir");
     }
@@ -620,7 +628,7 @@ fn sync_claude_enabled_mcp_projects_to_user_config() {
 
     cc_switch_lib::sync_enabled_to_claude(&config).expect("sync Claude MCP");
 
-    let claude_path = cc_switch_lib::get_claude_mcp_path();
+    let claude_path = unwrap_path(cc_switch_lib::get_claude_mcp_path());
     assert!(claude_path.exists(), "claude config should exist");
     let text = fs::read_to_string(&claude_path).expect("read .claude.json");
     let value: serde_json::Value = serde_json::from_str(&text).expect("parse claude json");
@@ -1103,5 +1111,75 @@ fn export_config_to_file_returns_error_when_source_missing() {
     assert!(
         err.contains("IO 错误"),
         "expected IO error message, got {err}"
+    );
+}
+
+#[test]
+fn sync_gemini_mcp_excludes_type_field() {
+    let _guard = test_mutex().lock().expect("acquire test mutex");
+    reset_test_fs();
+    let home = ensure_test_home();
+
+    let mut config = MultiAppConfig::default();
+
+    // 创建包含 type: stdio 的 MCP 服务器配置
+    config.mcp.gemini.servers.insert(
+        "test-server".into(),
+        json!({
+            "id": "test-server",
+            "enabled": true,
+            "server": {
+                "type": "stdio",
+                "command": "echo",
+                "args": ["hello", "world"],
+                "env": {
+                    "FOO": "bar"
+                }
+            }
+        }),
+    );
+
+    cc_switch_lib::sync_enabled_to_gemini(&config).expect("sync Gemini MCP");
+
+    // 读取生成的 Gemini 配置
+    let gemini_path = home.join(".gemini").join("settings.json");
+    assert!(
+        gemini_path.exists(),
+        "Gemini settings should exist at {}",
+        gemini_path.display()
+    );
+
+    let text = fs::read_to_string(&gemini_path).expect("read gemini settings");
+    let value: serde_json::Value = serde_json::from_str(&text).expect("parse gemini settings");
+    let servers = value
+        .get("mcpServers")
+        .and_then(|v| v.as_object())
+        .expect("mcpServers map should exist");
+
+    let server = servers
+        .get("test-server")
+        .and_then(|v| v.as_object())
+        .expect("test-server should exist");
+
+    // 验证 type 字段不存在（Gemini CLI 不允许此字段）
+    assert!(
+        !server.contains_key("type"),
+        "Gemini MCP config should NOT contain 'type' field, but found: {:?}",
+        server
+    );
+
+    // 验证其他字段正常保留
+    assert_eq!(
+        server.get("command").and_then(|v| v.as_str()),
+        Some("echo"),
+        "command field should be preserved"
+    );
+    assert!(
+        server.get("args").is_some(),
+        "args field should be preserved"
+    );
+    assert!(
+        server.get("env").is_some(),
+        "env field should be preserved"
     );
 }

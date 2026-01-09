@@ -33,19 +33,19 @@ pub fn get_home_dir() -> Option<PathBuf> {
 }
 
 /// 获取 Claude Code 配置目录路径
-pub fn get_claude_config_dir() -> PathBuf {
+pub fn get_claude_config_dir() -> Result<PathBuf, AppError> {
     if let Some(custom) = crate::settings::get_claude_override_dir() {
-        return custom;
+        return Ok(custom);
     }
 
-    get_home_dir().expect("无法获取用户主目录").join(".claude")
+    let home = get_home_dir().ok_or_else(|| AppError::Config("无法获取用户主目录".into()))?;
+    Ok(home.join(".claude"))
 }
 
 /// 默认 Claude MCP 配置文件路径 (~/.claude.json)
-pub fn get_default_claude_mcp_path() -> PathBuf {
-    get_home_dir()
-        .expect("无法获取用户主目录")
-        .join(".claude.json")
+pub fn get_default_claude_mcp_path() -> Result<PathBuf, AppError> {
+    let home = get_home_dir().ok_or_else(|| AppError::Config("无法获取用户主目录".into()))?;
+    Ok(home.join(".claude.json"))
 }
 
 fn derive_mcp_path_from_override(dir: &Path) -> Option<PathBuf> {
@@ -62,46 +62,45 @@ fn derive_mcp_path_from_override(dir: &Path) -> Option<PathBuf> {
 }
 
 /// 获取 Claude MCP 配置文件路径，若设置了目录覆盖则与覆盖目录同级
-pub fn get_claude_mcp_path() -> PathBuf {
+pub fn get_claude_mcp_path() -> Result<PathBuf, AppError> {
     if let Some(custom_dir) = crate::settings::get_claude_override_dir() {
         if let Some(path) = derive_mcp_path_from_override(&custom_dir) {
-            return path;
+            return Ok(path);
         }
     }
     get_default_claude_mcp_path()
 }
 
 /// 获取 Claude Code 主配置文件路径
-pub fn get_claude_settings_path() -> PathBuf {
-    let dir = get_claude_config_dir();
+pub fn get_claude_settings_path() -> Result<PathBuf, AppError> {
+    let dir = get_claude_config_dir()?;
     let settings = dir.join("settings.json");
     if settings.exists() {
-        return settings;
+        return Ok(settings);
     }
     // 兼容旧版命名：若存在旧文件则继续使用
     let legacy = dir.join("claude.json");
     if legacy.exists() {
-        return legacy;
+        return Ok(legacy);
     }
     // 默认新建：回落到标准文件名 settings.json（不再生成 claude.json）
-    settings
+    Ok(settings)
 }
 
 /// 获取应用配置目录路径 (~/.cc-switch)
-pub fn get_app_config_dir() -> PathBuf {
+pub fn get_app_config_dir() -> Result<PathBuf, AppError> {
     #[cfg(feature = "desktop")]
     if let Some(custom) = crate::app_store::get_app_config_dir_override() {
-        return custom;
+        return Ok(custom);
     }
 
-    get_home_dir()
-        .expect("无法获取用户主目录")
-        .join(".cc-switch")
+    let home = get_home_dir().ok_or_else(|| AppError::Config("无法获取用户主目录".into()))?;
+    Ok(home.join(".cc-switch"))
 }
 
 /// 获取应用配置文件路径
-pub fn get_app_config_path() -> PathBuf {
-    get_app_config_dir().join("config.json")
+pub fn get_app_config_path() -> Result<PathBuf, AppError> {
+    Ok(get_app_config_dir()?.join("config.json"))
 }
 
 fn get_codex_config_dir_for_permissions() -> Option<PathBuf> {
@@ -122,8 +121,12 @@ fn get_gemini_config_dir_for_permissions() -> Option<PathBuf> {
 
 fn should_enforce_private_permissions(path: &Path) -> bool {
     let mut dirs = Vec::new();
-    dirs.push(get_app_config_dir());
-    dirs.push(get_claude_config_dir());
+    if let Ok(dir) = get_app_config_dir() {
+        dirs.push(dir);
+    }
+    if let Ok(dir) = get_claude_config_dir() {
+        dirs.push(dir);
+    }
     if let Some(dir) = get_codex_config_dir_for_permissions() {
         dirs.push(dir);
     }
@@ -135,7 +138,10 @@ fn should_enforce_private_permissions(path: &Path) -> bool {
         return true;
     }
 
-    path == get_claude_mcp_path()
+    match get_claude_mcp_path() {
+        Ok(claude_mcp_path) => path == claude_mcp_path,
+        Err(_) => false,
+    }
 }
 
 #[cfg(unix)]
@@ -177,12 +183,15 @@ pub fn sanitize_provider_name(name: &str) -> String {
 }
 
 /// 获取供应商配置文件路径
-pub fn get_provider_config_path(provider_id: &str, provider_name: Option<&str>) -> PathBuf {
+pub fn get_provider_config_path(
+    provider_id: &str,
+    provider_name: Option<&str>,
+) -> Result<PathBuf, AppError> {
     let base_name = provider_name
         .map(sanitize_provider_name)
         .unwrap_or_else(|| sanitize_provider_name(provider_id));
 
-    get_claude_config_dir().join(format!("settings-{base_name}.json"))
+    Ok(get_claude_config_dir()?.join(format!("settings-{base_name}.json")))
 }
 
 /// 读取 JSON 配置文件
@@ -337,12 +346,12 @@ pub struct ConfigStatus {
 }
 
 /// 获取 Claude Code 配置状态
-pub fn get_claude_config_status() -> ConfigStatus {
-    let path = get_claude_settings_path();
-    ConfigStatus {
+pub fn get_claude_config_status() -> Result<ConfigStatus, AppError> {
+    let path = get_claude_settings_path()?;
+    Ok(ConfigStatus {
         exists: path.exists(),
         path: path.to_string_lossy().to_string(),
-    }
+    })
 }
 
 #[cfg(test)]
@@ -400,7 +409,7 @@ mod tests {
         #[cfg(windows)]
         let _user_guard = EnvGuard::set("USERPROFILE", &home_str);
 
-        let app_config_path = get_app_config_path();
+        let app_config_path = get_app_config_path().expect("app config path should resolve");
         assert_eq!(
             app_config_path,
             temp_dir.path().join(".cc-switch").join("config.json")

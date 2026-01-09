@@ -31,44 +31,21 @@ Whether you're working locally or in a headless cloud environment, CC-Switch-Web
 
 If you have any questions, you can contact me here https://linux.do/t/topic/1217545 
 
-## What's New in v0.6.0
+## What's New in v0.7.0
 
+This release focuses on **web reliability** and **skills performance**.
 
-This release focuses on **security hardening** and **stability improvements** with 12 security fixes and 32+ bug fixes.
+### Performance
+- Skills repository caching with ETag/Last-Modified conditional refresh
+- Cache TTL via `CC_SWITCH_SKILLS_CACHE_TTL_SECS` with fallback to cache on fetch failure
 
-### 🔒 Security Fixes (12)
+### Web Improvements
+- Web API base override with safer validation in `WebLoginDialog`
+- Web mode reads live settings into default provider without switching current
+- Web switch syncs to live config and returns explicit errors on failure
 
-**Critical (5):**
-- Fixed path traversal vulnerabilities in config import/export, skills directory, and env backup/restore
-- Fixed XSS via `open_external` - now only allows `http/https` URLs
-- Fixed retry logic applying to mutation operations (now GET/HEAD only)
-
-**High (7):**
-- Fixed resource leak in skill temp directories (RAII cleanup)
-- Fixed backup ID collision (millisecond timestamp + counter)
-- Fixed race conditions in config import and app_config read-modify-write
-- Fixed config file permissions hardening (Unix 0600 for sensitive files)
-- Fixed blocking async in zip extraction (`spawn_blocking`)
-- Fixed silent data loss on invalid config type
-
-### 🐛 Bug Fixes (32+)
-
-- **MCP (12):** Form state residue, memory leaks on unmount, null checks for legacy configs, type validation, sync validation
-- **Skills (3):** Race condition in loadSkills, error boundary, unmount guards
-- **API/Network (7):** Health check timeout, CORS `*` handling, HEAD method, 404 for unknown API paths, error parsing
-- **Config (5):** DMXAPI/AiHubMix endpoint swap, Codex config clearing, Gemini OAuth switching
-- **Error Handling (5):** Panic on system time error, silent read errors, type safety improvements
-
-### ♿ Accessibility
-- Added `aria-label` to prompt toggles and icon buttons
-- Fixed password manager support in WebLoginDialog
-- Added favicon
-
-### ⚡ Performance
-- Memoized skill counts, API key visibility, and template paths
-
-### 🧪 Tests
-- Rust: 49 tests passing | Frontend: 58 tests passing
+### Skills UX
+- Status line shows cache hit/background refresh
 
 ---
 
@@ -98,8 +75,8 @@ Download precompiled server binary—no compilation required:
 
 | Architecture | Download |
 |--------------|----------|
-| **Linux x86_64** | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.6.0/cc-switch-server-linux-x86_64) |
-| **Linux aarch64** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.6.0/cc-switch-server-linux-aarch64) |
+| **Linux x86_64** | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.0/cc-switch-server-linux-x86_64) |
+| **Linux aarch64** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.0/cc-switch-server-linux-aarch64) |
 
 **One-Line Deploy**:
 ```bash
@@ -196,11 +173,11 @@ Full-featured desktop app with graphical interface, built with Tauri.
 
 | Platform | Download | Description |
 |----------|----------|-------------|
-| **Windows** | [CC-Switch-v0.6.0-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.6.0/CC-Switch-v0.6.0-Windows.msi) | Installer (recommended) |
-| | [CC-Switch-v0.6.0-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.6.0/CC-Switch-v0.6.0-Windows-Portable.zip) | Portable (no install) |
-| **macOS** | [CC-Switch-v0.6.0-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.6.0/CC-Switch-v0.6.0-macOS.zip) | Universal binary (Intel + Apple Silicon) |
-| **Linux** | [CC-Switch-v0.6.0-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.6.0/CC-Switch-v0.6.0-Linux.AppImage) | AppImage (universal) |
-| | [CC-Switch-v0.6.0-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.6.0/CC-Switch-v0.6.0-Linux.deb) | Debian/Ubuntu package |
+| **Windows** | [CC-Switch-v0.7.0-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.0/CC-Switch-v0.7.0-Windows.msi) | Installer (recommended) |
+| | [CC-Switch-v0.7.0-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.0/CC-Switch-v0.7.0-Windows-Portable.zip) | Portable (no install) |
+| **macOS** | [CC-Switch-v0.7.0-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.0/CC-Switch-v0.7.0-macOS.zip) | Universal binary (Intel + Apple Silicon) |
+| **Linux** | [CC-Switch-v0.7.0-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.0/CC-Switch-v0.7.0-Linux.AppImage) | AppImage (universal) |
+| | [CC-Switch-v0.7.0-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.0/CC-Switch-v0.7.0-Linux.deb) | Debian/Ubuntu package |
 
 **macOS Note**: If you see "damaged" warning, run: `xattr -cr "/Applications/CC Switch.app"`
 
@@ -222,7 +199,7 @@ This script will:
 **Advanced options**:
 ```bash
 # Install specific version
-VERSION=v0.5.2 curl -fsSL https://...install.sh | bash
+VERSION=v0.7.0 curl -fsSL https://...install.sh | bash
 
 # Skip checksum verification
 NO_CHECKSUM=1 curl -fsSL https://...install.sh | bash
@@ -332,7 +309,7 @@ pnpm test
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) — Current version: **v0.6.0**
+See [CHANGELOG.md](CHANGELOG.md) — Current version: **v0.7.0**
 
 ---
 

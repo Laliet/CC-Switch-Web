@@ -33,20 +33,38 @@ export interface SkillRepo {
 export interface SkillsResponse {
   skills: Skill[];
   warnings?: string[];
+  cacheHit?: boolean;
+  refreshing?: boolean;
 }
+
+const toBoolean = (value: unknown): boolean =>
+  typeof value === "boolean" ? value : false;
 
 export const skillsApi = {
   async getAll(): Promise<SkillsResponse> {
     const result = await invoke("get_skills");
 
     if (Array.isArray(result)) {
-      return { skills: result as Skill[], warnings: [] };
+      return {
+        skills: result as Skill[],
+        warnings: [],
+        cacheHit: false,
+        refreshing: false,
+      };
     }
 
-    const response = result as SkillsResponse;
+    const response =
+      result && typeof result === "object"
+        ? (result as Record<string, unknown>)
+        : {};
+    const cacheHitValue = response.cacheHit ?? response["cache_hit"];
     return {
-      skills: Array.isArray(response?.skills) ? response.skills : [],
-      warnings: Array.isArray(response?.warnings) ? response.warnings : [],
+      skills: Array.isArray(response.skills) ? (response.skills as Skill[]) : [],
+      warnings: Array.isArray(response.warnings)
+        ? (response.warnings as string[])
+        : [],
+      cacheHit: toBoolean(cacheHitValue),
+      refreshing: toBoolean(response.refreshing),
     };
   },
 

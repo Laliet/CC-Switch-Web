@@ -10,10 +10,13 @@ use tauri::State;
 pub struct SkillServiceState(pub Arc<SkillService>);
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SkillsResponse {
     pub skills: Vec<Skill>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub warnings: Vec<String>,
+    pub cache_hit: bool,
+    pub refreshing: bool,
 }
 
 #[tauri::command]
@@ -21,18 +24,33 @@ pub async fn get_skills(
     service: State<'_, SkillServiceState>,
     app_state: State<'_, AppState>,
 ) -> Result<SkillsResponse, String> {
-    let repos = {
+    let (repos, mut repo_cache) = {
         let config = app_state.config.read().map_err(|e| e.to_string())?;
-        config.skills.repos.clone()
+        (config.skills.repos.clone(), config.skills.repo_cache.clone())
     };
 
-    let (skills, warnings) = service
+    let result = service
         .0
-        .list_skills(repos)
+        .list_skills(repos, &mut repo_cache)
         .await
         .map_err(|e| e.to_string())?;
+    let skills = result.skills;
+    let warnings = result.warnings;
+    let cache_hit = result.cache_hit;
+    let refreshing = result.refreshing;
 
-    Ok(SkillsResponse { skills, warnings })
+    {
+        let mut config = app_state.config.write().map_err(|e| e.to_string())?;
+        config.skills.repo_cache = repo_cache;
+    }
+    app_state.save().map_err(|e| e.to_string())?;
+
+    Ok(SkillsResponse {
+        skills,
+        warnings,
+        cache_hit,
+        refreshing,
+    })
 }
 
 #[tauri::command]
@@ -42,17 +60,17 @@ pub async fn install_skill(
     app_state: State<'_, AppState>,
 ) -> Result<bool, String> {
     // 先在不持有写锁的情况下收集仓库与技能信息
-    let repos = {
+    let (repos, mut repo_cache) = {
         let config = app_state.config.read().map_err(|e| e.to_string())?;
-        config.skills.repos.clone()
+        (config.skills.repos.clone(), config.skills.repo_cache.clone())
     };
 
     let skills = service
         .0
-        .list_skills(repos)
+        .list_skills(repos, &mut repo_cache)
         .await
         .map_err(|e| e.to_string())?
-        .0;
+        .skills;
 
     let skill = skills
         .iter()
@@ -98,7 +116,7 @@ pub async fn install_skill(
 
     {
         let mut config = app_state.config.write().map_err(|e| e.to_string())?;
-
+        config.skills.repo_cache = repo_cache;
         config.skills.skills.insert(
             directory.clone(),
             SkillState {

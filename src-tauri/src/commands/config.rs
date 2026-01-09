@@ -11,7 +11,7 @@ use crate::config::{self, get_claude_settings_path, ConfigStatus};
 /// 获取 Claude Code 配置状态
 #[tauri::command]
 pub async fn get_claude_config_status() -> Result<ConfigStatus, String> {
-    Ok(config::get_claude_config_status())
+    config::get_claude_config_status().map_err(|e| e.to_string())
 }
 
 use std::str::FromStr;
@@ -19,20 +19,23 @@ use std::str::FromStr;
 #[tauri::command]
 pub async fn get_config_status(app: String) -> Result<ConfigStatus, String> {
     match AppType::from_str(&app).map_err(|e| e.to_string())? {
-        AppType::Claude => Ok(config::get_claude_config_status()),
+        AppType::Claude => config::get_claude_config_status().map_err(|e| e.to_string()),
         AppType::Codex => {
-            let auth_path = codex_config::get_codex_auth_path();
+            let auth_path = codex_config::get_codex_auth_path().map_err(|e| e.to_string())?;
             let exists = auth_path.exists();
             let path = codex_config::get_codex_config_dir()
+                .map_err(|e| e.to_string())?
                 .to_string_lossy()
                 .to_string();
 
             Ok(ConfigStatus { exists, path })
         }
         AppType::Gemini => {
-            let env_path = crate::gemini_config::get_gemini_env_path();
+            let env_path = crate::gemini_config::get_gemini_env_path()
+                .map_err(|e| e.to_string())?;
             let exists = env_path.exists();
             let path = crate::gemini_config::get_gemini_dir()
+                .map_err(|e| e.to_string())?
                 .to_string_lossy()
                 .to_string();
 
@@ -44,16 +47,17 @@ pub async fn get_config_status(app: String) -> Result<ConfigStatus, String> {
 /// 获取 Claude Code 配置文件路径
 #[tauri::command]
 pub async fn get_claude_code_config_path() -> Result<String, String> {
-    Ok(get_claude_settings_path().to_string_lossy().to_string())
+    let path = get_claude_settings_path().map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().to_string())
 }
 
 /// 获取当前生效的配置目录
 #[tauri::command]
 pub async fn get_config_dir(app: String) -> Result<String, String> {
     let dir = match AppType::from_str(&app).map_err(|e| e.to_string())? {
-        AppType::Claude => config::get_claude_config_dir(),
-        AppType::Codex => codex_config::get_codex_config_dir(),
-        AppType::Gemini => crate::gemini_config::get_gemini_dir(),
+        AppType::Claude => config::get_claude_config_dir().map_err(|e| e.to_string())?,
+        AppType::Codex => codex_config::get_codex_config_dir().map_err(|e| e.to_string())?,
+        AppType::Gemini => crate::gemini_config::get_gemini_dir().map_err(|e| e.to_string())?,
     };
 
     Ok(dir.to_string_lossy().to_string())
@@ -63,9 +67,9 @@ pub async fn get_config_dir(app: String) -> Result<String, String> {
 #[tauri::command]
 pub async fn open_config_folder(handle: AppHandle, app: String) -> Result<bool, String> {
     let config_dir = match AppType::from_str(&app).map_err(|e| e.to_string())? {
-        AppType::Claude => config::get_claude_config_dir(),
-        AppType::Codex => codex_config::get_codex_config_dir(),
-        AppType::Gemini => crate::gemini_config::get_gemini_dir(),
+        AppType::Claude => config::get_claude_config_dir().map_err(|e| e.to_string())?,
+        AppType::Codex => codex_config::get_codex_config_dir().map_err(|e| e.to_string())?,
+        AppType::Gemini => crate::gemini_config::get_gemini_dir().map_err(|e| e.to_string())?,
     };
 
     if !config_dir.exists() {
@@ -115,14 +119,14 @@ pub async fn pick_directory(
 /// 获取应用配置文件路径
 #[tauri::command]
 pub async fn get_app_config_path() -> Result<String, String> {
-    let config_path = config::get_app_config_path();
+    let config_path = config::get_app_config_path().map_err(|e| e.to_string())?;
     Ok(config_path.to_string_lossy().to_string())
 }
 
 /// 打开应用配置文件夹
 #[tauri::command]
 pub async fn open_app_config_folder(handle: AppHandle) -> Result<bool, String> {
-    let config_dir = config::get_app_config_dir();
+    let config_dir = config::get_app_config_dir().map_err(|e| e.to_string())?;
 
     if !config_dir.exists() {
         std::fs::create_dir_all(&config_dir).map_err(|e| format!("创建目录失败: {e}"))?;

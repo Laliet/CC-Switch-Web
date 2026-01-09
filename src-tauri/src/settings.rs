@@ -88,13 +88,11 @@ impl Default for AppSettings {
 }
 
 impl AppSettings {
-    fn settings_path() -> PathBuf {
+    fn settings_path() -> Result<PathBuf, AppError> {
         // settings.json 必须使用固定路径，不能被 app_config_dir 覆盖
         // 否则会造成循环依赖：读取 settings 需要知道路径，但路径在 settings 中
-        get_home_dir()
-            .expect("无法获取用户主目录")
-            .join(".cc-switch")
-            .join("settings.json")
+        let home = get_home_dir().ok_or_else(|| AppError::Config("无法获取用户主目录".into()))?;
+        Ok(home.join(".cc-switch").join("settings.json"))
     }
 
     fn normalize_paths(&mut self) {
@@ -128,7 +126,13 @@ impl AppSettings {
     }
 
     pub fn load() -> Self {
-        let path = Self::settings_path();
+        let path = match Self::settings_path() {
+            Ok(path) => path,
+            Err(err) => {
+                log::warn!("无法获取设置路径，将使用默认设置: {err}");
+                return Self::default();
+            }
+        };
         if let Ok(content) = fs::read_to_string(&path) {
             match serde_json::from_str::<AppSettings>(&content) {
                 Ok(mut settings) => {
@@ -152,7 +156,7 @@ impl AppSettings {
     pub fn save(&self) -> Result<(), AppError> {
         let mut normalized = self.clone();
         normalized.normalize_paths();
-        let path = Self::settings_path();
+        let path = Self::settings_path()?;
 
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).map_err(|e| AppError::io(parent, e))?;

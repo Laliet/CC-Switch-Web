@@ -22,10 +22,13 @@ use crate::{
 use super::{ApiError, ApiResult};
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SkillsResponse {
     pub skills: Vec<SkillResponse>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub warnings: Vec<String>,
+    pub cache_hit: bool,
+    pub refreshing: bool,
 }
 
 #[derive(Serialize)]
@@ -92,19 +95,40 @@ impl From<ServiceSkill> for SkillResponse {
 }
 
 pub async fn list_skills(State(state): State<Arc<AppState>>) -> ApiResult<SkillsResponse> {
-    let repos = {
+    let (repos, mut repo_cache) = {
         let cfg = state
             .config
             .read()
             .map_err(AppError::from)
             .map_err(ApiError::from)?;
-        cfg.skills.repos.clone()
+        (cfg.skills.repos.clone(), cfg.skills.repo_cache.clone())
     };
 
     let service = SkillService::new().map_err(internal_error)?;
-    let (skills, warnings) = service.list_skills(repos).await.map_err(internal_error)?;
-    let skills = skills.into_iter().map(SkillResponse::from).collect();
-    Ok(Json(SkillsResponse { skills, warnings }))
+    let result = service
+        .list_skills(repos, &mut repo_cache)
+        .await
+        .map_err(internal_error)?;
+    {
+        let mut cfg = state
+            .config
+            .write()
+            .map_err(AppError::from)
+            .map_err(ApiError::from)?;
+        cfg.skills.repo_cache = repo_cache;
+    }
+    state.save().map_err(internal_error)?;
+    let skills = result
+        .skills
+        .into_iter()
+        .map(SkillResponse::from)
+        .collect();
+    Ok(Json(SkillsResponse {
+        skills,
+        warnings: result.warnings,
+        cache_hit: result.cache_hit,
+        refreshing: result.refreshing,
+    }))
 }
 
 pub async fn install_skill(
@@ -115,16 +139,20 @@ pub async fn install_skill(
     let service = SkillService::new().map_err(internal_error)?;
 
     // 收集仓库信息并查找目标技能
-    let repos = {
+    let (repos, mut repo_cache) = {
         let cfg = state
             .config
             .read()
             .map_err(AppError::from)
             .map_err(ApiError::from)?;
-        cfg.skills.repos.clone()
+        (cfg.skills.repos.clone(), cfg.skills.repo_cache.clone())
     };
-    let (skills, _warnings) = service.list_skills(repos).await.map_err(internal_error)?;
+    let skills = service
+        .list_skills(repos, &mut repo_cache)
+        .await
+        .map_err(internal_error)?;
     let skill = skills
+        .skills
         .iter()
         .find(|s| s.directory.eq_ignore_ascii_case(&directory))
         .ok_or_else(|| {
@@ -172,6 +200,7 @@ pub async fn install_skill(
             .write()
             .map_err(AppError::from)
             .map_err(ApiError::from)?;
+        cfg.skills.repo_cache = repo_cache;
         cfg.skills.skills.insert(
             directory.clone(),
             crate::services::skill::SkillState {

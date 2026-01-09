@@ -85,7 +85,7 @@ impl ConfigService {
             path.to_path_buf()
         } else {
             let relative = Self::sanitize_relative_path(path)?;
-            crate::config::get_app_config_dir().join(relative)
+            crate::config::get_app_config_dir()?.join(relative)
         };
 
         Self::canonicalize_for_validation(&resolved)
@@ -97,7 +97,7 @@ impl ConfigService {
         }
 
         let normalized = Self::normalize_transfer_path(path)?;
-        let allowed_dirs = Self::allowed_transfer_dirs();
+        let allowed_dirs = Self::allowed_transfer_dirs()?;
         let allowed_normalized = allowed_dirs
             .iter()
             .map(|p| Self::canonicalize_for_validation(p.as_path()))
@@ -115,8 +115,8 @@ impl ConfigService {
         }
     }
 
-    fn allowed_transfer_dirs() -> Vec<PathBuf> {
-        vec![crate::config::get_app_config_dir()]
+    fn allowed_transfer_dirs() -> Result<Vec<PathBuf>, AppError> {
+        Ok(vec![crate::config::get_app_config_dir()?])
     }
 
     fn canonicalize_for_validation(path: &Path) -> Result<PathBuf, AppError> {
@@ -223,7 +223,7 @@ impl ConfigService {
     /// 将当前 config.json 拷贝到目标路径。
     pub fn export_config_to_path(target_path: &Path) -> Result<(), AppError> {
         let target_path = Self::validate_transfer_path(target_path)?;
-        let config_path = crate::config::get_app_config_path();
+        let config_path = crate::config::get_app_config_path()?;
         let config_content =
             fs::read_to_string(&config_path).map_err(|e| AppError::io(&config_path, e))?;
         atomic_write(&target_path, config_content.as_bytes())
@@ -259,7 +259,7 @@ impl ConfigService {
         state: &AppState,
     ) -> Result<String, AppError> {
         let mut guard = state.config.write().map_err(AppError::from)?;
-        let config_path = crate::config::get_app_config_path();
+        let config_path = crate::config::get_app_config_path()?;
         let backup_id = Self::create_backup(&config_path)?;
 
         Self::save_config_to_path(&new_config, &config_path)?;
@@ -377,7 +377,7 @@ impl ConfigService {
     ) -> Result<(), AppError> {
         use crate::config::{read_json_file, write_json_file};
 
-        let settings_path = crate::config::get_claude_settings_path();
+        let settings_path = crate::config::get_claude_settings_path()?;
         if let Some(parent) = settings_path.parent() {
             fs::create_dir_all(parent).map_err(|e| AppError::io(parent, e))?;
         }
@@ -405,7 +405,7 @@ impl ConfigService {
 
         // 读回实际写入的内容并更新到配置中（包含 settings.json）
         let live_after_env = read_gemini_env()?;
-        let settings_path = crate::gemini_config::get_gemini_settings_path();
+        let settings_path = crate::gemini_config::get_gemini_settings_path()?;
         let live_after_config = if settings_path.exists() {
             crate::config::read_json_file(&settings_path)?
         } else {

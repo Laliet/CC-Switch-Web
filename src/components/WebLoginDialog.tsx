@@ -10,7 +10,19 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { setWebCredentials, WEB_CSRF_STORAGE_KEY, base64EncodeUtf8 } from "@/lib/api/adapter";
+import {
+  base64EncodeUtf8,
+  buildWebApiUrl,
+  clearWebApiBaseOverride,
+  clearWebCredentials,
+  getWebApiBase,
+  getWebApiBaseValidationError,
+  getStoredWebApiBase,
+  normalizeWebApiBase,
+  setWebApiBaseOverride,
+  setWebCredentials,
+  WEB_CSRF_STORAGE_KEY,
+} from "@/lib/api/adapter";
 
 export interface WebLoginDialogProps {
   open: boolean;
@@ -18,16 +30,28 @@ export interface WebLoginDialogProps {
 }
 
 export function WebLoginDialog({ open, onLoginSuccess }: WebLoginDialogProps) {
+  const [apiBase, setApiBase] = useState("");
+  const [apiBaseError, setApiBaseError] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const apiBaseHelperId = "cc-switch-web-api-base-helper";
+  const apiBaseErrorId = "cc-switch-web-api-base-error";
 
   useEffect(() => {
     if (!open) return;
+    setApiBase(getStoredWebApiBase() ?? "");
+    setApiBaseError(null);
     setPassword("");
     setError(null);
     setIsSubmitting(false);
   }, [open]);
+
+  const handleClearApiBase = useCallback(() => {
+    setApiBase("");
+    setApiBaseError(null);
+    clearWebApiBaseOverride();
+  }, []);
 
   const handleLogin = useCallback(async () => {
     if (isSubmitting) return;
@@ -38,12 +62,31 @@ export function WebLoginDialog({ open, onLoginSuccess }: WebLoginDialogProps) {
       return;
     }
 
+    const apiBaseValidationError = getWebApiBaseValidationError(apiBase);
+    if (apiBaseValidationError) {
+      setApiBaseError(apiBaseValidationError);
+      setError(null);
+      return;
+    }
+    setApiBaseError(null);
+
     setIsSubmitting(true);
     setError(null);
 
     try {
       const encoded = base64EncodeUtf8(`admin:${trimmed}`);
-      const response = await fetch("/api/settings", {
+      const normalizedApiBase = normalizeWebApiBase(apiBase);
+      const previousApiBase = getStoredWebApiBase();
+      const nextApiBase = normalizedApiBase ?? null;
+      if ((previousApiBase ?? null) !== nextApiBase) {
+        clearWebCredentials();
+      }
+      if (normalizedApiBase) {
+        setWebApiBaseOverride(normalizedApiBase);
+      } else {
+        clearWebApiBaseOverride();
+      }
+      const response = await fetch(buildWebApiUrl("/settings"), {
         method: "GET",
         credentials: "include",
         headers: {
@@ -55,14 +98,17 @@ export function WebLoginDialog({ open, onLoginSuccess }: WebLoginDialogProps) {
       if (response.ok) {
         setWebCredentials(trimmed);
         try {
-          const tokenResponse = await fetch("/api/system/csrf-token", {
-            method: "GET",
-            credentials: "include",
-            headers: {
-              Accept: "application/json",
-              Authorization: `Basic ${encoded}`,
+          const tokenResponse = await fetch(
+            buildWebApiUrl("/system/csrf-token"),
+            {
+              method: "GET",
+              credentials: "include",
+              headers: {
+                Accept: "application/json",
+                Authorization: `Basic ${encoded}`,
+              },
             },
-          });
+          );
           if (tokenResponse.ok) {
             const data = (await tokenResponse.json()) as {
               csrfToken?: string | null;
@@ -95,7 +141,7 @@ export function WebLoginDialog({ open, onLoginSuccess }: WebLoginDialogProps) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [isSubmitting, onLoginSuccess, password]);
+  }, [apiBase, isSubmitting, onLoginSuccess, password]);
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
@@ -125,6 +171,47 @@ export function WebLoginDialog({ open, onLoginSuccess }: WebLoginDialogProps) {
             tabIndex={-1}
             className="sr-only"
           />
+          <div className="space-y-2">
+            <Label htmlFor="cc-switch-web-api-base">API 地址 (可选)</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="cc-switch-web-api-base"
+                name="apiBase"
+                type="text"
+                autoComplete="url"
+                inputMode="url"
+                placeholder={getWebApiBase()}
+                value={apiBase}
+                onChange={(e) => {
+                  setApiBase(e.target.value);
+                  if (apiBaseError) setApiBaseError(null);
+                }}
+                aria-describedby={`${apiBaseHelperId}${
+                  apiBaseError ? ` ${apiBaseErrorId}` : ""
+                }`}
+                aria-invalid={apiBaseError ? "true" : undefined}
+                disabled={isSubmitting}
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleClearApiBase}
+                disabled={isSubmitting || !apiBase}
+              >
+                清除
+              </Button>
+            </div>
+            <p id={apiBaseHelperId} className="text-xs text-muted-foreground">
+              支持 https://example.com/api 或 /api，留空使用默认值。
+            </p>
+            {apiBaseError ? (
+              <p id={apiBaseErrorId} className="text-xs text-destructive">
+                {apiBaseError}
+              </p>
+            ) : null}
+          </div>
           <div className="space-y-2">
             <Label htmlFor="cc-switch-web-password">密码</Label>
             <Input

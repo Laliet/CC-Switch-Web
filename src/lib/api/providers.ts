@@ -44,7 +44,19 @@ export const providersApi = {
   },
 
   async switch(id: string, appId: AppId): Promise<boolean> {
-    return await invoke("switch_provider", { id, app: appId });
+    const result = await invoke("switch_provider", { id, app: appId });
+    if (isWeb()) {
+      try {
+        await invoke("sync_current_providers_live");
+      } catch (error) {
+        const detail =
+          error instanceof Error && error.message
+            ? error.message
+            : "同步配置失败";
+        throw new Error(`切换成功，但同步配置失败：${detail}`);
+      }
+    }
+    return result;
   },
 
   async importDefault(appId: AppId): Promise<boolean> {

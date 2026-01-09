@@ -42,6 +42,7 @@ pub use services::{
     ConfigService, EndpointLatency, McpService, PromptService, ProviderService, SkillService,
     SpeedtestService,
 };
+pub use prompt::Prompt;
 pub use settings::{update_settings, AppSettings};
 pub use store::AppState;
 
@@ -559,7 +560,10 @@ pub fn run() {
             let app_state = match AppState::try_new() {
                 Ok(state) => state,
                 Err(err) => {
-                    let path = crate::config::get_app_config_path();
+                    let path = crate::config::get_app_config_path().unwrap_or_else(|e| {
+                        log::warn!("无法解析配置文件路径: {e}");
+                        std::path::PathBuf::from("unknown")
+                    });
                     let payload_json = serde_json::json!({
                         "path": path.display().to_string(),
                         "error": err.to_string(),

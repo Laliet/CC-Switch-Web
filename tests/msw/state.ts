@@ -299,6 +299,8 @@ export const listProviders = (appType: AppId) =>
 export const getSkillsState = (): SkillsResponse => ({
   skills: cloneSkills(skills),
   warnings: [],
+  cacheHit: false,
+  refreshing: false,
 });
 
 export const installSkillState = (directory: string) => {

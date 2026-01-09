@@ -49,11 +49,14 @@ struct WebTokens {
     csrf_token: String,
 }
 
+const DEFAULT_API_PREFIX: &str = "/api";
+
 /// Serve embedded static assets with index.html fallback for SPA routes.
 async fn serve_static(
     path: Option<Path<String>>,
     headers: HeaderMap,
     tokens: Arc<WebTokens>,
+    api_base: Arc<String>,
 ) -> impl IntoResponse {
     let requested_path = path.map(|Path(p)| p).unwrap_or_default();
     let requested_path = requested_path.trim_start_matches('/');
@@ -96,13 +99,18 @@ async fn serve_static(
             let csrf_token_json = serde_json::to_string(&tokens.csrf_token)
                 .unwrap_or_else(|_| "\"\"".to_string())
                 .replace('<', "\\u003c");
+            let api_base_json = serde_json::to_string(api_base.as_str())
+                .unwrap_or_else(|_| "\"/api\"".to_string())
+                .replace('<', "\\u003c");
             let injection = format!(
                 r#"<script>
+window.__CC_SWITCH_API_BASE__ = {api_base};
 window.__CC_SWITCH_TOKENS__ = {{
   csrfToken: {csrf}
 }};
 </script>"#,
-                csrf = csrf_token_json
+                csrf = csrf_token_json,
+                api_base = api_base_json
             );
             if let Some(pos) = html.find("</head>") {
                 html.insert_str(pos, &injection);
@@ -184,10 +192,48 @@ fn cors_layer() -> Option<CorsLayer> {
     Some(layer)
 }
 
+fn normalize_api_prefix(raw: &str) -> Option<String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    if trimmed.contains("://") {
+        log::warn!("WEB_API_PREFIX expects a path like /api, got {}", trimmed);
+        return None;
+    }
+
+    let mut prefix = if trimmed.starts_with('/') {
+        trimmed.to_string()
+    } else {
+        format!("/{trimmed}")
+    };
+
+    while prefix.ends_with('/') {
+        prefix.pop();
+    }
+
+    if prefix.is_empty() || prefix == "/" {
+        None
+    } else {
+        Some(prefix)
+    }
+}
+
+fn web_api_prefix() -> String {
+    let configured = env::var("WEB_API_PREFIX")
+        .ok()
+        .or_else(|| env::var("API_PREFIX").ok())
+        .and_then(|value| normalize_api_prefix(&value));
+
+    configured.unwrap_or_else(|| DEFAULT_API_PREFIX.to_string())
+}
+
 /// Construct the axum router with all API routes and middleware.
 pub fn create_router(state: SharedState, password: String) -> Router {
     let tokens = Arc::new(load_or_generate_tokens());
     let csrf_token = Some(Arc::new(tokens.csrf_token.clone()));
+    let api_prefix = web_api_prefix();
+    let api_prefix_arc = Arc::new(api_prefix.clone());
 
     let hsts_enabled = env::var("ENABLE_HSTS")
         .map(|v| matches!(v.as_str(), "1" | "true" | "TRUE" | "yes" | "on"))
@@ -212,20 +258,22 @@ pub fn create_router(state: SharedState, password: String) -> Router {
             "/",
             get({
                 let tokens = tokens.clone();
-                move |path, headers| serve_static(path, headers, tokens.clone())
+                let api_base = api_prefix_arc.clone();
+                move |path, headers| serve_static(path, headers, tokens.clone(), api_base.clone())
             }),
         )
         .route(
             "/*path",
             get({
                 let tokens = tokens.clone();
-                move |path, headers| serve_static(path, headers, tokens.clone())
+                let api_base = api_prefix_arc.clone();
+                move |path, headers| serve_static(path, headers, tokens.clone(), api_base.clone())
             }),
         )
         .layer(ValidateRequestHeaderLayer::custom(auth_validator));
 
     Router::new()
-        .nest("/api", router)
+        .nest(api_prefix.as_str(), router)
         .merge(static_router)
         .layer(middleware::from_fn({
             let hsts_enabled = hsts_enabled;
@@ -271,20 +319,30 @@ impl AuthValidator {
     }
 
     fn unauthorized() -> Response {
+        let body = serde_json::json!({
+            "error": "Authentication required. Please provide valid credentials.",
+            "code": "UNAUTHORIZED"
+        });
         Response::builder()
             .status(StatusCode::UNAUTHORIZED)
             .header(
                 WWW_AUTHENTICATE,
                 HeaderValue::from_static(r#"Basic realm="cc-switch", charset="UTF-8""#),
             )
-            .body(Body::empty())
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(body.to_string()))
             .unwrap_or_else(|_| Response::new(Body::empty()))
     }
 
     fn forbidden_csrf() -> Response {
+        let body = serde_json::json!({
+            "error": "CSRF token invalid or missing. Please refresh the page and try again.",
+            "code": "CSRF_VALIDATION_FAILED"
+        });
         Response::builder()
             .status(StatusCode::FORBIDDEN)
-            .body(Body::empty())
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(body.to_string()))
             .unwrap_or_else(|_| Response::new(Body::empty()))
     }
 }

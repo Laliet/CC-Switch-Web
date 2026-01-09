@@ -96,7 +96,7 @@ pub async fn import_config(
     if is_plain_config {
         let content = serde_json::to_string(&body)
             .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
-        let config_path = resolve_app_config_path();
+        let config_path = resolve_app_config_path().map_err(ApiError::from)?;
         let backup_id = ConfigService::create_backup(&config_path).map_err(ApiError::from)?;
         let parsed: MultiAppConfig =
             serde_json::from_value(body).map_err(|e| ApiError::bad_request(e.to_string()))?;
@@ -126,7 +126,7 @@ pub async fn import_config(
 
     let mut updated_state = false;
     let (new_config, backup_id) = if let Some(content) = payload.content {
-        let config_path = resolve_app_config_path();
+        let config_path = resolve_app_config_path().map_err(ApiError::from)?;
         let backup_id = ConfigService::create_backup(&config_path).map_err(ApiError::from)?;
         let parsed: MultiAppConfig =
             serde_json::from_str(&content).map_err(|e| ApiError::bad_request(e.to_string()))?;
@@ -176,9 +176,9 @@ pub async fn export_config_snapshot(
 pub async fn get_config_dir(Path(app): Path<String>) -> ApiResult<String> {
     let app_type = parse_app_type(&app)?;
     let dir = match app_type {
-        AppType::Claude => crate::config::get_claude_config_dir(),
-        AppType::Codex => codex_config::get_codex_config_dir(),
-        AppType::Gemini => gemini_config::get_gemini_dir(),
+        AppType::Claude => crate::config::get_claude_config_dir().map_err(ApiError::from)?,
+        AppType::Codex => codex_config::get_codex_config_dir().map_err(ApiError::from)?,
+        AppType::Gemini => gemini_config::get_gemini_dir().map_err(ApiError::from)?,
     };
     Ok(Json(dir.to_string_lossy().to_string()))
 }
@@ -186,9 +186,9 @@ pub async fn get_config_dir(Path(app): Path<String>) -> ApiResult<String> {
 pub async fn open_config_folder(Path(app): Path<String>) -> ApiResult<bool> {
     let app_type = parse_app_type(&app)?;
     let dir = match app_type {
-        AppType::Claude => crate::config::get_claude_config_dir(),
-        AppType::Codex => codex_config::get_codex_config_dir(),
-        AppType::Gemini => gemini_config::get_gemini_dir(),
+        AppType::Claude => crate::config::get_claude_config_dir().map_err(ApiError::from)?,
+        AppType::Codex => codex_config::get_codex_config_dir().map_err(ApiError::from)?,
+        AppType::Gemini => gemini_config::get_gemini_dir().map_err(ApiError::from)?,
     };
 
     std::fs::create_dir_all(&dir).map_err(|e| ApiError::from(AppError::io(&dir, e)))?;
@@ -203,19 +203,17 @@ pub async fn pick_directory() -> ApiResult<Option<String>> {
 }
 
 pub async fn get_claude_code_config_path() -> ApiResult<String> {
-    Ok(Json(
-        get_claude_settings_path().to_string_lossy().to_string(),
-    ))
+    let path = get_claude_settings_path().map_err(ApiError::from)?;
+    Ok(Json(path.to_string_lossy().to_string()))
 }
 
 pub async fn get_app_config_path() -> ApiResult<String> {
-    Ok(Json(
-        resolve_app_config_path().to_string_lossy().to_string(),
-    ))
+    let path = resolve_app_config_path().map_err(ApiError::from)?;
+    Ok(Json(path.to_string_lossy().to_string()))
 }
 
 pub async fn open_app_config_folder() -> ApiResult<bool> {
-    let dir = get_app_config_dir();
+    let dir = get_app_config_dir().map_err(ApiError::from)?;
     std::fs::create_dir_all(&dir).map_err(|e| ApiError::from(AppError::io(&dir, e)))?;
     Ok(Json(true))
 }

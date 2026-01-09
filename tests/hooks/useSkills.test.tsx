@@ -6,7 +6,9 @@ import { http, HttpResponse } from "msw";
 import type { SkillsResponse } from "@/lib/api/skills";
 import {
   useAllSkills,
+  useAddSkillRepo,
   useInstallSkill,
+  useRemoveSkillRepo,
   useSkillRepos,
   useUninstallSkill,
 } from "@/hooks/useSkills";
@@ -60,6 +62,62 @@ describe("useSkills hooks", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toEqual(expected);
+  });
+
+  it("adds a skill repo and invalidates repos and skills queries", async () => {
+    const { wrapper, queryClient } = createWrapper();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    const repo = { owner: "me", name: "new-skill-repo" };
+
+    const reposQuery = renderHook(() => useSkillRepos(), { wrapper });
+    await waitFor(() => expect(reposQuery.result.current.isSuccess).toBe(true));
+
+    const { result } = renderHook(() => useAddSkillRepo(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync(repo);
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["skills", "repos"] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["skills", "all"] });
+
+    await act(async () => {
+      await queryClient.refetchQueries({ queryKey: ["skills", "repos"] });
+    });
+
+    const updated = queryClient.getQueryData<ReturnType<typeof getSkillReposState>>([
+      "skills",
+      "repos",
+    ]);
+    expect(updated?.some((item) => item.name === repo.name)).toBe(true);
+  });
+
+  it("removes a skill repo and invalidates repos and skills queries", async () => {
+    const { wrapper, queryClient } = createWrapper();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    const repo = getSkillReposState()[0];
+
+    const reposQuery = renderHook(() => useSkillRepos(), { wrapper });
+    await waitFor(() => expect(reposQuery.result.current.isSuccess).toBe(true));
+
+    const { result } = renderHook(() => useRemoveSkillRepo(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ owner: repo.owner, name: repo.name });
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["skills", "repos"] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["skills", "all"] });
+
+    await act(async () => {
+      await queryClient.refetchQueries({ queryKey: ["skills", "repos"] });
+    });
+
+    const updated = queryClient.getQueryData<ReturnType<typeof getSkillReposState>>([
+      "skills",
+      "repos",
+    ]);
+    expect(updated?.some((item) => item.name === repo.name)).toBe(false);
   });
 
   it("installs a skill and invalidates the skills query", async () => {

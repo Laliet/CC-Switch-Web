@@ -684,6 +684,14 @@
     "commandCount": "{{count}} 个命令",
     "refresh": "刷新",
     "refreshing": "刷新中...",
+    "status": {
+      "cacheHit": "缓存命中",
+      "refreshing": "后台刷新中"
+    },
+    "cacheStatus": {
+      "hit": "缓存命中",
+      "refreshing": "后台刷新中"
+    },
     "repoManager": "仓库管理",
     "count": "共 {{count}} 个技能",
     "empty": "暂无可用技能",

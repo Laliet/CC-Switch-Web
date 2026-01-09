@@ -1,6 +1,6 @@
 {
   "name": "cc-switch-web",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "All-in-One Assistant for Claude Code, Codex & Gemini CLI",
   "scripts": {
     "dev": "pnpm tauri dev",
@@ -28,6 +28,7 @@
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@vitejs/plugin-react": "^4.2.0",
+    "@vitest/coverage-v8": "^2.1.9",
     "cross-fetch": "^4.1.0",
     "jsdom": "^25.0.0",
     "msw": "^2.11.6",

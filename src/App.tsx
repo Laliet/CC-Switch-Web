@@ -15,7 +15,12 @@ import { checkAllEnvConflicts, checkEnvConflicts } from "@/lib/api/env";
 import { useProviderActions } from "@/hooks/useProviderActions";
 import { useHealthCheck } from "@/hooks/useHealthCheck";
 import { extractErrorMessage } from "@/utils/errorUtils";
-import { clearWebCredentials, isWeb, WEB_AUTH_STORAGE_KEY } from "@/lib/api/adapter";
+import {
+  clearWebCredentials,
+  buildWebApiUrl,
+  isWeb,
+  WEB_AUTH_STORAGE_KEY,
+} from "@/lib/api/adapter";
 import { AppSwitcher } from "@/components/AppSwitcher";
 import { ProviderList } from "@/components/providers/ProviderList";
 import { AddProviderDialog } from "@/components/providers/AddProviderDialog";
@@ -48,7 +53,7 @@ import {
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 async function validateWebCredentials(encoded: string): Promise<boolean> {
-  const response = await fetch("/api/settings", {
+  const response = await fetch(buildWebApiUrl("/settings"), {
     method: "GET",
     credentials: "include",
     headers: {
@@ -203,6 +208,13 @@ function AppContent() {
       setEditingProvider(null);
     } catch (error) {
       console.error("[App] Failed to update provider", error);
+      const detail = extractErrorMessage(error) || t("common.unknown");
+      toast.error(
+        t("provider.updateFailed", {
+          defaultValue: "更新供应商失败：{{error}}",
+          error: detail,
+        }),
+      );
     }
   };
 
@@ -214,6 +226,13 @@ function AppContent() {
       setConfirmDelete(null);
     } catch (error) {
       console.error("[App] Failed to delete provider", error);
+      const detail = extractErrorMessage(error) || t("common.unknown");
+      toast.error(
+        t("provider.deleteFailed", {
+          defaultValue: "删除供应商失败：{{error}}",
+          error: detail,
+        }),
+      );
     }
   };
 
@@ -381,6 +400,13 @@ function AppContent() {
       await addProvider(duplicatedProvider);
     } catch (error) {
       console.error("[App] Failed to duplicate provider", error);
+      const detail = extractErrorMessage(error) || t("common.unknown");
+      toast.error(
+        t("provider.duplicateFailed", {
+          defaultValue: "复制供应商失败：{{error}}",
+          error: detail,
+        }),
+      );
     }
   };
 

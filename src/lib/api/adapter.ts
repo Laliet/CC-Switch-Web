@@ -10,15 +10,14 @@ interface Endpoint {
   body?: unknown;
 }
 
-const API_BASE = "/api";
+const DEFAULT_WEB_API_BASE = "/api";
 
 // Storage keys - exported for use across modules
 export const WEB_AUTH_STORAGE_KEY = "cc-switch-web-auth";
 export const WEB_CSRF_STORAGE_KEY = "cc-switch-csrf-token";
+export const WEB_API_BASE_STORAGE_KEY = "cc-switch-web-api-base";
 
 const WEB_UNSUPPORTED_COMMANDS: Record<string, string> = {
-  read_live_provider_settings:
-    "Web 端暂不支持读取 VSCode 实时配置，请使用桌面版。",
   test_api_endpoints: "Web 端暂不支持端点测速，请使用桌面版。",
   get_custom_endpoints: "Web 端暂不支持获取 VSCode 自定义端点，请使用桌面版。",
   add_custom_endpoint: "Web 端暂不支持添加 VSCode 自定义端点，请使用桌面版。",
@@ -63,6 +62,91 @@ const WEB_FETCH_RETRY_DELAY_MS = Math.max(
   0,
   getEnvNumber(import.meta.env?.VITE_WEB_FETCH_RETRY_DELAY_MS, 500),
 );
+
+export function normalizeWebApiBase(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (trimmed === "/") return "/";
+  const normalized = trimmed.replace(/\/+$/, "");
+  if (!normalized) return null;
+  return normalized;
+}
+
+const isRelativeWebApiBase = (value: string): boolean =>
+  value.startsWith("/") && !value.startsWith("//");
+
+const parseHttpUrl = (value: string): URL | null => {
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return parsed;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+};
+
+const getWebApiBaseProtocolError = (value: string): string | null => {
+  if (typeof window === "undefined") return null;
+  if (window.location?.protocol !== "https:") return null;
+  const parsed = parseHttpUrl(value);
+  if (parsed?.protocol === "http:") {
+    return "当前页面为 HTTPS，API 地址必须使用 https 或相对路径";
+  }
+  return null;
+};
+
+export function getWebApiBaseValidationError(value: string): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const normalized = normalizeWebApiBase(trimmed);
+  if (!normalized) return "API 地址无效";
+  if (isRelativeWebApiBase(normalized)) return null;
+  if (!parseHttpUrl(normalized)) return "API 地址无效";
+  return getWebApiBaseProtocolError(normalized);
+}
+
+export function isValidWebApiBase(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (isRelativeWebApiBase(trimmed)) return true;
+  if (!parseHttpUrl(trimmed)) return false;
+  return getWebApiBaseProtocolError(trimmed) === null;
+}
+
+const resolveWebApiBase = (value: unknown): string | null => {
+  const normalized = normalizeWebApiBase(value);
+  if (!normalized) return null;
+  if (!isValidWebApiBase(normalized)) return null;
+  return normalized;
+};
+
+export function getWebApiBase(): string {
+  const stored = getStoredWebApiBase();
+  if (stored) return stored;
+  if (typeof window !== "undefined") {
+    const fromWindow = resolveWebApiBase(window.__CC_SWITCH_API_BASE__);
+    if (fromWindow) return fromWindow;
+  }
+  const fromEnv = resolveWebApiBase(import.meta.env?.VITE_WEB_API_BASE);
+  if (fromEnv) return fromEnv;
+  return DEFAULT_WEB_API_BASE;
+}
+
+export function buildWebApiUrl(path: string): string {
+  const base = getWebApiBase();
+  const trimmedPath = path.trim();
+  if (!trimmedPath) return base;
+  const normalizedBase = base.replace(/\/+$/, "");
+  const normalizedPath = trimmedPath.startsWith("/")
+    ? trimmedPath
+    : `/${trimmedPath}`;
+  if (!normalizedBase) return normalizedPath;
+  return `${normalizedBase}${normalizedPath}`;
+}
 
 const encode = (value: unknown) => encodeURIComponent(String(value));
 
@@ -116,6 +200,7 @@ declare global {
       csrfToken: string;
       __noticeShown?: boolean;
     };
+    __CC_SWITCH_API_BASE__?: string;
   }
 }
 
@@ -212,6 +297,22 @@ function getStoredWebCredentials(): string | undefined {
   }
 }
 
+export function getStoredWebApiBase(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const value = window.localStorage?.getItem(WEB_API_BASE_STORAGE_KEY);
+    if (!value) return undefined;
+    const resolved = resolveWebApiBase(value);
+    if (!resolved) {
+      window.localStorage?.removeItem(WEB_API_BASE_STORAGE_KEY);
+      return undefined;
+    }
+    return resolved;
+  } catch {
+    return undefined;
+  }
+}
+
 function getStoredWebCsrfToken(): string | undefined {
   if (typeof window === "undefined") return undefined;
   try {
@@ -233,6 +334,30 @@ export function setWebCredentials(password: string) {
   }
 }
 
+export function setWebApiBaseOverride(value: string | null) {
+  if (typeof window === "undefined") return;
+  try {
+    const normalized = normalizeWebApiBase(value);
+    if (!normalized) {
+      clearWebApiBaseOverride();
+      return;
+    }
+    if (!isValidWebApiBase(normalized)) return;
+    window.localStorage?.setItem(WEB_API_BASE_STORAGE_KEY, normalized);
+  } catch {
+    // ignore
+  }
+}
+
+export function clearWebApiBaseOverride() {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage?.removeItem(WEB_API_BASE_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 export function clearWebCredentials() {
   if (typeof window === "undefined") return;
   try {
@@ -247,31 +372,32 @@ export function commandToEndpoint(
   cmd: string,
   args: CommandArgs = {},
 ): Endpoint {
+  const apiBase = getWebApiBase();
   switch (cmd) {
     // Provider commands
     case "get_providers": {
       const app = requireArg(args, "app", cmd);
-      return { method: "GET", url: `${API_BASE}/providers/${encode(app)}` };
+      return { method: "GET", url: `${apiBase}/providers/${encode(app)}` };
     }
     case "get_current_provider": {
       const app = requireArg(args, "app", cmd);
       return {
         method: "GET",
-        url: `${API_BASE}/providers/${encode(app)}/current`,
+        url: `${apiBase}/providers/${encode(app)}/current`,
       };
     }
     case "get_backup_provider": {
       const app = requireArg(args, "app", cmd);
       return {
         method: "GET",
-        url: `${API_BASE}/providers/${encode(app)}/backup`,
+        url: `${apiBase}/providers/${encode(app)}/backup`,
       };
     }
     case "set_backup_provider": {
       const app = requireArg(args, "app", cmd);
       return {
         method: "PUT",
-        url: `${API_BASE}/providers/${encode(app)}/backup`,
+        url: `${apiBase}/providers/${encode(app)}/backup`,
         body: { id: args.id ?? null },
       };
     }
@@ -280,7 +406,7 @@ export function commandToEndpoint(
       const provider = requireArg(args, "provider", cmd);
       return {
         method: "POST",
-        url: `${API_BASE}/providers/${encode(app)}`,
+        url: `${apiBase}/providers/${encode(app)}`,
         body: provider,
       };
     }
@@ -302,7 +428,7 @@ export function commandToEndpoint(
       }
       return {
         method: "PUT",
-        url: `${API_BASE}/providers/${encode(app)}/${encode(providerId)}`,
+        url: `${apiBase}/providers/${encode(app)}/${encode(providerId)}`,
         body: provider,
       };
     }
@@ -311,7 +437,7 @@ export function commandToEndpoint(
       const id = requireArg(args, "id", cmd);
       return {
         method: "DELETE",
-        url: `${API_BASE}/providers/${encode(app)}/${encode(id)}`,
+        url: `${apiBase}/providers/${encode(app)}/${encode(id)}`,
       };
     }
     case "switch_provider": {
@@ -319,25 +445,32 @@ export function commandToEndpoint(
       const id = requireArg(args, "id", cmd);
       return {
         method: "POST",
-        url: `${API_BASE}/providers/${encode(app)}/${encode(id)}/switch`,
+        url: `${apiBase}/providers/${encode(app)}/${encode(id)}/switch`,
       };
     }
     case "import_default_config": {
       const app = requireArg(args, "app", cmd);
       return {
         method: "POST",
-        url: `${API_BASE}/providers/${encode(app)}/import-default`,
+        url: `${apiBase}/providers/${encode(app)}/import-default`,
+      };
+    }
+    case "read_live_provider_settings": {
+      const app = requireArg(args, "app", cmd);
+      return {
+        method: "GET",
+        url: `${apiBase}/providers/${encode(app)}/live-settings`,
       };
     }
     case "update_tray_menu": {
-      return { method: "POST", url: `${API_BASE}/tray/update` };
+      return { method: "POST", url: `${apiBase}/tray/update` };
     }
     case "update_providers_sort_order": {
       const app = requireArg(args, "app", cmd);
       const updates = requireArg(args, "updates", cmd);
       return {
         method: "PUT",
-        url: `${API_BASE}/providers/${encode(app)}/sort-order`,
+        url: `${apiBase}/providers/${encode(app)}/sort-order`,
         body: { updates },
       };
     }
@@ -346,7 +479,7 @@ export function commandToEndpoint(
       const providerId = requireArg(args, "providerId", cmd);
       return {
         method: "POST",
-        url: `${API_BASE}/providers/${encode(app)}/${encode(providerId)}/usage`,
+        url: `${apiBase}/providers/${encode(app)}/${encode(providerId)}/usage`,
       };
     }
     case "testUsageScript": {
@@ -354,7 +487,7 @@ export function commandToEndpoint(
       const providerId = requireArg(args, "providerId", cmd);
       return {
         method: "POST",
-        url: `${API_BASE}/providers/${encode(app)}/${encode(providerId)}/usage/test`,
+        url: `${apiBase}/providers/${encode(app)}/${encode(providerId)}/usage/test`,
         body: {
           scriptCode: requireArg(args, "scriptCode", cmd),
           timeout: args.timeout,
@@ -368,15 +501,15 @@ export function commandToEndpoint(
 
     // MCP commands
     case "get_claude_mcp_status":
-      return { method: "GET", url: `${API_BASE}/mcp/status` };
+      return { method: "GET", url: `${apiBase}/mcp/status` };
     case "read_claude_mcp_config":
-      return { method: "GET", url: `${API_BASE}/mcp/config/claude` };
+      return { method: "GET", url: `${apiBase}/mcp/config/claude` };
     case "upsert_claude_mcp_server": {
       const id = requireArg(args, "id", cmd);
       const spec = requireArg(args, "spec", cmd);
       return {
         method: "PUT",
-        url: `${API_BASE}/mcp/config/claude/servers/${encode(id)}`,
+        url: `${apiBase}/mcp/config/claude/servers/${encode(id)}`,
         body: { spec },
       };
     }
@@ -384,18 +517,18 @@ export function commandToEndpoint(
       const id = requireArg(args, "id", cmd);
       return {
         method: "DELETE",
-        url: `${API_BASE}/mcp/config/claude/servers/${encode(id)}`,
+        url: `${apiBase}/mcp/config/claude/servers/${encode(id)}`,
       };
     }
     case "validate_mcp_command":
       return {
         method: "POST",
-        url: `${API_BASE}/mcp/validate`,
+        url: `${apiBase}/mcp/validate`,
         body: { cmd: requireArg(args, "cmd", cmd) },
       };
     case "get_mcp_config": {
       const app = requireArg(args, "app", cmd);
-      return { method: "GET", url: `${API_BASE}/mcp/config/${encode(app)}` };
+      return { method: "GET", url: `${apiBase}/mcp/config/${encode(app)}` };
     }
     case "upsert_mcp_server_in_config": {
       const app = requireArg(args, "app", cmd);
@@ -403,7 +536,7 @@ export function commandToEndpoint(
       const spec = requireArg(args, "spec", cmd);
       return {
         method: "PUT",
-        url: `${API_BASE}/mcp/config/${encode(app)}/servers/${encode(id)}`,
+        url: `${apiBase}/mcp/config/${encode(app)}/servers/${encode(id)}`,
         body: {
           spec,
           ...(args.syncOtherSide !== undefined
@@ -417,7 +550,7 @@ export function commandToEndpoint(
       const id = requireArg(args, "id", cmd);
       return {
         method: "DELETE",
-        url: `${API_BASE}/mcp/config/${encode(app)}/servers/${encode(id)}`,
+        url: `${apiBase}/mcp/config/${encode(app)}/servers/${encode(id)}`,
         body:
           args.syncOtherSide !== undefined
             ? { syncOtherSide: args.syncOtherSide }
@@ -430,18 +563,18 @@ export function commandToEndpoint(
       const enabled = requireArg(args, "enabled", cmd);
       return {
         method: "POST",
-        url: `${API_BASE}/mcp/config/${encode(app)}/servers/${encode(id)}/enabled`,
+        url: `${apiBase}/mcp/config/${encode(app)}/servers/${encode(id)}/enabled`,
         body: { enabled },
       };
     }
     case "get_mcp_servers":
-      return { method: "GET", url: `${API_BASE}/mcp/servers` };
+      return { method: "GET", url: `${apiBase}/mcp/servers` };
     case "upsert_mcp_server": {
       const server = requireArg(args, "server", cmd);
       const id = requireArg(server, "id", cmd);
       return {
         method: "PUT",
-        url: `${API_BASE}/mcp/servers/${encode(id)}`,
+        url: `${apiBase}/mcp/servers/${encode(id)}`,
         body: server,
       };
     }
@@ -449,7 +582,7 @@ export function commandToEndpoint(
       const id = requireArg(args, "id", cmd);
       return {
         method: "DELETE",
-        url: `${API_BASE}/mcp/servers/${encode(id)}`,
+        url: `${apiBase}/mcp/servers/${encode(id)}`,
       };
     }
     case "toggle_mcp_app": {
@@ -458,7 +591,7 @@ export function commandToEndpoint(
       const enabled = requireArg(args, "enabled", cmd);
       return {
         method: "POST",
-        url: `${API_BASE}/mcp/servers/${encode(serverId)}/apps/${encode(app)}`,
+        url: `${apiBase}/mcp/servers/${encode(serverId)}/apps/${encode(app)}`,
         body: { enabled },
       };
     }
@@ -466,7 +599,7 @@ export function commandToEndpoint(
     // Prompt commands
     case "get_prompts": {
       const app = requireArg(args, "app", cmd);
-      return { method: "GET", url: `${API_BASE}/prompts/${encode(app)}` };
+      return { method: "GET", url: `${apiBase}/prompts/${encode(app)}` };
     }
     case "upsert_prompt": {
       const app = requireArg(args, "app", cmd);
@@ -474,7 +607,7 @@ export function commandToEndpoint(
       const prompt = requireArg(args, "prompt", cmd);
       return {
         method: "PUT",
-        url: `${API_BASE}/prompts/${encode(app)}/${encode(id)}`,
+        url: `${apiBase}/prompts/${encode(app)}/${encode(id)}`,
         body: prompt,
       };
     }
@@ -483,7 +616,7 @@ export function commandToEndpoint(
       const id = requireArg(args, "id", cmd);
       return {
         method: "DELETE",
-        url: `${API_BASE}/prompts/${encode(app)}/${encode(id)}`,
+        url: `${apiBase}/prompts/${encode(app)}/${encode(id)}`,
       };
     }
     case "enable_prompt": {
@@ -491,45 +624,45 @@ export function commandToEndpoint(
       const id = requireArg(args, "id", cmd);
       return {
         method: "POST",
-        url: `${API_BASE}/prompts/${encode(app)}/${encode(id)}/enable`,
+        url: `${apiBase}/prompts/${encode(app)}/${encode(id)}/enable`,
       };
     }
     case "import_prompt_from_file": {
       const app = requireArg(args, "app", cmd);
       return {
         method: "POST",
-        url: `${API_BASE}/prompts/${encode(app)}/import-from-file`,
+        url: `${apiBase}/prompts/${encode(app)}/import-from-file`,
       };
     }
     case "get_current_prompt_file_content": {
       const app = requireArg(args, "app", cmd);
       return {
         method: "GET",
-        url: `${API_BASE}/prompts/${encode(app)}/current-file`,
+        url: `${apiBase}/prompts/${encode(app)}/current-file`,
       };
     }
 
     // Skill commands
     case "get_skills":
-      return { method: "GET", url: `${API_BASE}/skills` };
+      return { method: "GET", url: `${apiBase}/skills` };
     case "install_skill":
       return {
         method: "POST",
-        url: `${API_BASE}/skills/install`,
+        url: `${apiBase}/skills/install`,
         body: { directory: requireArg(args, "directory", cmd) },
       };
     case "uninstall_skill":
       return {
         method: "POST",
-        url: `${API_BASE}/skills/uninstall`,
+        url: `${apiBase}/skills/uninstall`,
         body: { directory: requireArg(args, "directory", cmd) },
       };
     case "get_skill_repos":
-      return { method: "GET", url: `${API_BASE}/skills/repos` };
+      return { method: "GET", url: `${apiBase}/skills/repos` };
     case "add_skill_repo":
       return {
         method: "POST",
-        url: `${API_BASE}/skills/repos`,
+        url: `${apiBase}/skills/repos`,
         body: requireArg(args, "repo", cmd),
       };
     case "remove_skill_repo": {
@@ -537,74 +670,74 @@ export function commandToEndpoint(
       const name = requireArg(args, "name", cmd);
       return {
         method: "DELETE",
-        url: `${API_BASE}/skills/repos/${encode(owner)}/${encode(name)}`,
+        url: `${apiBase}/skills/repos/${encode(owner)}/${encode(name)}`,
       };
     }
 
     // Settings / system commands
     case "get_settings":
-      return { method: "GET", url: `${API_BASE}/settings` };
+      return { method: "GET", url: `${apiBase}/settings` };
     case "save_settings":
       return {
         method: "PUT",
-        url: `${API_BASE}/settings`,
+        url: `${apiBase}/settings`,
         body: requireArg(args, "settings", cmd),
       };
     case "restart_app":
-      return { method: "POST", url: `${API_BASE}/system/restart` };
+      return { method: "POST", url: `${apiBase}/system/restart` };
     case "check_for_updates":
-      return { method: "POST", url: `${API_BASE}/system/check-updates` };
+      return { method: "POST", url: `${apiBase}/system/check-updates` };
     case "is_portable_mode":
-      return { method: "GET", url: `${API_BASE}/system/is-portable` };
+      return { method: "GET", url: `${apiBase}/system/is-portable` };
     case "get_config_dir": {
       const app = requireArg(args, "app", cmd);
-      return { method: "GET", url: `${API_BASE}/config/${encode(app)}/dir` };
+      return { method: "GET", url: `${apiBase}/config/${encode(app)}/dir` };
     }
     case "open_config_folder": {
       const app = requireArg(args, "app", cmd);
-      return { method: "POST", url: `${API_BASE}/config/${encode(app)}/open` };
+      return { method: "POST", url: `${apiBase}/config/${encode(app)}/open` };
     }
     case "pick_directory":
       return {
         method: "POST",
-        url: `${API_BASE}/fs/pick-directory`,
+        url: `${apiBase}/fs/pick-directory`,
         body:
           args.defaultPath !== undefined
             ? { defaultPath: args.defaultPath }
             : undefined,
       };
     case "get_claude_code_config_path":
-      return { method: "GET", url: `${API_BASE}/config/claude-code/path` };
+      return { method: "GET", url: `${apiBase}/config/claude-code/path` };
     case "get_app_config_path":
-      return { method: "GET", url: `${API_BASE}/config/app/path` };
+      return { method: "GET", url: `${apiBase}/config/app/path` };
     case "open_app_config_folder":
-      return { method: "POST", url: `${API_BASE}/config/app/open` };
+      return { method: "POST", url: `${apiBase}/config/app/open` };
     case "get_app_config_dir_override":
-      return { method: "GET", url: `${API_BASE}/config/app/override` };
+      return { method: "GET", url: `${apiBase}/config/app/override` };
     case "set_app_config_dir_override":
       return {
         method: "PUT",
-        url: `${API_BASE}/config/app/override`,
+        url: `${apiBase}/config/app/override`,
         body: { path: args.path },
       };
     case "apply_claude_plugin_config":
       return {
         method: "POST",
-        url: `${API_BASE}/config/claude/plugin`,
+        url: `${apiBase}/config/claude/plugin`,
         body: { official: requireArg(args, "official", cmd) },
       };
     case "save_file_dialog":
       return {
         method: "POST",
-        url: `${API_BASE}/fs/save-file`,
+        url: `${apiBase}/fs/save-file`,
         body: { defaultName: requireArg(args, "defaultName", cmd) },
       };
     case "open_file_dialog":
-      return { method: "POST", url: `${API_BASE}/fs/open-file` };
+      return { method: "POST", url: `${apiBase}/fs/open-file` };
     case "export_config_to_file":
       return {
         method: "POST",
-        url: `${API_BASE}/config/export`,
+        url: `${apiBase}/config/export`,
         body: { filePath: requireArg(args, "filePath", cmd) },
       };
     case "import_config_from_file": {
@@ -617,16 +750,16 @@ export function commandToEndpoint(
       }
       return {
         method: "POST",
-        url: `${API_BASE}/config/import`,
+        url: `${apiBase}/config/import`,
         body,
       };
     }
     case "sync_current_providers_live":
-      return { method: "POST", url: `${API_BASE}/providers/sync-current` };
+      return { method: "POST", url: `${apiBase}/providers/sync-current` };
     case "open_external":
       return {
         method: "POST",
-        url: `${API_BASE}/system/open-external`,
+        url: `${apiBase}/system/open-external`,
         body: { url: requireArg(args, "url", cmd) },
       };
 
@@ -634,26 +767,26 @@ export function commandToEndpoint(
     case "get_claude_common_config_snippet":
       return {
         method: "GET",
-        url: `${API_BASE}/config/claude/common-snippet`,
+        url: `${apiBase}/config/claude/common-snippet`,
       };
     case "set_claude_common_config_snippet":
       return {
         method: "PUT",
-        url: `${API_BASE}/config/claude/common-snippet`,
+        url: `${apiBase}/config/claude/common-snippet`,
         body: { snippet: requireArg(args, "snippet", cmd) },
       };
     case "get_common_config_snippet": {
       const appType = requireArg(args, "appType", cmd);
       return {
         method: "GET",
-        url: `${API_BASE}/config/${encode(appType)}/common-snippet`,
+        url: `${apiBase}/config/${encode(appType)}/common-snippet`,
       };
     }
     case "set_common_config_snippet": {
       const appType = requireArg(args, "appType", cmd);
       return {
         method: "PUT",
-        url: `${API_BASE}/config/${encode(appType)}/common-snippet`,
+        url: `${apiBase}/config/${encode(appType)}/common-snippet`,
         body: { snippet: requireArg(args, "snippet", cmd) },
       };
     }

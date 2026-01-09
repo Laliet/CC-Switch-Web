@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { settingsApi } from "@/lib/api";
 import { syncCurrentProvidersLiveSafe } from "@/utils/postChangeSync";
-import { isWeb, WEB_AUTH_STORAGE_KEY } from "@/lib/api/adapter";
+import { buildWebApiUrl, isWeb, WEB_AUTH_STORAGE_KEY } from "@/lib/api/adapter";
 
 export type ImportStatus =
   | "idle"
@@ -212,7 +212,7 @@ export function useImportExport(
             headers.Authorization = `Basic ${storedAuth}`;
           }
         } catch {}
-        const response = await fetch("/api/config/export", {
+        const response = await fetch(buildWebApiUrl("/config/export"), {
           credentials: "include",
           headers,
         });

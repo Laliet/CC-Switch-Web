@@ -684,6 +684,14 @@
     "commandCount": "{{count}} commands",
     "refresh": "Refresh",
     "refreshing": "Refreshing...",
+    "status": {
+      "cacheHit": "Cache hit",
+      "refreshing": "Background refresh"
+    },
+    "cacheStatus": {
+      "hit": "Cache hit",
+      "refreshing": "Background refresh"
+    },
     "repoManager": "Repository Management",
     "count": "{{count}} skills",
     "empty": "No skills available",

@@ -5,6 +5,19 @@ All notable changes to CC Switch will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-01-09
+
+### Features / 新特性
+
+- Skills UI status line shows cache hit/background refresh
+- Web API base override with safer validation in `WebLoginDialog`
+- Web mode reads live settings into default provider without switching current
+- Web switch syncs to live config and returns explicit errors on failure
+
+### Performance / 性能
+
+- Skills repository cache with ETag/Last-Modified conditional refresh, cache TTL via `CC_SWITCH_SKILLS_CACHE_TTL_SECS`, and fallback to cache on fetch failure
+
 ## [0.6.0] - 2025-12-26
 
 ### 🔒 Security / 安全修复

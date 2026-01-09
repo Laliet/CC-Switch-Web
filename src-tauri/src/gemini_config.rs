@@ -6,17 +6,18 @@ use std::fs;
 use std::path::PathBuf;
 
 /// 获取 Gemini 配置目录路径（支持设置覆盖）
-pub fn get_gemini_dir() -> PathBuf {
+pub fn get_gemini_dir() -> Result<PathBuf, AppError> {
     if let Some(custom) = crate::settings::get_gemini_override_dir() {
-        return custom;
+        return Ok(custom);
     }
 
-    get_home_dir().expect("无法获取用户主目录").join(".gemini")
+    let home = get_home_dir().ok_or_else(|| AppError::Config("无法获取用户主目录".into()))?;
+    Ok(home.join(".gemini"))
 }
 
 /// 获取 Gemini .env 文件路径
-pub fn get_gemini_env_path() -> PathBuf {
-    get_gemini_dir().join(".env")
+pub fn get_gemini_env_path() -> Result<PathBuf, AppError> {
+    Ok(get_gemini_dir()?.join(".env"))
 }
 
 /// 解析 .env 文件内容为键值对
@@ -141,7 +142,7 @@ pub fn serialize_env_file(map: &HashMap<String, String>) -> String {
 
 /// 读取 Gemini .env 文件
 pub fn read_gemini_env() -> Result<HashMap<String, String>, AppError> {
-    let path = get_gemini_env_path();
+    let path = get_gemini_env_path()?;
 
     if !path.exists() {
         return Ok(HashMap::new());
@@ -154,7 +155,7 @@ pub fn read_gemini_env() -> Result<HashMap<String, String>, AppError> {
 
 /// 写入 Gemini .env 文件（原子操作）
 pub fn write_gemini_env_atomic(map: &HashMap<String, String>) -> Result<(), AppError> {
-    let path = get_gemini_env_path();
+    let path = get_gemini_env_path()?;
 
     // 确保目录存在
     if let Some(parent) = path.parent() {
@@ -278,8 +279,8 @@ pub fn validate_gemini_settings_strict(settings: &Value) -> Result<(), AppError>
 /// 获取 Gemini settings.json 文件路径
 ///
 /// 返回路径：`~/.gemini/settings.json`（与 `.env` 文件同级）
-pub fn get_gemini_settings_path() -> PathBuf {
-    get_gemini_dir().join("settings.json")
+pub fn get_gemini_settings_path() -> Result<PathBuf, AppError> {
+    Ok(get_gemini_dir()?.join("settings.json"))
 }
 
 /// 更新 Gemini 目录 settings.json 中的 security.auth.selectedType 字段
@@ -292,7 +293,7 @@ pub fn get_gemini_settings_path() -> PathBuf {
 /// # 参数
 /// - `selected_type`: 要设置的 selectedType 值（如 "gemini-api-key" 或 "oauth-personal"）
 fn update_selected_type(selected_type: &str) -> Result<(), AppError> {
-    let settings_path = get_gemini_settings_path();
+    let settings_path = get_gemini_settings_path()?;
 
     // 确保目录存在
     if let Some(parent) = settings_path.parent() {

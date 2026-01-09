@@ -15,30 +15,30 @@ pub struct McpStatus {
     pub server_count: usize,
 }
 
-fn user_config_path() -> PathBuf {
-    ensure_mcp_override_migrated();
+fn user_config_path() -> Result<PathBuf, AppError> {
+    ensure_mcp_override_migrated()?;
     get_claude_mcp_path()
 }
 
-fn ensure_mcp_override_migrated() {
+fn ensure_mcp_override_migrated() -> Result<(), AppError> {
     if crate::settings::get_claude_override_dir().is_none() {
-        return;
+        return Ok(());
     }
 
-    let new_path = get_claude_mcp_path();
+    let new_path = get_claude_mcp_path()?;
     if new_path.exists() {
-        return;
+        return Ok(());
     }
 
-    let legacy_path = get_default_claude_mcp_path();
+    let legacy_path = get_default_claude_mcp_path()?;
     if !legacy_path.exists() {
-        return;
+        return Ok(());
     }
 
     if let Some(parent) = new_path.parent() {
         if let Err(err) = fs::create_dir_all(parent) {
             log::warn!("创建 MCP 目录失败: {err}");
-            return;
+            return Ok(());
         }
     }
 
@@ -59,6 +59,7 @@ fn ensure_mcp_override_migrated() {
             );
         }
     }
+    Ok(())
 }
 
 fn read_json_value(path: &Path) -> Result<Value, AppError> {
@@ -80,7 +81,7 @@ fn write_json_value(path: &Path, value: &Value) -> Result<(), AppError> {
 }
 
 pub fn get_mcp_status() -> Result<McpStatus, AppError> {
-    let path = user_config_path();
+    let path = user_config_path()?;
     let (exists, count) = if path.exists() {
         let v = read_json_value(&path)?;
         let servers = v.get("mcpServers").and_then(|x| x.as_object());
@@ -97,7 +98,7 @@ pub fn get_mcp_status() -> Result<McpStatus, AppError> {
 }
 
 pub fn read_mcp_json() -> Result<Option<String>, AppError> {
-    let path = user_config_path();
+    let path = user_config_path()?;
     if !path.exists() {
         return Ok(None);
     }
@@ -147,7 +148,7 @@ pub fn upsert_mcp_server(id: &str, spec: Value) -> Result<bool, AppError> {
         }
     }
 
-    let path = user_config_path();
+    let path = user_config_path()?;
     let mut root = if path.exists() {
         read_json_value(&path)?
     } else {
@@ -181,7 +182,7 @@ pub fn delete_mcp_server(id: &str) -> Result<bool, AppError> {
     if id.trim().is_empty() {
         return Err(AppError::InvalidInput("MCP 服务器 ID 不能为空".into()));
     }
-    let path = user_config_path();
+    let path = user_config_path()?;
     if !path.exists() {
         return Ok(false);
     }
@@ -303,7 +304,7 @@ pub fn validate_command_in_path(cmd: &str) -> Result<bool, AppError> {
 
 /// 读取 ~/.claude.json 中的 mcpServers 映射
 pub fn read_mcp_servers_map() -> Result<std::collections::HashMap<String, Value>, AppError> {
-    let path = user_config_path();
+    let path = user_config_path()?;
     if !path.exists() {
         return Ok(std::collections::HashMap::new());
     }
@@ -323,7 +324,7 @@ pub fn read_mcp_servers_map() -> Result<std::collections::HashMap<String, Value>
 pub fn set_mcp_servers_map(
     servers: &std::collections::HashMap<String, Value>,
 ) -> Result<(), AppError> {
-    let path = user_config_path();
+    let path = user_config_path()?;
     let mut root = if path.exists() {
         read_json_value(&path)?
     } else {
