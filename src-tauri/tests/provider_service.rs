@@ -461,10 +461,7 @@ fn sync_default_provider_from_live_preserves_current_and_category() {
     )
     .expect("sync default provider from live should succeed");
 
-    let guard = state
-        .config
-        .read()
-        .expect("read config after sync default");
+    let guard = state.config.read().expect("read config after sync default");
     let manager = guard
         .get_manager(&AppType::Claude)
         .expect("claude manager after sync");
@@ -522,10 +519,7 @@ fn sync_default_provider_from_live_creates_default_when_missing() {
     )
     .expect("sync default provider from live should succeed");
 
-    let guard = state
-        .config
-        .read()
-        .expect("read config after sync default");
+    let guard = state.config.read().expect("read config after sync default");
     let manager = guard
         .get_manager(&AppType::Claude)
         .expect("claude manager after sync");

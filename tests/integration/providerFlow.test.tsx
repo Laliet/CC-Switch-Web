@@ -10,9 +10,6 @@ import type { Provider } from "@/types";
 import type { AppId } from "@/lib/api";
 
 // ===== Mock Setup =====
-const mockProviders: Record<string, Provider> = {};
-let mockCurrentProviderId = "";
-
 const addProviderMock = vi.hoisted(() => vi.fn());
 const updateProviderMock = vi.hoisted(() => vi.fn());
 const deleteProviderMock = vi.hoisted(() => vi.fn());
@@ -683,8 +680,6 @@ describe("Provider Management User Flow", () => {
 
   describe("Multi-App Provider Management", () => {
     it("manages providers for different apps independently", async () => {
-      const user = userEvent.setup();
-
       // First render for Claude
       getProvidersMock.mockResolvedValueOnce({
         providers: {

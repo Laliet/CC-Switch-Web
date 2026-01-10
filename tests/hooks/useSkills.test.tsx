@@ -67,7 +67,12 @@ describe("useSkills hooks", () => {
   it("adds a skill repo and invalidates repos and skills queries", async () => {
     const { wrapper, queryClient } = createWrapper();
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
-    const repo = { owner: "me", name: "new-skill-repo" };
+    const repo = {
+      owner: "me",
+      name: "new-skill-repo",
+      branch: "main",
+      enabled: true,
+    };
 
     const reposQuery = renderHook(() => useSkillRepos(), { wrapper });
     await waitFor(() => expect(reposQuery.result.current.isSuccess).toBe(true));
@@ -103,7 +108,10 @@ describe("useSkills hooks", () => {
     const { result } = renderHook(() => useRemoveSkillRepo(), { wrapper });
 
     await act(async () => {
-      await result.current.mutateAsync({ owner: repo.owner, name: repo.name });
+      await result.current.mutateAsync({
+        owner: repo.owner,
+        name: repo.name,
+      });
     });
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["skills", "repos"] });

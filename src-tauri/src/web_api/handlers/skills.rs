@@ -118,11 +118,7 @@ pub async fn list_skills(State(state): State<Arc<AppState>>) -> ApiResult<Skills
         cfg.skills.repo_cache = repo_cache;
     }
     state.save().map_err(internal_error)?;
-    let skills = result
-        .skills
-        .into_iter()
-        .map(SkillResponse::from)
-        .collect();
+    let skills = result.skills.into_iter().map(SkillResponse::from).collect();
     Ok(Json(SkillsResponse {
         skills,
         warnings: result.warnings,

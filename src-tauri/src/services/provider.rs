@@ -1003,9 +1003,7 @@ impl ProviderService {
                     None,
                 );
                 provider.category = Some("custom".to_string());
-                manager
-                    .providers
-                    .insert(provider.id.clone(), provider);
+                manager.providers.insert(provider.id.clone(), provider);
             }
         }
 
@@ -1960,8 +1958,7 @@ impl ProviderService {
             AppType::Claude => {
                 // 兼容旧版本：历史上会在 Claude 目录内为每个供应商生成 settings-*.json 副本
                 // 这里继续清理这些遗留文件，避免堆积过期配置。
-                let by_name =
-                    get_provider_config_path(provider_id, Some(&provider_snapshot.name))?;
+                let by_name = get_provider_config_path(provider_id, Some(&provider_snapshot.name))?;
                 let by_id = get_provider_config_path(provider_id, None)?;
                 delete_file(&by_name)?;
                 delete_file(&by_id)?;

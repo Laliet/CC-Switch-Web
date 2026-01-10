@@ -31,8 +31,8 @@ pub async fn get_config_status(app: String) -> Result<ConfigStatus, String> {
             Ok(ConfigStatus { exists, path })
         }
         AppType::Gemini => {
-            let env_path = crate::gemini_config::get_gemini_env_path()
-                .map_err(|e| e.to_string())?;
+            let env_path =
+                crate::gemini_config::get_gemini_env_path().map_err(|e| e.to_string())?;
             let exists = env_path.exists();
             let path = crate::gemini_config::get_gemini_dir()
                 .map_err(|e| e.to_string())?

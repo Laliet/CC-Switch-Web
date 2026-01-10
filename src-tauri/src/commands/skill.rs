@@ -26,7 +26,10 @@ pub async fn get_skills(
 ) -> Result<SkillsResponse, String> {
     let (repos, mut repo_cache) = {
         let config = app_state.config.read().map_err(|e| e.to_string())?;
-        (config.skills.repos.clone(), config.skills.repo_cache.clone())
+        (
+            config.skills.repos.clone(),
+            config.skills.repo_cache.clone(),
+        )
     };
 
     let result = service
@@ -62,7 +65,10 @@ pub async fn install_skill(
     // 先在不持有写锁的情况下收集仓库与技能信息
     let (repos, mut repo_cache) = {
         let config = app_state.config.read().map_err(|e| e.to_string())?;
-        (config.skills.repos.clone(), config.skills.repo_cache.clone())
+        (
+            config.skills.repos.clone(),
+            config.skills.repo_cache.clone(),
+        )
     };
 
     let skills = service

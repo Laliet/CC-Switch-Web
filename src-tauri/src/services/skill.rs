@@ -125,7 +125,11 @@ pub struct SkillStore {
     /// 仓库列表
     pub repos: Vec<SkillRepo>,
     /// 仓库缓存
-    #[serde(default, rename = "repoCache", skip_serializing_if = "HashMap::is_empty")]
+    #[serde(
+        default,
+        rename = "repoCache",
+        skip_serializing_if = "HashMap::is_empty"
+    )]
     pub repo_cache: HashMap<String, SkillRepoCache>,
 }
 
@@ -485,8 +489,12 @@ impl SkillService {
         let refreshing = !fetch_tasks.is_empty();
         let cache_hit = !refreshing;
 
-        let results: Vec<(SkillRepo, String, Option<SkillRepoCache>, Result<RepoFetchOutcome>)> =
-            futures::future::join_all(fetch_tasks).await;
+        let results: Vec<(
+            SkillRepo,
+            String,
+            Option<SkillRepoCache>,
+            Result<RepoFetchOutcome>,
+        )> = futures::future::join_all(fetch_tasks).await;
 
         for (repo, cache_key, cached_entry, result) in results {
             match result {
@@ -516,8 +524,10 @@ impl SkillService {
                             cache_store.repos.insert(cache_key, entry);
                             cache_updated = true;
                         } else {
-                            let warning =
-                                format!("仓库 {}/{} 返回 304，但本地没有缓存", repo.owner, repo.name);
+                            let warning = format!(
+                                "仓库 {}/{} 返回 304，但本地没有缓存",
+                                repo.owner, repo.name
+                            );
                             log::warn!("{warning}");
                             warnings.push(warning);
                         }
@@ -1126,7 +1136,10 @@ impl SkillService {
                 .download_and_extract(&url, temp_dir.path(), cache_headers)
                 .await
             {
-                Ok(DownloadOutcome::Downloaded { etag, last_modified }) => {
+                Ok(DownloadOutcome::Downloaded {
+                    etag,
+                    last_modified,
+                }) => {
                     return Ok(RepoDownloadResult::Downloaded(DownloadedRepo {
                         temp_dir,
                         etag,
@@ -1197,7 +1210,10 @@ impl SkillService {
         let dest = dest.to_path_buf();
         tokio::task::spawn_blocking(move || Self::extract_zip_to_dir(bytes, dest)).await??;
 
-        Ok(DownloadOutcome::Downloaded { etag, last_modified })
+        Ok(DownloadOutcome::Downloaded {
+            etag,
+            last_modified,
+        })
     }
 
     fn extract_zip_to_dir(bytes: Vec<u8>, dest: PathBuf) -> Result<()> {

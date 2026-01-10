@@ -1178,8 +1178,5 @@ fn sync_gemini_mcp_excludes_type_field() {
         server.get("args").is_some(),
         "args field should be preserved"
     );
-    assert!(
-        server.get("env").is_some(),
-        "env field should be preserved"
-    );
+    assert!(server.get("env").is_some(), "env field should be preserved");
 }

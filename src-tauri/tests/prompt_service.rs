@@ -167,10 +167,7 @@ fn upsert_prompt_create_and_update() {
 
     let prompts = PromptService::get_prompts(&state, AppType::Claude).expect("get prompts");
     assert_eq!(
-        prompts
-            .get("prompt-1")
-            .expect("prompt exists")
-            .content,
+        prompts.get("prompt-1").expect("prompt exists").content,
         "first"
     );
 
@@ -184,10 +181,7 @@ fn upsert_prompt_create_and_update() {
 
     let prompts = PromptService::get_prompts(&state, AppType::Claude).expect("get prompts");
     assert_eq!(
-        prompts
-            .get("prompt-1")
-            .expect("prompt exists")
-            .content,
+        prompts.get("prompt-1").expect("prompt exists").content,
         "second"
     );
 }
@@ -216,10 +210,7 @@ fn upsert_prompt_id_conflict_overwrites_entry() {
 
     let prompts = PromptService::get_prompts(&state, AppType::Claude).expect("get prompts");
     assert_eq!(prompts.len(), 1);
-    assert_eq!(
-        prompts.get("key-1").expect("prompt exists").id,
-        "prompt-2"
-    );
+    assert_eq!(prompts.get("key-1").expect("prompt exists").id, "prompt-2");
 }
 
 #[test]
@@ -305,14 +296,14 @@ fn enable_prompt_writes_file_and_disables_previous() {
 
     {
         let mut cfg = state.config.write().expect("write config");
-        cfg.prompts.codex.prompts.insert(
-            "old".to_string(),
-            make_prompt("old", "old content", true),
-        );
-        cfg.prompts.codex.prompts.insert(
-            "new".to_string(),
-            make_prompt("new", "new content", false),
-        );
+        cfg.prompts
+            .codex
+            .prompts
+            .insert("old".to_string(), make_prompt("old", "old content", true));
+        cfg.prompts
+            .codex
+            .prompts
+            .insert("new".to_string(), make_prompt("new", "new content", false));
     }
 
     PromptService::enable_prompt(&state, AppType::Codex, "new").expect("enable prompt");
@@ -349,8 +340,8 @@ fn import_prompt_from_file_existing() {
     }
     fs::write(&path, "imported content").expect("write GEMINI.md");
 
-    let id = PromptService::import_from_file(&state, AppType::Gemini)
-        .expect("import prompt from file");
+    let id =
+        PromptService::import_from_file(&state, AppType::Gemini).expect("import prompt from file");
     assert!(id.starts_with("imported-"));
 
     let prompts = PromptService::get_prompts(&state, AppType::Gemini).expect("get prompts");

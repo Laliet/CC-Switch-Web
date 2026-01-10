@@ -11,18 +11,6 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: tMock }),
 }));
 
-function TestWrapper({ children }: { children: React.ReactNode }) {
-  const form = useForm<ProviderFormData>({
-    defaultValues: {
-      name: "",
-      websiteUrl: "",
-      notes: "",
-    },
-  });
-
-  return <FormProvider {...form}>{children}</FormProvider>;
-}
-
 function TestBasicFormFields() {
   const form = useForm<ProviderFormData>({
     defaultValues: {

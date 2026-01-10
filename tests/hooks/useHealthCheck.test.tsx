@@ -50,8 +50,8 @@ describe("useHealthCheck", () => {
     checkMultipleMock.mockResolvedValueOnce(new Map());
 
     const providers = [
-      { id: "p1", name: "Mapped" },
-      { id: "p2", name: "Skipped" },
+      { id: "p1", name: "Mapped", settingsConfig: {} },
+      { id: "p2", name: "Skipped", settingsConfig: {} },
     ];
 
     const { wrapper } = createWrapper();
@@ -85,7 +85,7 @@ describe("useHealthCheck", () => {
       ]),
     );
 
-    const providers = [{ id: "p1", name: "Mapped" }];
+    const providers = [{ id: "p1", name: "Mapped", settingsConfig: {} }];
     const { wrapper } = createWrapper();
     const { result } = renderHook(
       () => useHealthCheck("codex", providers),
@@ -114,7 +114,7 @@ describe("useHealthCheck", () => {
     mappingMock.mockImplementation(() => "relay");
     checkMultipleMock.mockResolvedValue(new Map());
 
-    const providers = [{ id: "p1", name: "Mapped" }];
+    const providers = [{ id: "p1", name: "Mapped", settingsConfig: {} }];
     const { wrapper } = createWrapper();
     const { result } = renderHook(
       () => useHealthCheck("claude", providers),
