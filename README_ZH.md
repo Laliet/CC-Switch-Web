@@ -74,8 +74,8 @@
 
 | 架构 | 下载链接 |
 |------|----------|
-| **Linux x86_64** | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.0/cc-switch-server-linux-x86_64) |
-| **Linux aarch64** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.0/cc-switch-server-linux-aarch64) |
+| **Linux x86_64** | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/cc-switch-server-linux-x86_64) |
+| **Linux aarch64** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/cc-switch-server-linux-aarch64) |
 
 **一键部署**：
 ```bash
@@ -172,11 +172,11 @@ HOST=0.0.0.0 PORT=3000 ./target/release/examples/server
 
 | 平台 | 下载链接 | 说明 |
 |------|----------|------|
-| **Windows** | [CC-Switch-v0.7.0-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.0/CC-Switch-v0.7.0-Windows.msi) | 安装版（推荐） |
-| | [CC-Switch-v0.7.0-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.0/CC-Switch-v0.7.0-Windows-Portable.zip) | 绿色版（免安装） |
-| **macOS** | [CC-Switch-v0.7.0-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.0/CC-Switch-v0.7.0-macOS.zip) | 通用二进制（Intel + Apple Silicon） |
-| **Linux** | [CC-Switch-v0.7.0-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.0/CC-Switch-v0.7.0-Linux.AppImage) | AppImage（通用） |
-| | [CC-Switch-v0.7.0-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.0/CC-Switch-v0.7.0-Linux.deb) | Debian/Ubuntu 包 |
+| **Windows** | [CC-Switch-v0.7.1-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/CC-Switch-v0.7.1-Windows.msi) | 安装版（推荐） |
+| | [CC-Switch-v0.7.1-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/CC-Switch-v0.7.1-Windows-Portable.zip) | 绿色版（免安装） |
+| **macOS** | [CC-Switch-v0.7.1-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/CC-Switch-v0.7.1-macOS.zip) | 通用二进制（Intel + Apple Silicon） |
+| **Linux** | [CC-Switch-v0.7.1-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/CC-Switch-v0.7.1-Linux.AppImage) | AppImage（通用） |
+| | [CC-Switch-v0.7.1-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/CC-Switch-v0.7.1-Linux.deb) | Debian/Ubuntu 包 |
 
 **macOS 提示**：如遇"已损坏"警告，在终端执行：`xattr -cr "/Applications/CC Switch.app"`
 
@@ -198,7 +198,7 @@ curl -fsSL https://raw.githubusercontent.com/Laliet/CC-Switch-Web/main/scripts/i
 **高级选项**：
 ```bash
 # 安装指定版本
-VERSION=v0.7.0 curl -fsSL https://...install.sh | bash
+VERSION=v0.7.1 curl -fsSL https://...install.sh | bash
 
 # 跳过校验
 NO_CHECKSUM=1 curl -fsSL https://...install.sh | bash
@@ -308,7 +308,7 @@ pnpm test
 
 ## 更新日志
 
-参见 [CHANGELOG.md](CHANGELOG.md) — 当前版本：**v0.7.0**
+参见 [CHANGELOG.md](CHANGELOG.md) — 当前版本：**v0.7.1**
 
 ---
 
