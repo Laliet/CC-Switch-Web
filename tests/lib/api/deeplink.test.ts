@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { deeplinkApi } from "@/lib/api/deeplink";
+import type { DeepLinkImportRequest } from "@/lib/api/deeplink";
+import type { AppId } from "@/lib/api/types";
 
 const invokeMock = vi.hoisted(() => vi.fn());
 
@@ -32,10 +34,11 @@ describe("deeplink API module", () => {
   });
 
   it("importFromDeeplink delegates to invoke", async () => {
-    const request = {
+    const appId: AppId = "codex";
+    const request: DeepLinkImportRequest = {
       version: "1",
       resource: "provider",
-      app: "codex",
+      app: appId,
       name: "Codex Provider",
       homepage: "https://codex.example",
       endpoint: "https://api.codex.example",

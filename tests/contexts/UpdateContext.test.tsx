@@ -12,7 +12,9 @@ vi.mock("@/lib/updater", () => ({
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
   return {
-    getItem: vi.fn((key: string) => store[key] ?? null),
+    getItem: vi.fn<(key: string) => string | null>(
+      (key: string) => store[key] ?? null,
+    ),
     setItem: vi.fn((key: string, value: string) => {
       store[key] = value;
     }),
@@ -29,7 +31,7 @@ Object.defineProperty(window, "localStorage", {
   value: localStorageMock,
 });
 
-function TestConsumer({ onMount }: { onMount?: () => void }) {
+function TestConsumer() {
   const {
     hasUpdate,
     updateInfo,
@@ -205,7 +207,7 @@ describe("UpdateContext", () => {
     const user = userEvent.setup();
     localStorageMock.getItem.mockImplementation((key: string) => {
       if (key === "ccswitch:update:dismissedVersion") return "2.0.0";
-      return null;
+      return "";
     });
 
     checkForUpdateMock.mockResolvedValue({
@@ -235,7 +237,7 @@ describe("UpdateContext", () => {
     const user = userEvent.setup();
     localStorageMock.getItem.mockImplementation((key: string) => {
       if (key === "dismissedUpdateVersion") return "1.5.0";
-      return null;
+      return "";
     });
 
     checkForUpdateMock.mockResolvedValue({

@@ -5,6 +5,7 @@ import {
   deleteEnvVars,
   restoreEnvBackup,
 } from "@/lib/api/env";
+import type { EnvConflict } from "@/types/env";
 
 const invokeMock = vi.hoisted(() => vi.fn());
 
@@ -18,7 +19,20 @@ describe("env API module", () => {
   });
 
   it("checkEnvConflicts requests conflicts for app", async () => {
-    const conflicts = [{ key: "API_KEY", values: ["one", "two"] }];
+    const conflicts: EnvConflict[] = [
+      {
+        varName: "API_KEY",
+        varValue: "one",
+        sourceType: "system",
+        sourcePath: "/etc/profile",
+      },
+      {
+        varName: "API_KEY",
+        varValue: "two",
+        sourceType: "file",
+        sourcePath: "/path/.env:1",
+      },
+    ];
     invokeMock.mockResolvedValueOnce(conflicts);
 
     const result = await checkEnvConflicts("claude");
@@ -30,7 +44,14 @@ describe("env API module", () => {
   });
 
   it("deleteEnvVars sends conflict list", async () => {
-    const conflicts = [{ key: "API_KEY", values: ["one"] }];
+    const conflicts: EnvConflict[] = [
+      {
+        varName: "API_KEY",
+        varValue: "one",
+        sourceType: "system",
+        sourcePath: "/etc/profile",
+      },
+    ];
     const backup = { backupPath: "/tmp/env.bak", timestamp: "now", conflicts };
     invokeMock.mockResolvedValueOnce(backup);
 
@@ -59,14 +80,35 @@ describe("env API module", () => {
       if (args.app === "codex") {
         return Promise.reject(new Error("boom"));
       }
-      return Promise.resolve([{ key: `${args.app}-KEY`, values: ["one"] }]);
+      return Promise.resolve<EnvConflict[]>([
+        {
+          varName: `${args.app}-KEY`,
+          varValue: "one",
+          sourceType: "system",
+          sourcePath: "/etc/profile",
+        },
+      ]);
     });
 
     const result = await checkAllEnvConflicts();
 
-    expect(result.claude).toEqual([{ key: "claude-KEY", values: ["one"] }]);
+    expect(result.claude).toEqual([
+      {
+        varName: "claude-KEY",
+        varValue: "one",
+        sourceType: "system",
+        sourcePath: "/etc/profile",
+      },
+    ]);
     expect(result.codex).toEqual([]);
-    expect(result.gemini).toEqual([{ key: "gemini-KEY", values: ["one"] }]);
+    expect(result.gemini).toEqual([
+      {
+        varName: "gemini-KEY",
+        varValue: "one",
+        sourceType: "system",
+        sourcePath: "/etc/profile",
+      },
+    ]);
     expect(consoleSpy).toHaveBeenCalled();
 
     consoleSpy.mockRestore();

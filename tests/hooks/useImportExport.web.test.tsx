@@ -42,6 +42,20 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
+const createFileList = (file: File): FileList =>
+  Object.assign(
+    {
+      item: (index: number) => (index === 0 ? file : null),
+      length: 1,
+    },
+    {
+      0: file,
+      [Symbol.iterator]: function* () {
+        yield file;
+      },
+    },
+  ) as unknown as FileList;
+
 describe("useImportExport (web mode)", () => {
   const originalCreateElement = document.createElement.bind(document);
 
@@ -64,11 +78,7 @@ describe("useImportExport (web mode)", () => {
       name: "config.json",
       text: vi.fn().mockResolvedValue("{\"ok\":true}"),
     } as unknown as File;
-    const fileList = {
-      0: file,
-      length: 1,
-      item: (index: number) => (index === 0 ? file : null),
-    } as FileList;
+    const fileList = createFileList(file);
 
     Object.defineProperty(input, "files", { value: fileList, configurable: true });
     Object.defineProperty(input, "click", {
@@ -97,11 +107,7 @@ describe("useImportExport (web mode)", () => {
       name: "config.json",
       text: vi.fn().mockRejectedValue(new Error("read failed")),
     } as unknown as File;
-    const fileList = {
-      0: file,
-      length: 1,
-      item: (index: number) => (index === 0 ? file : null),
-    } as FileList;
+    const fileList = createFileList(file);
 
     Object.defineProperty(input, "files", { value: fileList, configurable: true });
     Object.defineProperty(input, "click", {
@@ -129,11 +135,7 @@ describe("useImportExport (web mode)", () => {
       name: "config.json",
       text: vi.fn().mockResolvedValue("{\"ok\":true}"),
     } as unknown as File;
-    const fileList = {
-      0: file,
-      length: 1,
-      item: (index: number) => (index === 0 ? file : null),
-    } as FileList;
+    const fileList = createFileList(file);
 
     Object.defineProperty(input, "files", { value: fileList, configurable: true });
     Object.defineProperty(input, "click", {

@@ -1,9 +1,19 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type {
+  DraggableAttributes,
+  DraggableSyntheticListeners,
+} from "@dnd-kit/core";
 import type { Provider } from "@/types";
 import type { ProviderHealth } from "@/lib/api";
 import { ProviderCard } from "@/components/providers/ProviderCard";
+
+type DragHandleProps = {
+  attributes: DraggableAttributes & { "data-dnd-id": string };
+  listeners: DraggableSyntheticListeners;
+  isDragging: boolean;
+};
 
 const tMock = vi.fn((key: string) => key);
 
@@ -32,16 +42,35 @@ const createProvider = (overrides: Partial<Provider> = {}): Provider => ({
   isPartner: overrides.isPartner,
 });
 
+const createDragHandleProps = (
+  overrides: Partial<DragHandleProps> = {},
+): DragHandleProps => {
+  const attributes: DraggableAttributes & { "data-dnd-id": string } = {
+    role: "button",
+    tabIndex: 0,
+    "aria-pressed": undefined,
+    "aria-disabled": false,
+    "aria-roledescription": "sortable",
+    "aria-describedby": "provider-1",
+    "data-dnd-id": "provider-1",
+    ...(overrides.attributes ?? {}),
+  };
+
+  return {
+    attributes,
+    listeners:
+      overrides.listeners ??
+      ({ onPointerDown: vi.fn() } as DraggableSyntheticListeners),
+    isDragging: overrides.isDragging ?? false,
+  };
+};
+
 const renderProviderCard = (
   providerOverrides: Partial<Provider> = {},
   options: {
     isCurrent?: boolean;
     isEditMode?: boolean;
-    dragHandleProps?: {
-      attributes: Record<string, string>;
-      listeners: Record<string, unknown>;
-      isDragging: boolean;
-    };
+    dragHandleProps?: DragHandleProps;
     healthStatus?: ProviderHealth;
   } = {},
 ) => {
@@ -221,11 +250,7 @@ describe("ProviderCard", () => {
 
   it("shows drag handle and duplicate button in edit mode", async () => {
     const user = userEvent.setup();
-    const dragHandleProps = {
-      attributes: { "data-dnd-id": "provider-1" },
-      listeners: { onPointerDown: vi.fn() },
-      isDragging: false,
-    };
+    const dragHandleProps = createDragHandleProps();
 
     const { onDuplicate, provider } = renderProviderCard(
       {},

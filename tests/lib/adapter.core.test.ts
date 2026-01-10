@@ -655,7 +655,10 @@ describe("commandToEndpoint", () => {
     ];
 
     for (const testCase of cases) {
-      const endpoint = commandToEndpoint(testCase.cmd, testCase.args);
+      const endpoint = commandToEndpoint(
+        testCase.cmd,
+        testCase.args as Record<string, unknown>,
+      );
       expect(endpoint.method).toBe(testCase.expected.method);
       expect(endpoint.url).toBe(testCase.expected.url);
       if ("body" in testCase.expected) {
@@ -668,13 +671,14 @@ describe("commandToEndpoint", () => {
 
   it("throws when required args are missing", async () => {
     const { commandToEndpoint } = await importAdapter();
+    const args: Record<string, unknown> = {};
 
-    expect(() => commandToEndpoint("get_providers", {})).toThrow(
+    expect(() => commandToEndpoint("get_providers", args)).toThrow(
       "Missing argument \"app\"",
     );
 
     expect(() =>
-      commandToEndpoint("get_providers", null as unknown as object),
+      commandToEndpoint("get_providers", undefined),
     ).toThrow("Missing argument \"app\"");
 
     expect(() =>

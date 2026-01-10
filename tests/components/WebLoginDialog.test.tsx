@@ -5,24 +5,44 @@ import { WebLoginDialog } from "@/components/WebLoginDialog";
 
 let apiBaseForBuild = "/custom-api";
 
+type AdapterMocks = {
+  buildWebApiUrl: ReturnType<typeof vi.fn<(path: string) => string>>;
+  clearWebApiBaseOverride: ReturnType<typeof vi.fn>;
+  clearWebCredentials: ReturnType<typeof vi.fn>;
+  setWebCredentials: ReturnType<typeof vi.fn<(value: string) => void>>;
+  setWebApiBaseOverride: ReturnType<typeof vi.fn<(value: string) => void>>;
+  base64EncodeUtf8: ReturnType<typeof vi.fn<() => string>>;
+  getWebApiBase: ReturnType<typeof vi.fn<() => string>>;
+  getStoredWebApiBase: ReturnType<typeof vi.fn<() => string | undefined>>;
+  getWebApiBaseValidationError: ReturnType<
+    typeof vi.fn<(value: string) => string | null>
+  >;
+  normalizeWebApiBase: ReturnType<typeof vi.fn<(value: string) => string | null>>;
+  WEB_CSRF_STORAGE_KEY: string;
+};
+
 const adapterMocks = vi.hoisted(() => ({
-  buildWebApiUrl: vi.fn((path: string) => `${apiBaseForBuild}${path}`),
+  buildWebApiUrl: vi.fn<(path: string) => string>(
+    (path) => `${apiBaseForBuild}${path}`,
+  ),
   clearWebApiBaseOverride: vi.fn(),
   clearWebCredentials: vi.fn(),
-  setWebCredentials: vi.fn(),
-  setWebApiBaseOverride: vi.fn(),
+  setWebCredentials: vi.fn<(value: string) => void>(),
+  setWebApiBaseOverride: vi.fn<(value: string) => void>(),
   base64EncodeUtf8: vi.fn(() => "encoded-value"),
   getWebApiBase: vi.fn(() => apiBaseForBuild),
-  getStoredWebApiBase: vi.fn(() => undefined),
-  getWebApiBaseValidationError: vi.fn(() => null),
-  normalizeWebApiBase: vi.fn((value: string) => {
+  getStoredWebApiBase: vi.fn<() => string | undefined>(() => undefined),
+  getWebApiBaseValidationError: vi.fn<(value: string) => string | null>(
+    () => null,
+  ),
+  normalizeWebApiBase: vi.fn<(value: string) => string | null>((value) => {
     if (typeof value !== "string") return null;
     const trimmed = value.trim();
     if (!trimmed) return null;
     return trimmed.replace(/\/+$/, "");
   }),
   WEB_CSRF_STORAGE_KEY: "cc-switch-csrf-token",
-}));
+})) as AdapterMocks;
 
 vi.mock("@/lib/api/adapter", () => adapterMocks);
 

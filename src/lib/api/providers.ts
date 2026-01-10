@@ -45,6 +45,7 @@ export const providersApi = {
 
   async switch(id: string, appId: AppId): Promise<boolean> {
     const result = await invoke("switch_provider", { id, app: appId });
+    const success = Boolean(result);
     if (isWeb()) {
       try {
         await invoke("sync_current_providers_live");
@@ -56,7 +57,7 @@ export const providersApi = {
         throw new Error(`切换成功，但同步配置失败：${detail}`);
       }
     }
-    return result;
+    return success;
   },
 
   async importDefault(appId: AppId): Promise<boolean> {
