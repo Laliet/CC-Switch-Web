@@ -30,30 +30,52 @@
 
 ---
 
-## v0.7.0 更新内容
+## 更新内容
 
-本版本聚焦 Web 稳定性与 Skills 性能。
+### v0.7.1 - CI 和类型检查修复
+- 修复 GitHub Actions CI 工作流配置
+- 解决 TypeScript 类型检查问题
+- 提升构建可靠性
 
-### 性能
+### v0.7.0 - Web 稳定性与 Skills 性能
 - Skills 仓库缓存与条件刷新（ETag/Last-Modified）
 - 通过环境变量 `CC_SWITCH_SKILLS_CACHE_TTL_SECS` 配置缓存 TTL，获取失败回退缓存
-
-### Web 改进
 - Web API 基地址可覆盖，并在 `WebLoginDialog` 中更安全地校验
 - Web 模式读取实时配置并写入默认供应商（不切换 current）
 - Web 切换后与实时配置同步，失败时返回明确错误
+- Skills 体验：页面状态行显示"缓存命中/后台刷新"
 
-### Skills 体验
-- Skills 页面状态行显示“缓存命中/后台刷新”
+## 界面展示
+
+![主界面](pic/界面展示.png)
+*主界面*
+
+![提示词管理](pic/提示词管理展示.png)
+*提示词管理*
+
+![MCP服务器管理](pic/MCP服务器管理展示.png)
+*MCP服务器管理*
+
+![技能商店](pic/skills商店管理展示.png)
+*技能商店*
+
+![扩展供应商列表](pic/扩展的中转服务商列表.png)
+*扩展供应商列表*
+
+![配置供应商](pic/配置中转服务商展示.png)
+*配置供应商*
 
 ---
 
 ## 功能特性
 
+### 核心功能
 - **多供应商管理**：一键切换不同 AI 供应商（OpenAI 兼容端点）
 - **统一 MCP 管理**：跨 Claude/Codex/Gemini 配置 Model Context Protocol 服务器
 - **技能市场**：从 GitHub 仓库浏览并安装 Claude 技能
 - **提示词管理**：内置 CodeMirror 编辑器创建和管理系统提示词
+
+### 扩展功能
 - **备用供应商自动切换**：主供应商失败时自动切换到备用
 - **导入/导出**：备份和恢复所有配置，支持版本历史
 - **跨平台**：支持 Windows、macOS、Linux（桌面版）和 Web/Docker（服务器版）
@@ -263,14 +285,6 @@ CC-Switch 管理以下配置文件：
 | **Gemini** | `~/.gemini/.env`、`~/.gemini/settings.json` |
 
 CC-Switch 自身配置：`~/.cc-switch/config.json`
-
----
-
-## 截图
-
-| 技能市场 | 提示词编辑 | 高级设置 |
-| :--: | :--: | :--: |
-| ![Skills](assets/screenshots/web-skills.png) | ![Prompt](assets/screenshots/web-prompt.png) | ![Settings](assets/screenshots/web-settings.png) |
 
 ---
 

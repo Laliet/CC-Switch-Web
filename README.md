@@ -31,30 +31,52 @@ Whether you're working locally or in a headless cloud environment, CC-Switch-Web
 
 If you have any questions, you can contact me here https://linux.do/t/topic/1217545 
 
-## What's New in v0.7.0
+## What's New
 
-This release focuses on **web reliability** and **skills performance**.
+### v0.7.1 - CI and Typecheck Fixes
+- Fixed GitHub Actions CI workflow configurations
+- Resolved TypeScript type checking issues
+- Improved build reliability
 
-### Performance
+### v0.7.0 - Web Reliability and Skills Performance
 - Skills repository caching with ETag/Last-Modified conditional refresh
 - Cache TTL via `CC_SWITCH_SKILLS_CACHE_TTL_SECS` with fallback to cache on fetch failure
-
-### Web Improvements
 - Web API base override with safer validation in `WebLoginDialog`
 - Web mode reads live settings into default provider without switching current
 - Web switch syncs to live config and returns explicit errors on failure
+- Skills UX: status line shows cache hit/background refresh
 
-### Skills UX
-- Status line shows cache hit/background refresh
+## Screenshots
+
+![Main Interface](pic/界面展示.png)
+*Main Interface*
+
+![Prompt Management](pic/提示词管理展示.png)
+*Prompt Management*
+
+![MCP Server Management](pic/MCP服务器管理展示.png)
+*MCP Server Management*
+
+![Skills Marketplace](pic/skills商店管理展示.png)
+*Skills Marketplace*
+
+![Extended Provider List](pic/扩展的中转服务商列表.png)
+*Extended Provider List*
+
+![Configure Provider](pic/配置中转服务商展示.png)
+*Configure Provider*
 
 ---
 
 ## Features
 
+### Core Features
 - **Multi-Provider Management**: Switch between different AI providers (OpenAI-compatible endpoints) with one click
 - **Unified MCP Management**: Configure Model Context Protocol servers across Claude/Codex/Gemini
 - **Skills Marketplace**: Browse and install Claude skills from GitHub repositories
 - **Prompt Management**: Create and manage system prompts with a built-in CodeMirror editor
+
+### Extended Features
 - **Backup Auto-failover**: Automatically switch to backup providers when primary fails
 - **Import/Export**: Backup and restore all configurations with version history
 - **Cross-platform**: Available for Windows, macOS, Linux (desktop) and Web/Docker (server)
@@ -264,14 +286,6 @@ CC-Switch manages these configuration files:
 | **Gemini** | `~/.gemini/.env`, `~/.gemini/settings.json` |
 
 CC-Switch's own config: `~/.cc-switch/config.json`
-
----
-
-## Screenshots
-
-| Skills Marketplace | Prompt Editor | Advanced Settings |
-| :--: | :--: | :--: |
-| ![Skills](assets/screenshots/web-skills.png) | ![Prompt](assets/screenshots/web-prompt.png) | ![Settings](assets/screenshots/web-settings.png) |
 
 ---
 
