@@ -157,7 +157,7 @@ HOST=0.0.0.0 PORT=3000 ./target/release/examples/server
 
 - **Username**: `admin`
 - **Password**: Auto-generated on first run, stored in `~/.cc-switch/web_password`
-- **CORS**: Same-origin by default; set `CORS_ALLOW_ORIGINS=https://your-domain.com` for cross-origin
+- **CORS**: Same-origin by default; set `CORS_ALLOW_ORIGINS=https://your-domain.com` for cross-origin (`CORS_ALLOW_ORIGINS="*"` is ignored). For LAN/private origins, enable `ALLOW_LAN_CORS=1` (or `CC_SWITCH_LAN_CORS=1`) to auto-allow
 - **Note**: Web mode doesn't support native file pickers—enter paths manually
 
 ### Security
@@ -186,6 +186,8 @@ HOST=0.0.0.0 PORT=3000 ./target/release/examples/server
 | `ENABLE_HSTS` | Enable HSTS header | true |
 | `CORS_ALLOW_ORIGINS` | Allowed origins (comma-separated) | (same-origin) |
 | `CORS_ALLOW_CREDENTIALS` | Allow credentials in CORS | false |
+| `ALLOW_LAN_CORS` | Auto-allow private LAN origins for CORS | false |
+| `CC_SWITCH_LAN_CORS` | Auto-set when LAN CORS auto-allow is enabled | (unset) |
 | `ALLOW_HTTP_BASIC_OVER_HTTP` | Suppress HTTP warning | false |
 | `WEB_CSRF_TOKEN` | Override CSRF token | (auto-generated) |
 

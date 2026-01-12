@@ -54,6 +54,7 @@ function SkillsPageContent({ onClose: _onClose }: SkillsPageProps = {}) {
     refreshing: false,
   });
   const loadSkillsRequestId = useRef(0);
+  const isMountedRef = useRef(true);
   const [repoManagerOpen, setRepoManagerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [installFilter, setInstallFilter] = useState<
@@ -100,6 +101,13 @@ function SkillsPageContent({ onClose: _onClose }: SkillsPageProps = {}) {
       setRepoFilter("all");
     }
   }, [repoFilter, repoOptions]);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      loadSkillsRequestId.current += 1;
+    };
+  }, []);
 
   const filteredSkills = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -208,14 +216,19 @@ function SkillsPageContent({ onClose: _onClose }: SkillsPageProps = {}) {
         refreshing = false,
       } = await skillsApi.getAll();
       const isLatestRequest = requestId === loadSkillsRequestId.current;
-      if (isLatestRequest) {
+      if (isLatestRequest && isMountedRef.current) {
         setSkills(data);
         setCacheStatus({ cacheHit, refreshing });
       }
-      if (afterLoad) {
+      if (afterLoad && isLatestRequest && isMountedRef.current) {
         afterLoad(data);
       }
-      if (isLatestRequest && warnings && warnings.length > 0) {
+      if (
+        isLatestRequest &&
+        isMountedRef.current &&
+        warnings &&
+        warnings.length > 0
+      ) {
         toast.warning(
           t("skills.repo.fetchWarning", {
             defaultValue: "部分技能仓库获取失败，已显示本地技能",
@@ -239,21 +252,28 @@ function SkillsPageContent({ onClose: _onClose }: SkillsPageProps = {}) {
         "skills.loadFailed",
       );
 
-      if (!options?.suppressErrorToast && isLatestRequest) {
+      if (
+        !options?.suppressErrorToast &&
+        isLatestRequest &&
+        isMountedRef.current
+      ) {
         toast.error(formattedError.title, {
           description: formattedError.description,
           duration: 8000,
         });
       }
 
-      if (isLatestRequest) {
+      if (isLatestRequest && isMountedRef.current) {
         console.error("Load skills failed:", error);
         setCacheStatus({ cacheHit: false, refreshing: false });
         return { ok: false, errorMessage, formattedError };
       }
       return { ok: true, stale: true };
     } finally {
-      if (requestId === loadSkillsRequestId.current) {
+      if (
+        requestId === loadSkillsRequestId.current &&
+        isMountedRef.current
+      ) {
         setLoading(false);
       }
     }
@@ -265,7 +285,9 @@ function SkillsPageContent({ onClose: _onClose }: SkillsPageProps = {}) {
   }> => {
     try {
       const data = await skillsApi.getRepos();
-      setRepos(data);
+      if (isMountedRef.current) {
+        setRepos(data);
+      }
       return { ok: true };
     } catch (error) {
       const errorMessage =

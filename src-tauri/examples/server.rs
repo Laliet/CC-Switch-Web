@@ -4,7 +4,7 @@ use std::{
     env,
     fs::{self, OpenOptions},
     io::{self, Write},
-    net::SocketAddr,
+    net::{IpAddr, SocketAddr},
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -96,6 +96,17 @@ fn enforce_permissions(_path: &Path) -> io::Result<()> {
     Ok(())
 }
 
+fn env_truthy(name: &str) -> bool {
+    env::var(name).is_ok_and(|v| matches!(v.as_str(), "1" | "true" | "TRUE" | "yes" | "on"))
+}
+
+fn is_lan_bind_ip(ip: IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(v4) => v4.is_private() || v4.is_loopback() || v4.is_link_local(),
+        IpAddr::V6(v6) => v6.is_unique_local() || v6.is_loopback() || v6.is_unicast_link_local(),
+    }
+}
+
 fn load_or_generate_password() -> Result<(String, PathBuf), Box<dyn std::error::Error>> {
     let path = password_file_path()?;
 
@@ -134,7 +145,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (password, password_path) = load_or_generate_password()?;
 
     let state: SharedState = Arc::new(AppState::try_new()?);
-    let app = create_router(state, password.clone());
 
     let port = env::var("PORT")
         .ok()
@@ -147,17 +157,63 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         SocketAddr::from(([127, 0, 0, 1], port))
     });
 
-    let allow_insecure = env::var("ALLOW_HTTP_BASIC_OVER_HTTP")
-        .is_ok_and(|v| matches!(v.as_str(), "1" | "true" | "TRUE" | "yes" | "on"));
-    if addr.ip().is_unspecified() && !allow_insecure {
-        log::warn!(
-            "当前以 HTTP 监听 0.0.0.0，Basic/Bearer 凭证可能被截获。如需公开，请在反向代理中终止 TLS 并设置 ALLOW_HTTP_BASIC_OVER_HTTP=1"
-        );
-    } else if !addr.ip().is_loopback() && !allow_insecure {
-        log::warn!(
-            "监听非本地地址 {}，建议启用 TLS 反代或设置 ALLOW_HTTP_BASIC_OVER_HTTP=1 明确接受风险",
-            addr
-        );
+    let bind_ip = addr.ip();
+    let allow_insecure = env_truthy("ALLOW_HTTP_BASIC_OVER_HTTP");
+    let is_public_bind = bind_ip.is_unspecified() || !bind_ip.is_loopback();
+    if is_public_bind {
+        let egress_policy = env::var("USAGE_SCRIPT_EGRESS_POLICY").ok();
+        let should_set_egress = egress_policy
+            .as_deref()
+            .map(|value| value.trim().is_empty())
+            .unwrap_or(true);
+        if should_set_egress {
+            env::set_var("USAGE_SCRIPT_EGRESS_POLICY", "strict");
+            info!(
+                "USAGE_SCRIPT_EGRESS_POLICY 未设置，已自动调整为 strict 以限制外网监听时的脚本出口"
+            );
+        }
+    }
+
+    let cors_origins_set = env::var("CORS_ALLOW_ORIGINS")
+        .map(|value| !value.trim().is_empty())
+        .unwrap_or(false);
+    let allow_lan_cors_set = env::var("ALLOW_LAN_CORS").is_ok();
+    let allow_lan_cors = env_truthy("ALLOW_LAN_CORS");
+    let mut lan_cors_enabled = allow_lan_cors;
+
+    if !cors_origins_set && !allow_lan_cors_set && is_lan_bind_ip(bind_ip) {
+        lan_cors_enabled = true;
+        info!("CORS_ALLOW_ORIGINS 未设置，已自动启用局域网跨域白名单");
+    }
+
+    let cors_credentials_set = env::var("CORS_ALLOW_CREDENTIALS")
+        .map(|value| !value.trim().is_empty())
+        .unwrap_or(false);
+    if lan_cors_enabled {
+        env::set_var("CC_SWITCH_LAN_CORS", "1");
+        if !cors_credentials_set {
+            env::set_var("CORS_ALLOW_CREDENTIALS", "1");
+        }
+    }
+
+    let app = create_router(state, password.clone());
+
+    if is_public_bind && !allow_insecure {
+        if bind_ip.is_unspecified() {
+            error!(
+                "当前以 HTTP 监听 0.0.0.0，Basic/Bearer 凭证可能被截获。如需公开，请在反向代理中终止 TLS 并设置 ALLOW_HTTP_BASIC_OVER_HTTP=1"
+            );
+        } else {
+            error!(
+                "监听非本地地址 {}，建议启用 TLS 反代或设置 ALLOW_HTTP_BASIC_OVER_HTTP=1 明确接受风险",
+                addr
+            );
+        }
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            "Refusing to start without ALLOW_HTTP_BASIC_OVER_HTTP",
+        )
+        .into());
     }
 
     info!(

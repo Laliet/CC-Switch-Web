@@ -19,6 +19,14 @@ fn unwrap_path(result: Result<PathBuf, AppError>) -> PathBuf {
     result.expect("path should resolve")
 }
 
+fn export_path(home: &Path, filename: &str) -> PathBuf {
+    if cfg!(feature = "web-server") {
+        home.join(".cc-switch").join(filename)
+    } else {
+        home.join(filename)
+    }
+}
+
 #[test]
 fn sync_claude_provider_writes_live_settings() {
     let _guard = test_mutex().lock().expect("acquire test mutex");
@@ -934,14 +942,22 @@ fn import_config_from_path_invalid_json_returns_error() {
 fn import_config_from_path_missing_file_produces_io_error() {
     let _guard = test_mutex().lock().expect("acquire test mutex");
     reset_test_fs();
-    let _home = ensure_test_home();
+    let home = ensure_test_home();
 
-    let missing_path = Path::new("/nonexistent/import.json");
+    let missing_path = if cfg!(feature = "web-server") {
+        let path = home.join(".cc-switch").join("missing.json");
+        if path.exists() {
+            fs::remove_file(&path).expect("remove missing test file");
+        }
+        path
+    } else {
+        PathBuf::from("/nonexistent/import.json")
+    };
     let app_state = AppState {
         config: RwLock::new(MultiAppConfig::default()),
     };
 
-    let err = ConfigService::import_config_from_path(missing_path, &app_state)
+    let err = ConfigService::import_config_from_path(missing_path.as_path(), &app_state)
         .expect_err("import should fail for missing file");
     match err {
         AppError::Io { .. } => {}
@@ -1075,7 +1091,7 @@ fn export_config_to_file_writes_target_path() {
     let config_path = config_dir.join("config.json");
     fs::write(&config_path, r#"{"version":42,"flag":true}"#).expect("write config");
 
-    let export_path = home.join("exported-config.json");
+    let export_path = export_path(&home, "exported-config.json");
     if export_path.exists() {
         fs::remove_file(&export_path).expect("cleanup export target");
     }
@@ -1099,7 +1115,7 @@ fn export_config_to_file_returns_error_when_source_missing() {
     reset_test_fs();
     let home = ensure_test_home();
 
-    let export_path = home.join("export-missing.json");
+    let export_path = export_path(&home, "export-missing.json");
     if export_path.exists() {
         fs::remove_file(&export_path).expect("cleanup export target");
     }

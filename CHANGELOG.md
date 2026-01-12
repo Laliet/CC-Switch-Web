@@ -5,6 +5,15 @@ All notable changes to CC Switch will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-01-11
+
+### Migration Notes / 迁移说明
+
+- CORS is same-origin by default.
+- `CORS_ALLOW_ORIGINS="*"` is ignored.
+- `ALLOW_LAN_CORS=1` or `CC_SWITCH_LAN_CORS=1` auto-allows private LAN origins.
+- Binding to `0.0.0.0` still requires `ALLOW_LAN_CORS=1`.
+
 ## [0.7.1] - 2026-01-10
 
 ### Fixes / 修复

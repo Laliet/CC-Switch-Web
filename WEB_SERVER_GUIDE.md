@@ -63,28 +63,30 @@ CORS_ALLOW_CREDENTIALS=true \
 
 ## 安全与认证（生产必读）
 
-- **强制设置凭证**：部署前请设置环境变量：
-  - `WEB_API_TOKEN=<随机长 token>`：服务端 Bearer Token（默认等同于密码，不建议沿用）。
-  - `WEB_CSRF_TOKEN=<随机短 token>`：前端请求需在非 GET/HEAD 请求头携带 `X-CSRF-Token`。
-- **自动生成**：若上述环境变量缺失，服务会自动生成随机 Token 写入 `~/.cc-switch/web_env`，并在前端注入 `window.__CC_SWITCH_TOKENS__`，无须手工输入即可完成认证。
-- **前端提示**：界面会显示“已自动应用凭证”徽标，表示前端已自动携带 Authorization/CSRF 头，无需额外操作。
+- **账号密码**：所有 API 请求都需要 Basic Auth，用户名固定为 `admin`，密码首次运行自动生成并写入 `~/.cc-switch/web_password`。
+- **CSRF**：非 GET/HEAD 请求需携带 `X-CSRF-Token`；前端会自动处理。可通过 `WEB_CSRF_TOKEN` 固定 Token，手动调用时可先用 Basic Auth 访问 `/api/system/csrf-token` 获取。
 - **HTTPS 反代**：建议用 Nginx/Caddy/Cloudflare 等做 TLS 终止，把 cc-switch-server 放在反代后面。
 - **HSTS**：默认开启 `Strict-Transport-Security`，如需关闭可设 `ENABLE_HSTS=false`。
 - **裸 HTTP 风险**：若必须在无 TLS 的公网监听，需显式设置 `ALLOW_HTTP_BASIC_OVER_HTTP=1` 表示接受风险；否则请保持在内网/回环地址。
 - **跨域**：默认同源，若确需跨域，使用 `CORS_ALLOW_ORIGINS=https://foo.com,https://bar.com`（不要使用 `*`）。
 
-运行示例（反代模式，含凭证）：
+### 局域网 CORS 自动放行
+
+- 若绑定到内网 IP 且未设置 `CORS_ALLOW_ORIGINS`，服务会自动启用私有来源白名单，并写入 `CC_SWITCH_LAN_CORS=1`。
+- 也可显式设置 `ALLOW_LAN_CORS=1`（或 `CC_SWITCH_LAN_CORS=1`）强制开启自动放行。
+- 仅对私有 IP/localhost 生效，类似 `*.local` 的主机名不会自动放行，需要用 `CORS_ALLOW_ORIGINS` 明确列出。
+
+运行示例（反代模式，显式设置 CSRF Token）：
 
 ```bash
-WEB_API_TOKEN="$(openssl rand -hex 32)" \
 WEB_CSRF_TOKEN="$(openssl rand -hex 16)" \
 HOST=127.0.0.1 PORT=3000 ./target/release/cc-switch-server
 ```
 
-前端在非 GET/HEAD 请求中需要附带：
+前端在非 GET/HEAD 请求中需要附带（密码见 `~/.cc-switch/web_password`）：
 
 ```
-Authorization: Bearer <WEB_API_TOKEN>
+Authorization: Basic <base64(admin:password)>
 X-CSRF-Token: <WEB_CSRF_TOKEN>
 ```
 

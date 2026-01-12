@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   base64EncodeUtf8,
-  buildWebApiUrl,
+  buildWebApiUrlWithBase,
   clearWebApiBaseOverride,
   clearWebCredentials,
   getWebApiBase,
@@ -81,25 +81,29 @@ export function WebLoginDialog({ open, onLoginSuccess }: WebLoginDialogProps) {
       if ((previousApiBase ?? null) !== nextApiBase) {
         clearWebCredentials();
       }
-      if (normalizedApiBase) {
-        setWebApiBaseOverride(normalizedApiBase);
-      } else {
-        clearWebApiBaseOverride();
-      }
-      const response = await fetch(buildWebApiUrl("/settings"), {
-        method: "GET",
-        credentials: "include",
-        headers: {
-          Accept: "application/json",
-          Authorization: `Basic ${encoded}`,
+      const effectiveApiBase = normalizedApiBase ?? getWebApiBase();
+      const response = await fetch(
+        buildWebApiUrlWithBase(effectiveApiBase, "/settings"),
+        {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+            Authorization: `Basic ${encoded}`,
+          },
         },
-      });
+      );
 
       if (response.ok) {
-        setWebCredentials(trimmed);
+        if (normalizedApiBase) {
+          setWebApiBaseOverride(normalizedApiBase);
+        } else {
+          clearWebApiBaseOverride();
+        }
+        setWebCredentials(trimmed, normalizedApiBase ?? getWebApiBase());
         try {
           const tokenResponse = await fetch(
-            buildWebApiUrl("/system/csrf-token"),
+            buildWebApiUrlWithBase(effectiveApiBase, "/system/csrf-token"),
             {
               method: "GET",
               credentials: "include",
@@ -204,7 +208,8 @@ export function WebLoginDialog({ open, onLoginSuccess }: WebLoginDialogProps) {
               </Button>
             </div>
             <p id={apiBaseHelperId} className="text-xs text-muted-foreground">
-              支持 https://example.com/api 或 /api，留空使用默认值。
+              支持 https://example.com/api 或 /api，留空使用默认值。局域网地址在服务端启用
+              ALLOW_LAN_CORS 后会自动放行。
             </p>
             {apiBaseError ? (
               <p id={apiBaseErrorId} className="text-xs text-destructive">

@@ -2,13 +2,15 @@
 
 use std::{
     env, fs,
+    net::IpAddr,
     path::{Path as StdPath, PathBuf},
     sync::Arc,
+    time::{Duration, Instant},
 };
 
 use axum::{
     body::Body,
-    extract::{Extension, Path},
+    extract::{DefaultBodyLimit, Extension, Path},
     http::{
         header::{
             self, ACCEPT, AUTHORIZATION, CONTENT_TYPE, STRICT_TRANSPORT_SECURITY, WWW_AUTHENTICATE,
@@ -24,7 +26,13 @@ use base64::Engine;
 use mime_guess::mime;
 use rust_embed::RustEmbed;
 use std::sync::Arc as StdArc;
-use tower_http::{cors::CorsLayer, validate_request::ValidateRequestHeaderLayer};
+use tokio::sync::Mutex;
+use tower::limit::GlobalConcurrencyLimitLayer;
+use tower_http::{
+    cors::{AllowOrigin, CorsLayer},
+    validate_request::ValidateRequestHeaderLayer,
+};
+use url::Url;
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
@@ -50,6 +58,8 @@ struct WebTokens {
 }
 
 const DEFAULT_API_PREFIX: &str = "/api";
+const DEFAULT_WEB_BODY_LIMIT_BYTES: usize = 2_097_152;
+const DEFAULT_WEB_GLOBAL_CONCURRENCY: usize = 32;
 
 /// Serve embedded static assets with index.html fallback for SPA routes.
 async fn serve_static(
@@ -135,10 +145,16 @@ window.__CC_SWITCH_TOKENS__ = {{
 
 fn cors_layer() -> Option<CorsLayer> {
     // Production-safe CORS defaults. Enable explicitly via env when cross-origin access is needed.
-    let allow_origins = env::var("CORS_ALLOW_ORIGINS").ok();
-    let allow_credentials = env::var("CORS_ALLOW_CREDENTIALS")
-        .map(|v| matches!(v.as_str(), "1" | "true" | "TRUE" | "yes" | "on"))
-        .unwrap_or(false);
+    let allow_origins = env::var("CORS_ALLOW_ORIGINS").ok().and_then(|value| {
+        let trimmed = value.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    });
+    let allow_lan = env_truthy("ALLOW_LAN_CORS") || env_truthy("CC_SWITCH_LAN_CORS");
+    let allow_credentials = env_truthy("CORS_ALLOW_CREDENTIALS");
 
     let mut layer = CorsLayer::new()
         .allow_methods([
@@ -155,34 +171,38 @@ fn cors_layer() -> Option<CorsLayer> {
             header::HeaderName::from_static("x-csrf-token"),
         ]);
 
-    match allow_origins.as_deref() {
+    let origins = match allow_origins.as_deref() {
         Some("*") => {
             // 显式禁止生产中的通配符，防止意外放开
             log::warn!("CORS_ALLOW_ORIGINS='*' 已被忽略，请使用逗号分隔的白名单");
-            return None;
+            Vec::new()
         }
-        Some(list) => {
-            let origins: Vec<HeaderValue> = list
-                .split(',')
-                .filter_map(|entry| {
-                    let trimmed = entry.trim();
-                    if trimmed.is_empty() {
-                        None
-                    } else {
-                        HeaderValue::from_str(trimmed).ok()
-                    }
-                })
-                .collect();
+        Some(list) => list
+            .split(',')
+            .filter_map(|entry| {
+                let trimmed = entry.trim();
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    HeaderValue::from_str(trimmed).ok()
+                }
+            })
+            .collect(),
+        None => Vec::new(),
+    };
 
-            if origins.is_empty() {
-                return None;
-            }
-            layer = layer.allow_origin(origins);
-        }
-        None => {
-            // No CORS allow-list provided -> rely on same-origin; do not loosen automatically.
-            return None;
-        }
+    if origins.is_empty() && !allow_lan {
+        // No CORS allow-list provided -> rely on same-origin; do not loosen automatically.
+        return None;
+    }
+
+    layer = layer.allow_origin(AllowOrigin::predicate(move |origin, _| {
+        let is_listed = origins.iter().any(|allowed| allowed == origin);
+        is_listed || (allow_lan && is_private_origin(origin))
+    }));
+
+    if allow_lan {
+        layer = layer.allow_private_network(true);
     }
 
     if allow_credentials {
@@ -190,6 +210,40 @@ fn cors_layer() -> Option<CorsLayer> {
     }
 
     Some(layer)
+}
+
+fn env_truthy(name: &str) -> bool {
+    env::var(name).is_ok_and(|v| matches!(v.as_str(), "1" | "true" | "TRUE" | "yes" | "on"))
+}
+
+fn is_private_origin(origin: &HeaderValue) -> bool {
+    let Ok(origin_str) = origin.to_str() else {
+        return false;
+    };
+    let Ok(url) = Url::parse(origin_str) else {
+        return false;
+    };
+    match url.scheme() {
+        "http" | "https" => {}
+        _ => return false,
+    }
+    let Some(host) = url.host_str() else {
+        return false;
+    };
+    if host.eq_ignore_ascii_case("localhost") {
+        return true;
+    }
+    let Ok(ip) = host.parse::<IpAddr>() else {
+        return false;
+    };
+    is_private_ip(ip)
+}
+
+fn is_private_ip(ip: IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(v4) => v4.is_private() || v4.is_loopback() || v4.is_link_local(),
+        IpAddr::V6(v6) => v6.is_unique_local() || v6.is_loopback() || v6.is_unicast_link_local(),
+    }
 }
 
 fn normalize_api_prefix(raw: &str) -> Option<String> {
@@ -228,6 +282,48 @@ fn web_api_prefix() -> String {
     configured.unwrap_or_else(|| DEFAULT_API_PREFIX.to_string())
 }
 
+fn parse_env_usize(name: &str) -> Option<usize> {
+    env::var(name).ok().and_then(|value| value.trim().parse().ok())
+}
+
+fn parse_env_u64(name: &str) -> Option<u64> {
+    env::var(name).ok().and_then(|value| value.trim().parse().ok())
+}
+
+struct RateLimitState {
+    window_start: Instant,
+    count: u64,
+}
+
+async fn rate_limit_middleware(
+    state: Arc<Mutex<RateLimitState>>,
+    max: u64,
+    window: Duration,
+    req: Request<Body>,
+    next: middleware::Next,
+) -> Response {
+    let mut guard = state.lock().await;
+    if guard.window_start.elapsed() >= window {
+        guard.window_start = Instant::now();
+        guard.count = 0;
+    }
+    if guard.count >= max {
+        let body = serde_json::json!({
+            "error": "Rate limit exceeded.",
+            "code": "RATE_LIMITED"
+        });
+        return Response::builder()
+            .status(StatusCode::TOO_MANY_REQUESTS)
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(body.to_string()))
+            .unwrap_or_else(|_| Response::new(Body::empty()));
+    }
+    guard.count += 1;
+    drop(guard);
+
+    next.run(req).await
+}
+
 /// Construct the axum router with all API routes and middleware.
 pub fn create_router(state: SharedState, password: String) -> Router {
     let tokens = Arc::new(load_or_generate_tokens());
@@ -241,10 +337,21 @@ pub fn create_router(state: SharedState, password: String) -> Router {
 
     let auth_validator = AuthValidator::new(password, Some(tokens.csrf_token.clone()));
 
-    let router = routes::create_router(state)
+    let body_limit = parse_env_usize("WEB_MAX_BODY_BYTES").unwrap_or(DEFAULT_WEB_BODY_LIMIT_BYTES);
+    let global_concurrency = parse_env_usize("WEB_GLOBAL_CONCURRENCY")
+        .unwrap_or(DEFAULT_WEB_GLOBAL_CONCURRENCY);
+    let rate_limit_num = parse_env_u64("WEB_RATE_LIMIT_NUM").filter(|value| *value > 0);
+    let rate_limit_window =
+        parse_env_u64("WEB_RATE_LIMIT_WINDOW_SECS").filter(|value| *value > 0);
+
+    let mut router = routes::create_router(state)
         .fallback(api_not_found)
         .layer(Extension(csrf_token))
         .layer(ValidateRequestHeaderLayer::custom(auth_validator.clone()));
+
+    if body_limit > 0 {
+        router = router.layer(DefaultBodyLimit::max(body_limit));
+    }
 
     // Only apply CORS when a valid allow-list is configured; default to same-origin.
     let router = if let Some(cors) = cors_layer() {
@@ -272,13 +379,30 @@ pub fn create_router(state: SharedState, password: String) -> Router {
         )
         .layer(ValidateRequestHeaderLayer::custom(auth_validator));
 
-    Router::new()
+    let mut root = Router::new()
         .nest(api_prefix.as_str(), router)
         .merge(static_router)
         .layer(middleware::from_fn({
             let hsts_enabled = hsts_enabled;
             move |req, next| add_hsts_header(hsts_enabled, req, next)
-        }))
+        }));
+
+    if global_concurrency > 0 {
+        root = root.layer(GlobalConcurrencyLimitLayer::new(global_concurrency));
+    }
+    if let (Some(num), Some(window)) = (rate_limit_num, rate_limit_window) {
+        let state = Arc::new(Mutex::new(RateLimitState {
+            window_start: Instant::now(),
+            count: 0,
+        }));
+        let window = Duration::from_secs(window);
+        root = root.layer(middleware::from_fn({
+            let state = state.clone();
+            move |req, next| rate_limit_middleware(state.clone(), num, window, req, next)
+        }));
+    }
+
+    root
 }
 
 async fn api_not_found() -> StatusCode {

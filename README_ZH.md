@@ -156,7 +156,7 @@ HOST=0.0.0.0 PORT=3000 ./target/release/examples/server
 
 - **用户名**：`admin`
 - **密码**：首次运行自动生成，保存在 `~/.cc-switch/web_password`
-- **跨域设置**：默认同源；需跨域请设置 `CORS_ALLOW_ORIGINS=https://your-domain.com`
+- **跨域设置**：默认同源；需跨域请设置 `CORS_ALLOW_ORIGINS=https://your-domain.com`（`CORS_ALLOW_ORIGINS="*"` 会被忽略）；局域网/私有来源可通过 `ALLOW_LAN_CORS=1`（或 `CC_SWITCH_LAN_CORS=1`）自动放行
 - **注意**：Web 模式不支持原生文件选择器，请手动输入路径
 
 ### 安全
@@ -185,6 +185,8 @@ HOST=0.0.0.0 PORT=3000 ./target/release/examples/server
 | `ENABLE_HSTS` | 是否启用 HSTS 响应头 | true |
 | `CORS_ALLOW_ORIGINS` | 允许的来源（逗号分隔） | （同源） |
 | `CORS_ALLOW_CREDENTIALS` | 是否允许 CORS 携带凭据 | false |
+| `ALLOW_LAN_CORS` | 自动放行局域网私有来源 | false |
+| `CC_SWITCH_LAN_CORS` | 局域网自动放行启用时自动写入 | （未设置） |
 | `ALLOW_HTTP_BASIC_OVER_HTTP` | 抑制 HTTP 警告 | false |
 | `WEB_CSRF_TOKEN` | 覆盖 CSRF Token | （自动生成） |
 

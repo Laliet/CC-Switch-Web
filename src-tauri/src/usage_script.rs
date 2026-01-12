@@ -1,11 +1,15 @@
-use reqwest::Client;
+use futures::StreamExt;
+use reqwest::{redirect::Policy, Client};
 use rquickjs::{Context, Function, Runtime};
 use serde_json::Value;
 use std::{
     collections::HashMap,
     env,
+    net::IpAddr,
     time::{Duration, Instant},
 };
+use tokio::net::lookup_host;
+use url::{Host, Url};
 
 use crate::error::AppError;
 
@@ -213,10 +217,55 @@ struct RequestConfig {
 
 /// 发送 HTTP 请求
 async fn send_http_request(config: &RequestConfig, timeout_secs: u64) -> Result<String, AppError> {
+    let url = validate_request_url(&config.url).await?;
+
+    let max_body_bytes = parse_env_usize("USAGE_SCRIPT_MAX_BODY_BYTES", 65_536);
+    if let Some(body) = &config.body {
+        if body.as_bytes().len() > max_body_bytes {
+            return Err(AppError::localized(
+                "usage_script.request_body_too_large",
+                format!("请求体过大，最大允许 {max_body_bytes} 字节"),
+                format!("Request body too large; max {max_body_bytes} bytes allowed"),
+            ));
+        }
+    }
+
+    let max_header_count = parse_env_usize("USAGE_SCRIPT_MAX_HEADER_COUNT", 32);
+    if config.headers.len() > max_header_count {
+        return Err(AppError::localized(
+            "usage_script.header_count_exceeded",
+            format!("请求头数量超过限制: {} / {}", config.headers.len(), max_header_count),
+            format!(
+                "Request header count exceeds limit: {} / {}",
+                config.headers.len(),
+                max_header_count
+            ),
+        ));
+    }
+
+    for name in config.headers.keys() {
+        let normalized = name.trim().to_ascii_lowercase();
+        if is_forbidden_header_name(&normalized) {
+            return Err(AppError::localized(
+                "usage_script.forbidden_header",
+                format!("不允许设置请求头: {name}"),
+                format!("Forbidden header name: {name}"),
+            ));
+        }
+    }
+
+    let allow_redirects = env_flag("USAGE_SCRIPT_ALLOW_REDIRECTS");
+    let redirect_policy = if allow_redirects {
+        Policy::limited(5)
+    } else {
+        Policy::none()
+    };
+
     // 约束超时范围，防止异常配置导致长时间阻塞
     let timeout = timeout_secs.clamp(2, 30);
     let client = Client::builder()
         .timeout(Duration::from_secs(timeout))
+        .redirect(redirect_policy)
         .build()
         .map_err(|e| {
             AppError::localized(
@@ -235,7 +284,7 @@ async fn send_http_request(config: &RequestConfig, timeout_secs: u64) -> Result<
         )
     })?;
 
-    let mut req = client.request(method.clone(), &config.url);
+    let mut req = client.request(method.clone(), url);
 
     // 添加请求头
     for (k, v) in &config.headers {
@@ -294,18 +343,11 @@ async fn send_http_request(config: &RequestConfig, timeout_secs: u64) -> Result<
     })?;
 
     let status = resp.status();
-    let text = resp.text().await.map_err(|e| {
-        AppError::localized(
-            "usage_script.read_response_failed",
-            format!("读取响应失败: {e}"),
-            format!("Failed to read response: {e}"),
-        )
-    })?;
+    let max_response_bytes = parse_env_usize("USAGE_SCRIPT_MAX_RESPONSE_BYTES", 1_048_576);
+    let text = read_response_body(resp, max_response_bytes).await?;
 
     if !status.is_success() {
-        let include_body = env::var("USAGE_SCRIPT_INCLUDE_BODY")
-            .map(|v| matches!(v.as_str(), "1" | "true" | "TRUE" | "yes" | "on"))
-            .unwrap_or(cfg!(debug_assertions));
+        let include_body = env_flag("USAGE_SCRIPT_INCLUDE_BODY");
 
         let preview = if include_body {
             if text.len() > 200 {
@@ -325,6 +367,213 @@ async fn send_http_request(config: &RequestConfig, timeout_secs: u64) -> Result<
     }
 
     Ok(text)
+}
+
+async fn read_response_body(
+    resp: reqwest::Response,
+    max_bytes: usize,
+) -> Result<String, AppError> {
+    let mut stream = resp.bytes_stream();
+    let mut buf = Vec::new();
+    let mut total = 0usize;
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|e| {
+            AppError::localized(
+                "usage_script.read_response_failed",
+                format!("读取响应失败: {e}"),
+                format!("Failed to read response: {e}"),
+            )
+        })?;
+        total = total.saturating_add(chunk.len());
+        if total > max_bytes {
+            return Err(AppError::localized(
+                "usage_script.response_too_large",
+                format!("响应体过大，最大允许 {max_bytes} 字节"),
+                format!("Response body too large; max {max_bytes} bytes allowed"),
+            ));
+        }
+        buf.extend_from_slice(&chunk);
+    }
+
+    Ok(String::from_utf8_lossy(&buf).to_string())
+}
+
+fn parse_env_usize(name: &str, default: usize) -> usize {
+    env::var(name)
+        .ok()
+        .and_then(|value| value.trim().parse().ok())
+        .unwrap_or(default)
+}
+
+fn env_flag(name: &str) -> bool {
+    env::var(name)
+        .map(|v| matches!(v.as_str(), "1" | "true" | "TRUE" | "yes" | "on"))
+        .unwrap_or(false)
+}
+
+fn is_forbidden_header_name(name: &str) -> bool {
+    matches!(
+        name,
+        "host"
+            | "content-length"
+            | "transfer-encoding"
+            | "connection"
+            | "proxy-authorization"
+            | "proxy-authenticate"
+            | "proxy-connection"
+    )
+}
+
+#[derive(Clone, Copy)]
+enum EgressPolicy {
+    Strict,
+    Trusted,
+}
+
+async fn validate_request_url(raw_url: &str) -> Result<Url, AppError> {
+    let url = Url::parse(raw_url).map_err(|e| {
+        AppError::localized(
+            "usage_script.url_invalid",
+            format!("URL 格式无效: {e}"),
+            format!("Invalid URL format: {e}"),
+        )
+    })?;
+
+    let scheme = url.scheme();
+    if scheme != "http" && scheme != "https" {
+        return Err(AppError::localized(
+            "usage_script.url_scheme_not_allowed",
+            format!("URL 仅支持 http/https，当前: {scheme}"),
+            format!("Only http/https URLs are allowed; got {scheme}"),
+        ));
+    }
+
+    if !url.username().is_empty() || url.password().is_some() {
+        return Err(AppError::localized(
+            "usage_script.url_userinfo_not_allowed",
+            "URL 不允许包含用户名或密码",
+            "URL must not include username or password",
+        ));
+    }
+
+    let host = url.host().ok_or_else(|| {
+        AppError::localized(
+            "usage_script.url_host_missing",
+            "URL 缺少主机名",
+            "URL is missing a host",
+        )
+    })?;
+    let host_str = url.host_str().unwrap_or_default();
+
+    let allowed_hosts = parse_allowed_hosts();
+    if let Some(allowed) = allowed_hosts {
+        let normalized_host = host_str.trim_end_matches('.').to_ascii_lowercase();
+        if !allowed.iter().any(|entry| entry == &normalized_host) {
+            return Err(AppError::localized(
+                "usage_script.url_host_not_allowed",
+                format!("主机名不在允许列表中: {host_str}"),
+                format!("Host is not in allowlist: {host_str}"),
+            ));
+        }
+    }
+
+    let policy = parse_egress_policy();
+    match host {
+        Host::Ipv4(ip) => ensure_ip_allowed(IpAddr::V4(ip), policy)?,
+        Host::Ipv6(ip) => ensure_ip_allowed(IpAddr::V6(ip), policy)?,
+        Host::Domain(domain) => {
+            let port = url.port_or_known_default().unwrap_or(80);
+            let ips = resolve_host_ips(domain, port).await?;
+            if ips.iter().any(|ip| is_disallowed_ip(*ip, policy)) {
+                return Err(AppError::localized(
+                    "usage_script.url_blocked",
+                    "目标地址被策略阻止",
+                    "Target address is blocked by policy",
+                ));
+            }
+        }
+    }
+
+    Ok(url)
+}
+
+fn parse_egress_policy() -> EgressPolicy {
+    let raw = env::var("USAGE_SCRIPT_EGRESS_POLICY").unwrap_or_default();
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "strict" => EgressPolicy::Strict,
+        "trusted" => EgressPolicy::Trusted,
+        _ => EgressPolicy::Trusted,
+    }
+}
+
+fn parse_allowed_hosts() -> Option<Vec<String>> {
+    let value = env::var("USAGE_SCRIPT_ALLOWED_HOSTS").ok()?;
+    let entries = value
+        .split(',')
+        .map(|entry| entry.trim().trim_end_matches('.').to_ascii_lowercase())
+        .filter(|entry| !entry.is_empty())
+        .collect::<Vec<_>>();
+    if entries.is_empty() {
+        None
+    } else {
+        Some(entries)
+    }
+}
+
+async fn resolve_host_ips(host: &str, port: u16) -> Result<Vec<IpAddr>, AppError> {
+    let resolved = lookup_host((host, port)).await.map_err(|e| {
+        AppError::localized(
+            "usage_script.dns_lookup_failed",
+            format!("DNS 解析失败: {e}"),
+            format!("DNS lookup failed: {e}"),
+        )
+    })?;
+
+    let ips = resolved.map(|addr| addr.ip()).collect::<Vec<_>>();
+    if ips.is_empty() {
+        return Err(AppError::localized(
+            "usage_script.dns_lookup_failed",
+            "DNS 解析失败: 未解析到地址",
+            "DNS lookup failed: no addresses resolved",
+        ));
+    }
+
+    Ok(ips)
+}
+
+fn ensure_ip_allowed(ip: IpAddr, policy: EgressPolicy) -> Result<(), AppError> {
+    if is_disallowed_ip(ip, policy) {
+        return Err(AppError::localized(
+            "usage_script.url_blocked",
+            "目标地址被策略阻止",
+            "Target address is blocked by policy",
+        ));
+    }
+    Ok(())
+}
+
+fn is_disallowed_ip(ip: IpAddr, policy: EgressPolicy) -> bool {
+    match ip {
+        IpAddr::V4(v4) => {
+            let blocked = v4.is_link_local()
+                || v4.is_unspecified()
+                || v4.is_multicast()
+                || v4.is_broadcast();
+            if matches!(policy, EgressPolicy::Strict) {
+                blocked || v4.is_loopback() || v4.is_private()
+            } else {
+                blocked
+            }
+        }
+        IpAddr::V6(v6) => {
+            let blocked = v6.is_unicast_link_local() || v6.is_unspecified() || v6.is_multicast();
+            if matches!(policy, EgressPolicy::Strict) {
+                blocked || v6.is_loopback() || v6.is_unique_local()
+            } else {
+                blocked
+            }
+        }
+    }
 }
 
 fn build_sandboxed_runtime(timeout_secs: u64) -> Result<Runtime, AppError> {

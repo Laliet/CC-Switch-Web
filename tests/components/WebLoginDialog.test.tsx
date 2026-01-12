@@ -6,10 +6,14 @@ import { WebLoginDialog } from "@/components/WebLoginDialog";
 let apiBaseForBuild = "/custom-api";
 
 type AdapterMocks = {
-  buildWebApiUrl: ReturnType<typeof vi.fn<(path: string) => string>>;
+  buildWebApiUrlWithBase: ReturnType<
+    typeof vi.fn<(base: string, path: string) => string>
+  >;
   clearWebApiBaseOverride: ReturnType<typeof vi.fn>;
   clearWebCredentials: ReturnType<typeof vi.fn>;
-  setWebCredentials: ReturnType<typeof vi.fn<(value: string) => void>>;
+  setWebCredentials: ReturnType<
+    typeof vi.fn<(value: string, apiBase?: string | null) => void>
+  >;
   setWebApiBaseOverride: ReturnType<typeof vi.fn<(value: string) => void>>;
   base64EncodeUtf8: ReturnType<typeof vi.fn<() => string>>;
   getWebApiBase: ReturnType<typeof vi.fn<() => string>>;
@@ -22,12 +26,12 @@ type AdapterMocks = {
 };
 
 const adapterMocks = vi.hoisted(() => ({
-  buildWebApiUrl: vi.fn<(path: string) => string>(
-    (path) => `${apiBaseForBuild}${path}`,
+  buildWebApiUrlWithBase: vi.fn<(base: string, path: string) => string>(
+    (base, path) => `${base}${path}`,
   ),
   clearWebApiBaseOverride: vi.fn(),
   clearWebCredentials: vi.fn(),
-  setWebCredentials: vi.fn<(value: string) => void>(),
+  setWebCredentials: vi.fn<(value: string, apiBase?: string | null) => void>(),
   setWebApiBaseOverride: vi.fn<(value: string) => void>(),
   base64EncodeUtf8: vi.fn(() => "encoded-value"),
   getWebApiBase: vi.fn(() => apiBaseForBuild),
@@ -166,7 +170,10 @@ describe("WebLoginDialog", () => {
 
     expect(adapterMocks.base64EncodeUtf8).toHaveBeenCalledWith("admin:secret");
     expect(adapterMocks.clearWebApiBaseOverride).toHaveBeenCalled();
-    expect(adapterMocks.buildWebApiUrl).toHaveBeenCalledWith("/settings");
+    expect(adapterMocks.buildWebApiUrlWithBase).toHaveBeenCalledWith(
+      "/custom-api",
+      "/settings",
+    );
     expect(fetchMock).toHaveBeenCalledWith(
       "/custom-api/settings",
       expect.objectContaining({

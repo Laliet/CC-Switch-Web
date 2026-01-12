@@ -71,13 +71,21 @@ describe("adapter helpers", () => {
 
   it("getWebApiBase prefers stored override when valid", async () => {
     const { getWebApiBase, WEB_API_BASE_STORAGE_KEY } = await importAdapter();
-    window.localStorage.setItem(
-      WEB_API_BASE_STORAGE_KEY,
-      " https://api.example.com/base/ ",
-    );
-    (window as any).__CC_SWITCH_API_BASE__ = "/custom-api";
+    vi.stubGlobal("location", {
+      origin: "https://api.example.com",
+      protocol: "https:",
+    });
+    try {
+      window.localStorage.setItem(
+        WEB_API_BASE_STORAGE_KEY,
+        " https://api.example.com/base/ ",
+      );
+      (window as any).__CC_SWITCH_API_BASE__ = "/custom-api";
 
-    expect(getWebApiBase()).toBe("https://api.example.com/base");
+      expect(getWebApiBase()).toBe("https://api.example.com/base");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("getWebApiBase ignores invalid stored override", async () => {
@@ -128,16 +136,74 @@ describe("adapter helpers", () => {
     }
   });
 
+  it("getWebApiBaseValidationError blocks unallowlisted origins", async () => {
+    const { getWebApiBaseValidationError } = await importAdapter();
+    vi.stubGlobal("location", {
+      origin: "https://app.example.com",
+      protocol: "https:",
+    });
+
+    try {
+      expect(getWebApiBaseValidationError("https://api.example.com")).toBe(
+        "API 地址不在允许列表，请设置 CORS_ALLOW_ORIGINS 或启用 ALLOW_LAN_CORS（局域网自动放行）",
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("getWebApiBaseValidationError allows private origin pairs", async () => {
+    const { getWebApiBaseValidationError } = await importAdapter();
+    vi.stubGlobal("location", {
+      origin: "http://192.168.1.10:3000",
+      protocol: "http:",
+    });
+
+    try {
+      expect(
+        getWebApiBaseValidationError("http://192.168.1.11:3000"),
+      ).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("getWebApiBaseValidationError blocks public api from private origin", async () => {
+    const { getWebApiBaseValidationError } = await importAdapter();
+    vi.stubGlobal("location", {
+      origin: "http://192.168.1.10:3000",
+      protocol: "http:",
+    });
+
+    try {
+      expect(
+        getWebApiBaseValidationError("https://api.example.com"),
+      ).toBe(
+        "API 地址不在允许列表，请设置 CORS_ALLOW_ORIGINS 或启用 ALLOW_LAN_CORS（局域网自动放行）",
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("buildWebApiUrl joins paths with stored base", async () => {
     const { buildWebApiUrl, WEB_API_BASE_STORAGE_KEY } = await importAdapter();
-    window.localStorage.setItem(
-      WEB_API_BASE_STORAGE_KEY,
-      "https://api.example.com/base/",
-    );
+    vi.stubGlobal("location", {
+      origin: "https://api.example.com",
+      protocol: "https:",
+    });
+    try {
+      window.localStorage.setItem(
+        WEB_API_BASE_STORAGE_KEY,
+        "https://api.example.com/base/",
+      );
 
-    expect(buildWebApiUrl("settings")).toBe(
-      "https://api.example.com/base/settings",
-    );
+      expect(buildWebApiUrl("settings")).toBe(
+        "https://api.example.com/base/settings",
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("setWebApiBaseOverride and clearWebApiBaseOverride manage stored base", async () => {
@@ -148,11 +214,19 @@ describe("adapter helpers", () => {
       WEB_API_BASE_STORAGE_KEY,
     } = await importAdapter();
 
-    setWebApiBaseOverride(" https://api.example.com/base/ ");
-    expect(getStoredWebApiBase()).toBe("https://api.example.com/base");
-    expect(window.localStorage.getItem(WEB_API_BASE_STORAGE_KEY)).toBe(
-      "https://api.example.com/base",
-    );
+    vi.stubGlobal("location", {
+      origin: "https://api.example.com",
+      protocol: "https:",
+    });
+    try {
+      setWebApiBaseOverride(" https://api.example.com/base/ ");
+      expect(getStoredWebApiBase()).toBe("https://api.example.com/base");
+      expect(window.localStorage.getItem(WEB_API_BASE_STORAGE_KEY)).toBe(
+        "https://api.example.com/base",
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
 
     clearWebApiBaseOverride();
     expect(getStoredWebApiBase()).toBeUndefined();
@@ -167,9 +241,17 @@ describe("adapter helpers", () => {
       WEB_CSRF_STORAGE_KEY,
     } = await importAdapter();
 
-    setWebCredentials("secret");
-    const encoded = window.sessionStorage.getItem(WEB_AUTH_STORAGE_KEY);
-    expect(encoded).toBe(Buffer.from("admin:secret").toString("base64"));
+    setWebCredentials("secret", "/api");
+    const stored = window.sessionStorage.getItem(WEB_AUTH_STORAGE_KEY);
+    expect(stored).not.toBeNull();
+    const parsed = JSON.parse(stored as string) as {
+      token: string;
+      apiBase: string | null;
+    };
+    expect(parsed).toEqual({
+      token: Buffer.from("admin:secret").toString("base64"),
+      apiBase: "/api",
+    });
 
     window.sessionStorage.setItem(WEB_CSRF_STORAGE_KEY, "csrf");
     clearWebCredentials();

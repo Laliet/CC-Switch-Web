@@ -32,6 +32,11 @@ vi.mock("@/utils/postChangeSync", () => ({
 vi.mock("@/lib/api/adapter", () => ({
   isWeb: () => true,
   buildWebApiUrl: (path: string) => `/custom-api${path}`,
+  buildWebAuthHeadersForUrl: (_url: string) => {
+    const stored = window.sessionStorage.getItem("cc-switch-web-auth");
+    if (!stored) return {};
+    return { Authorization: `Basic ${stored}` };
+  },
   WEB_AUTH_STORAGE_KEY: "cc-switch-web-auth",
 }));
 
@@ -172,6 +177,7 @@ describe("useImportExport (web mode)", () => {
   });
 
   it("exportConfig uses fetch and auth header", async () => {
+    vi.useFakeTimers();
     const anchor = originalCreateElement("a") as HTMLAnchorElement;
     Object.defineProperty(anchor, "click", { value: vi.fn() });
 
@@ -207,23 +213,28 @@ describe("useImportExport (web mode)", () => {
         json: async () => ({ config: true }),
       } as Response);
 
-    const { result } = renderHook(() => useImportExport());
+    try {
+      const { result } = renderHook(() => useImportExport());
 
-    await act(async () => {
-      await result.current.exportConfig();
-    });
+      await act(async () => {
+        await result.current.exportConfig();
+      });
+      await vi.runAllTimersAsync();
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/custom-api/config/export",
-      expect.objectContaining({
-        credentials: "include",
-        headers: expect.objectContaining({ Authorization: "Basic encoded" }),
-      }),
-    );
-    expect(anchor.click).toHaveBeenCalled();
-    expect(createObjectUrlMock).toHaveBeenCalled();
-    expect(revokeObjectUrlMock).toHaveBeenCalledWith("blob:mock");
-    expect(toastSuccessMock).toHaveBeenCalled();
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/custom-api/config/export",
+        expect.objectContaining({
+          credentials: "include",
+          headers: expect.objectContaining({ Authorization: "Basic encoded" }),
+        }),
+      );
+      expect(anchor.click).toHaveBeenCalled();
+      expect(createObjectUrlMock).toHaveBeenCalled();
+      expect(revokeObjectUrlMock).toHaveBeenCalledWith("blob:mock");
+      expect(toastSuccessMock).toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("exportConfig reports fetch errors", async () => {

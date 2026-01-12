@@ -79,13 +79,112 @@ const isRelativeWebApiBase = (value: string): boolean =>
 const parseHttpUrl = (value: string): URL | null => {
   try {
     const parsed = new URL(value);
-    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+    if (
+      (parsed.protocol === "http:" || parsed.protocol === "https:") &&
+      !parsed.username &&
+      !parsed.password
+    ) {
       return parsed;
     }
   } catch {
     return null;
   }
   return null;
+};
+
+const parseIpv4Address = (value: string): number[] | null => {
+  if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(value)) return null;
+  const parts = value.split(".").map((part) => Number(part));
+  if (parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
+    return null;
+  }
+  return parts;
+};
+
+const isPrivateIpv4Address = (hostname: string): boolean => {
+  const parts = parseIpv4Address(hostname);
+  if (!parts) return false;
+  const [first, second] = parts;
+  if (first === 10) return true;
+  if (first === 127) return true;
+  if (first === 169 && second === 254) return true;
+  if (first === 172 && second >= 16 && second <= 31) return true;
+  if (first === 192 && second === 168) return true;
+  return false;
+};
+
+const getIpv6FirstHextet = (hostname: string): number | null => {
+  if (!hostname.includes(":")) return null;
+  const [first] = hostname.split(":");
+  if (first === "") return 0;
+  if (!/^[0-9a-f]{1,4}$/.test(first)) return null;
+  return parseInt(first, 16);
+};
+
+const isPrivateIpv6Address = (hostname: string): boolean => {
+  if (!hostname.includes(":")) return false;
+  if (hostname === "::1" || hostname === "0:0:0:0:0:0:0:1") return true;
+  const firstHextet = getIpv6FirstHextet(hostname);
+  if (firstHextet === null) return false;
+  if (firstHextet >= 0xfc00 && firstHextet <= 0xfdff) return true;
+  if (firstHextet >= 0xfe80 && firstHextet <= 0xfebf) return true;
+  return false;
+};
+
+const isPrivateHostname = (hostname: string): boolean => {
+  const normalized = hostname.toLowerCase();
+  if (normalized === "localhost") return true;
+  if (isPrivateIpv4Address(normalized)) return true;
+  if (isPrivateIpv6Address(normalized)) return true;
+  return false;
+};
+
+const isPrivateWebApiOrigin = (origin: string): boolean => {
+  const parsed = parseHttpUrl(origin);
+  if (!parsed) return false;
+  return isPrivateHostname(parsed.hostname);
+};
+
+const WEB_API_ORIGIN_BLOCKED_MESSAGE =
+  "API 地址不在允许列表，请设置 CORS_ALLOW_ORIGINS 或启用 ALLOW_LAN_CORS（局域网自动放行）";
+
+export function resolveWebOrigin(url: string): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const parsed = new URL(url, window.location.origin);
+    if (parsed.username || parsed.password) return null;
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return null;
+    }
+    return parsed.origin;
+  } catch {
+    return null;
+  }
+}
+
+const getAllowedWebApiOrigins = (): Set<string> => {
+  const origins = new Set<string>();
+  if (typeof window !== "undefined" && window.location?.origin) {
+    origins.add(window.location.origin);
+  }
+  const allowedOrigins = import.meta.env?.VITE_WEB_API_ALLOWED_ORIGINS;
+  if (typeof allowedOrigins === "string" && allowedOrigins.trim()) {
+    for (const entry of allowedOrigins.split(",")) {
+      const trimmed = entry.trim();
+      if (!trimmed) continue;
+      const origin = resolveWebOrigin(trimmed);
+      if (origin) origins.add(origin);
+    }
+  }
+  return origins;
+};
+
+const isAllowedWebApiOrigin = (origin: string): boolean => {
+  if (typeof window === "undefined") return true;
+  if (getAllowedWebApiOrigins().has(origin)) return true;
+  const currentOrigin = window.location?.origin;
+  if (!currentOrigin) return false;
+  return isPrivateWebApiOrigin(currentOrigin) && isPrivateWebApiOrigin(origin);
 };
 
 const getWebApiBaseProtocolError = (value: string): string | null => {
@@ -105,16 +204,24 @@ export function getWebApiBaseValidationError(value: string): string | null {
   const normalized = normalizeWebApiBase(trimmed);
   if (!normalized) return "API 地址无效";
   if (isRelativeWebApiBase(normalized)) return null;
-  if (!parseHttpUrl(normalized)) return "API 地址无效";
-  return getWebApiBaseProtocolError(normalized);
+  const parsed = parseHttpUrl(normalized);
+  if (!parsed) return "API 地址无效";
+  const protocolError = getWebApiBaseProtocolError(normalized);
+  if (protocolError) return protocolError;
+  if (!isAllowedWebApiOrigin(parsed.origin)) {
+    return WEB_API_ORIGIN_BLOCKED_MESSAGE;
+  }
+  return null;
 }
 
 export function isValidWebApiBase(value: string): boolean {
   const trimmed = value.trim();
   if (!trimmed) return false;
   if (isRelativeWebApiBase(trimmed)) return true;
-  if (!parseHttpUrl(trimmed)) return false;
-  return getWebApiBaseProtocolError(trimmed) === null;
+  const parsed = parseHttpUrl(trimmed);
+  if (!parsed) return false;
+  if (getWebApiBaseProtocolError(trimmed) !== null) return false;
+  return isAllowedWebApiOrigin(parsed.origin);
 }
 
 const resolveWebApiBase = (value: unknown): string | null => {
@@ -136,8 +243,7 @@ export function getWebApiBase(): string {
   return DEFAULT_WEB_API_BASE;
 }
 
-export function buildWebApiUrl(path: string): string {
-  const base = getWebApiBase();
+export function buildWebApiUrlWithBase(base: string, path: string): string {
   const trimmedPath = path.trim();
   if (!trimmedPath) return base;
   const normalizedBase = base.replace(/\/+$/, "");
@@ -146,6 +252,10 @@ export function buildWebApiUrl(path: string): string {
     : `/${trimmedPath}`;
   if (!normalizedBase) return normalizedPath;
   return `${normalizedBase}${normalizedPath}`;
+}
+
+export function buildWebApiUrl(path: string): string {
+  return buildWebApiUrlWithBase(getWebApiBase(), path);
 }
 
 const encode = (value: unknown) => encodeURIComponent(String(value));
@@ -286,12 +396,65 @@ export function base64EncodeUtf8(value: string): string {
   throw new Error("Base64 encoder is not available");
 }
 
-function getStoredWebCredentials(): string | undefined {
+interface StoredWebCredentialsPayload {
+  token: string;
+  apiBase: string | null;
+  legacy: boolean;
+}
+
+const parseStoredWebCredentialsValue = (
+  value: string,
+): StoredWebCredentialsPayload | null => {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (isRecord(parsed) && typeof parsed.token === "string") {
+        const token = parsed.token.trim();
+        if (!token) return null;
+        const apiBase =
+          typeof parsed.apiBase === "string" ? parsed.apiBase : null;
+        return { token, apiBase, legacy: false };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+  return { token: trimmed, apiBase: null, legacy: true };
+};
+
+const isSameWebOrigin = (origin: string): boolean =>
+  typeof window !== "undefined" && window.location?.origin === origin;
+
+function getStoredWebCredentials(targetUrl?: string): string | undefined {
   if (typeof window === "undefined") return undefined;
   try {
     const value = window.sessionStorage?.getItem(WEB_AUTH_STORAGE_KEY);
     if (!value) return undefined;
-    return value;
+    const parsed = parseStoredWebCredentialsValue(value);
+    if (!parsed) return undefined;
+    const targetOrigin =
+      typeof targetUrl === "string" && targetUrl.trim()
+        ? resolveWebOrigin(targetUrl)
+        : window.location?.origin;
+    if (!targetOrigin) return undefined;
+    if (!isAllowedWebApiOrigin(targetOrigin)) return undefined;
+    const sameOrigin = isSameWebOrigin(targetOrigin);
+    if (parsed.legacy) {
+      return sameOrigin ? parsed.token : undefined;
+    }
+    const normalizedApiBase = normalizeWebApiBase(parsed.apiBase);
+    if (normalizedApiBase && !isValidWebApiBase(normalizedApiBase)) {
+      return undefined;
+    }
+    if (!normalizedApiBase || isRelativeWebApiBase(normalizedApiBase)) {
+      return sameOrigin ? parsed.token : undefined;
+    }
+    const storedOrigin = resolveWebOrigin(normalizedApiBase);
+    if (!storedOrigin) return undefined;
+    return storedOrigin === targetOrigin ? parsed.token : undefined;
   } catch {
     return undefined;
   }
@@ -324,11 +487,40 @@ function getStoredWebCsrfToken(): string | undefined {
   }
 }
 
-export function setWebCredentials(password: string) {
+export function buildWebAuthHeadersForUrl(url: string): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const origin = resolveWebOrigin(url);
+  if (!origin) {
+    throw new Error("API 地址无效");
+  }
+  if (!isAllowedWebApiOrigin(origin)) {
+    throw new Error(WEB_API_ORIGIN_BLOCKED_MESSAGE);
+  }
+  const headers: Record<string, string> = {};
+  const tokens = getAutoTokens();
+  const csrfToken = tokens?.csrfToken ?? getStoredWebCsrfToken();
+  if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+  const storedAuth = getStoredWebCredentials(url);
+  if (storedAuth) {
+    headers.Authorization = `Basic ${storedAuth}`;
+  }
+  return headers;
+}
+
+export function setWebCredentials(password: string, apiBase?: string | null) {
   if (typeof window === "undefined") return;
   const encoded = base64EncodeUtf8(`admin:${password}`);
+  const normalizedApiBase = normalizeWebApiBase(apiBase);
+  const storedApiBase =
+    normalizedApiBase && isValidWebApiBase(normalizedApiBase)
+      ? normalizedApiBase
+      : null;
+  const payload = JSON.stringify({
+    token: encoded,
+    apiBase: storedApiBase,
+  });
   try {
-    window.sessionStorage?.setItem(WEB_AUTH_STORAGE_KEY, encoded);
+    window.sessionStorage?.setItem(WEB_AUTH_STORAGE_KEY, payload);
   } catch {
     // ignore
   }
@@ -864,14 +1056,10 @@ export async function invoke<T>(
   }
 
   const endpoint = commandToEndpoint(cmd, args);
-  const headers: Record<string, string> = { Accept: "application/json" };
-  const tokens = getAutoTokens();
-  const csrfToken = tokens?.csrfToken ?? getStoredWebCsrfToken();
-  if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
-  const storedAuth = getStoredWebCredentials();
-  if (storedAuth) {
-    headers.Authorization = `Basic ${storedAuth}`;
-  }
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    ...buildWebAuthHeadersForUrl(endpoint.url),
+  };
   const init: RequestInit = {
     method: endpoint.method,
     credentials: "include",

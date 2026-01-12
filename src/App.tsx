@@ -17,9 +17,9 @@ import { useHealthCheck } from "@/hooks/useHealthCheck";
 import { extractErrorMessage } from "@/utils/errorUtils";
 import {
   clearWebCredentials,
+  buildWebAuthHeadersForUrl,
   buildWebApiUrl,
   isWeb,
-  WEB_AUTH_STORAGE_KEY,
 } from "@/lib/api/adapter";
 import { AppSwitcher } from "@/components/AppSwitcher";
 import { ProviderList } from "@/components/providers/ProviderList";
@@ -52,13 +52,14 @@ import {
 } from "@/components/ui/select";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
-async function validateWebCredentials(encoded: string): Promise<boolean> {
-  const response = await fetch(buildWebApiUrl("/settings"), {
+async function validateWebCredentials(url: string): Promise<boolean> {
+  const headers = buildWebAuthHeadersForUrl(url);
+  const response = await fetch(url, {
     method: "GET",
     credentials: "include",
     headers: {
       Accept: "application/json",
-      Authorization: `Basic ${encoded}`,
+      ...headers,
     },
   });
 
@@ -657,13 +658,8 @@ function App() {
     let cancelled = false;
     const check = async () => {
       try {
-        const stored = window.sessionStorage?.getItem(WEB_AUTH_STORAGE_KEY);
-        if (!stored) {
-          if (!cancelled) setIsAuthed(false);
-          return;
-        }
-
-        const ok = await validateWebCredentials(stored);
+        const url = buildWebApiUrl("/settings");
+        const ok = await validateWebCredentials(url);
         if (cancelled) return;
 
         if (!ok) {

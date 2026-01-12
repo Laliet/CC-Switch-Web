@@ -1,11 +1,12 @@
 use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, Utc};
+use futures::StreamExt;
 use reqwest::{header, Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
-use std::io::ErrorKind;
+use std::io::{ErrorKind, Read};
 use std::path::{Component, Path, PathBuf};
 use std::time::Duration;
 use tokio::time::timeout;
@@ -15,6 +16,13 @@ use crate::error::format_skill_error;
 
 const MAX_SKILL_SCAN_DEPTH: usize = 32;
 const DEFAULT_SKILL_CACHE_TTL_SECS: u64 = 0;
+const DEFAULT_MAX_ZIP_BYTES: u64 = 50 * 1024 * 1024;
+const DEFAULT_MAX_ZIP_ENTRIES: usize = 20_000;
+const DEFAULT_MAX_TOTAL_UNCOMPRESSED_BYTES: u64 = 500 * 1024 * 1024;
+const DEFAULT_MAX_SINGLE_FILE_BYTES: u64 = 50 * 1024 * 1024;
+const DEFAULT_MAX_COMPRESSION_RATIO: u64 = 200;
+const DEFAULT_MAX_PATH_COMPONENTS: usize = 64;
+const DEFAULT_MAX_PATH_LENGTH: usize = 240;
 
 /// 技能对象
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -195,6 +203,17 @@ pub struct SkillService {
 struct RepoCacheHeaders {
     etag: Option<String>,
     last_modified: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct ZipLimits {
+    max_zip_bytes: u64,
+    max_zip_entries: usize,
+    max_total_uncompressed_bytes: u64,
+    max_single_file_bytes: u64,
+    max_compression_ratio: u64,
+    max_path_components: usize,
+    max_path_length: usize,
 }
 
 struct DownloadedRepo {
@@ -385,6 +404,79 @@ impl SkillService {
                 );
                 default_ttl
             }
+        }
+    }
+
+    fn parse_env_usize(name: &str, default: usize) -> usize {
+        let raw = match env::var(name) {
+            Ok(value) => value,
+            Err(_) => return default,
+        };
+
+        match raw.trim().parse::<usize>() {
+            Ok(value) => value,
+            Err(_) => {
+                log::warn!(
+                    "环境变量 {} 无法解析: {}，使用默认值 {}",
+                    name,
+                    raw,
+                    default
+                );
+                default
+            }
+        }
+    }
+
+    fn parse_env_u64(name: &str, default: u64) -> u64 {
+        let raw = match env::var(name) {
+            Ok(value) => value,
+            Err(_) => return default,
+        };
+
+        match raw.trim().parse::<u64>() {
+            Ok(value) => value,
+            Err(_) => {
+                log::warn!(
+                    "环境变量 {} 无法解析: {}，使用默认值 {}",
+                    name,
+                    raw,
+                    default
+                );
+                default
+            }
+        }
+    }
+
+    fn zip_limits() -> ZipLimits {
+        ZipLimits {
+            max_zip_bytes: Self::parse_env_u64(
+                "CC_SWITCH_SKILLS_MAX_ZIP_BYTES",
+                DEFAULT_MAX_ZIP_BYTES,
+            ),
+            max_zip_entries: Self::parse_env_usize(
+                "CC_SWITCH_SKILLS_MAX_ZIP_ENTRIES",
+                DEFAULT_MAX_ZIP_ENTRIES,
+            ),
+            max_total_uncompressed_bytes: Self::parse_env_u64(
+                "CC_SWITCH_SKILLS_MAX_TOTAL_UNCOMPRESSED_BYTES",
+                DEFAULT_MAX_TOTAL_UNCOMPRESSED_BYTES,
+            ),
+            max_single_file_bytes: Self::parse_env_u64(
+                "CC_SWITCH_SKILLS_MAX_SINGLE_FILE_BYTES",
+                DEFAULT_MAX_SINGLE_FILE_BYTES,
+            ),
+            max_compression_ratio: Self::parse_env_u64(
+                "CC_SWITCH_SKILLS_MAX_COMPRESSION_RATIO",
+                DEFAULT_MAX_COMPRESSION_RATIO,
+            ),
+            max_path_components: Self::parse_env_usize(
+                "CC_SWITCH_SKILLS_MAX_PATH_COMPONENTS",
+                DEFAULT_MAX_PATH_COMPONENTS,
+            ),
+            max_path_length: Self::parse_env_usize(
+                "CC_SWITCH_SKILLS_MAX_PATH_LENGTH",
+                DEFAULT_MAX_PATH_LENGTH,
+            ),
         }
     }
 
@@ -1195,6 +1287,20 @@ impl SkillService {
             )));
         }
 
+        let limits = Self::zip_limits();
+        if let Some(content_length) = response.content_length() {
+            if content_length > limits.max_zip_bytes {
+                return Err(anyhow::anyhow!(format_skill_error(
+                    "ZIP_TOO_LARGE",
+                    &[
+                        ("contentLength", &content_length.to_string()),
+                        ("maxBytes", &limits.max_zip_bytes.to_string())
+                    ],
+                    Some("checkRepoUrl"),
+                )));
+            }
+        }
+
         let etag = response
             .headers()
             .get(header::ETAG)
@@ -1206,9 +1312,27 @@ impl SkillService {
             .and_then(|value| value.to_str().ok())
             .map(|value| value.to_string());
 
-        let bytes = response.bytes().await?.to_vec();
+        let mut bytes = Vec::new();
+        let mut total_bytes: u64 = 0;
+        let mut stream = response.bytes_stream();
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk?;
+            total_bytes = total_bytes.saturating_add(chunk.len() as u64);
+            if total_bytes > limits.max_zip_bytes {
+                return Err(anyhow::anyhow!(format_skill_error(
+                    "ZIP_TOO_LARGE",
+                    &[
+                        ("receivedBytes", &total_bytes.to_string()),
+                        ("maxBytes", &limits.max_zip_bytes.to_string())
+                    ],
+                    Some("checkRepoUrl"),
+                )));
+            }
+            bytes.extend_from_slice(&chunk);
+        }
         let dest = dest.to_path_buf();
-        tokio::task::spawn_blocking(move || Self::extract_zip_to_dir(bytes, dest)).await??;
+        tokio::task::spawn_blocking(move || Self::extract_zip_to_dir(bytes, dest, limits))
+            .await??;
 
         Ok(DownloadOutcome::Downloaded {
             etag,
@@ -1216,13 +1340,25 @@ impl SkillService {
         })
     }
 
-    fn extract_zip_to_dir(bytes: Vec<u8>, dest: PathBuf) -> Result<()> {
+    fn extract_zip_to_dir(bytes: Vec<u8>, dest: PathBuf, limits: ZipLimits) -> Result<()> {
         // 解压
         let cursor = std::io::Cursor::new(bytes);
         let mut archive = zip::ZipArchive::new(cursor)?;
 
         // 获取根目录名称 (GitHub 的 zip 会有一个根目录)
-        let root_name = if !archive.is_empty() {
+        let entry_count = archive.len();
+        if entry_count > limits.max_zip_entries {
+            return Err(anyhow::anyhow!(format_skill_error(
+                "ZIP_TOO_MANY_ENTRIES",
+                &[
+                    ("entries", &entry_count.to_string()),
+                    ("maxEntries", &limits.max_zip_entries.to_string())
+                ],
+                Some("checkRepoUrl"),
+            )));
+        }
+
+        let root_name = if entry_count > 0 {
             let first_file = archive.by_index(0)?;
             let name = first_file.name();
             name.split('/').next().unwrap_or("").to_string()
@@ -1234,9 +1370,11 @@ impl SkillService {
             )));
         };
 
+        let mut total_uncompressed_bytes: u64 = 0;
+
         // 解压所有文件
-        for i in 0..archive.len() {
-            let mut file = archive.by_index(i)?;
+        for i in 0..entry_count {
+            let file = archive.by_index(i)?;
             let file_path = file.name();
 
             // 跳过根目录，直接提取内容
@@ -1251,7 +1389,8 @@ impl SkillService {
                 continue;
             }
 
-            let relative_path_obj = Path::new(relative_path);
+            let relative_path = relative_path.to_string();
+            let relative_path_obj = Path::new(&relative_path);
             let has_traversal = relative_path_obj.components().any(|c| {
                 matches!(
                     c,
@@ -1269,16 +1408,114 @@ impl SkillService {
                 )));
             }
 
+            let component_count = relative_path_obj
+                .components()
+                .filter(|component| matches!(component, Component::Normal(_)))
+                .count();
+            if component_count > limits.max_path_components {
+                return Err(anyhow!(format_skill_error(
+                    "ZIP_PATH_TOO_DEEP",
+                    &[
+                        ("path", &relative_path),
+                        ("components", &component_count.to_string()),
+                        ("maxComponents", &limits.max_path_components.to_string())
+                    ],
+                    Some("checkRepoUrl"),
+                )));
+            }
+
+            if relative_path.len() > limits.max_path_length {
+                return Err(anyhow!(format_skill_error(
+                    "ZIP_PATH_TOO_LONG",
+                    &[
+                        ("path", &relative_path),
+                        ("length", &relative_path.len().to_string()),
+                        ("maxLength", &limits.max_path_length.to_string())
+                    ],
+                    Some("checkRepoUrl"),
+                )));
+            }
+
             let outpath = dest.join(relative_path_obj);
 
             if file.is_dir() {
                 fs::create_dir_all(&outpath)?;
             } else {
+                let file_size = file.size();
+                if file_size > limits.max_single_file_bytes {
+                    return Err(anyhow!(format_skill_error(
+                        "ZIP_FILE_TOO_LARGE",
+                        &[
+                            ("path", &relative_path),
+                            ("size", &file_size.to_string()),
+                            ("maxBytes", &limits.max_single_file_bytes.to_string())
+                        ],
+                        Some("checkRepoUrl"),
+                    )));
+                }
+
+                let compressed_size = file.compressed_size();
+                if compressed_size == 0 && file_size > 0 {
+                    return Err(anyhow!(format_skill_error(
+                        "ZIP_INVALID_COMPRESSION",
+                        &[
+                            ("path", &relative_path),
+                            ("size", &file_size.to_string()),
+                            ("compressedSize", "0")
+                        ],
+                        Some("checkRepoUrl"),
+                    )));
+                }
+                if compressed_size > 0 {
+                    if let Some(max_allowed) =
+                        compressed_size.checked_mul(limits.max_compression_ratio)
+                    {
+                        if file_size > max_allowed {
+                            return Err(anyhow!(format_skill_error(
+                                "ZIP_COMPRESSION_RATIO_TOO_HIGH",
+                                &[
+                                    ("path", &relative_path),
+                                    ("size", &file_size.to_string()),
+                                    ("compressedSize", &compressed_size.to_string()),
+                                    ("maxRatio", &limits.max_compression_ratio.to_string())
+                                ],
+                                Some("checkRepoUrl"),
+                            )));
+                        }
+                    }
+                }
+
+                total_uncompressed_bytes =
+                    total_uncompressed_bytes.saturating_add(file_size);
+                if total_uncompressed_bytes > limits.max_total_uncompressed_bytes {
+                    return Err(anyhow!(format_skill_error(
+                        "ZIP_TOTAL_TOO_LARGE",
+                        &[
+                            ("totalBytes", &total_uncompressed_bytes.to_string()),
+                            ("maxBytes", &limits.max_total_uncompressed_bytes.to_string())
+                        ],
+                        Some("checkRepoUrl"),
+                    )));
+                }
+
                 if let Some(parent) = outpath.parent() {
                     fs::create_dir_all(parent)?;
                 }
                 let mut outfile = fs::File::create(&outpath)?;
-                std::io::copy(&mut file, &mut outfile)?;
+                let mut limited_reader =
+                    file.take(limits.max_single_file_bytes.saturating_add(1));
+                let written = std::io::copy(&mut limited_reader, &mut outfile)?;
+                if written > limits.max_single_file_bytes {
+                    return Err(anyhow!(format_skill_error(
+                        "ZIP_FILE_TOO_LARGE",
+                        &[
+                            ("path", &relative_path),
+                            ("size", &written.to_string()),
+                            ("maxBytes", &limits.max_single_file_bytes.to_string())
+                        ],
+                        Some("checkRepoUrl"),
+                    )));
+                }
             }
         }
 

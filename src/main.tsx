@@ -141,7 +141,13 @@ async function bootstrap() {
     }
   }
 
-  ReactDOM.createRoot(document.getElementById("root")!).render(
+  const root = document.getElementById("root");
+  if (!root) {
+    console.error("找不到 #root 元素，无法渲染应用");
+    return;
+  }
+
+  ReactDOM.createRoot(root).render(
     <React.StrictMode>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider defaultTheme="system" storageKey="cc-switch-theme">

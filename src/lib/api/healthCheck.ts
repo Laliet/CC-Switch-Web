@@ -4,7 +4,7 @@
  */
 
 import type { AppId } from "./types";
-import { invoke, isWeb, WEB_AUTH_STORAGE_KEY } from "./adapter";
+import { buildWebAuthHeadersForUrl, invoke, isWeb } from "./adapter";
 
 const RELAY_PULSE_API = "/api/health/status";
 const CACHE_TTL = 60 * 1000; // 1 分钟缓存
@@ -105,17 +105,6 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
 
 export { statusToHealth, calculateAvailability, mergeHealth };
 
-function getStoredWebCredentials(): string | undefined {
-  if (typeof window === "undefined") return undefined;
-  try {
-    const value = window.sessionStorage?.getItem(WEB_AUTH_STORAGE_KEY);
-    if (!value) return undefined;
-    return value;
-  } catch {
-    return undefined;
-  }
-}
-
 function mergeHealth(
   existing: ProviderHealth | undefined,
   incoming: ProviderHealth,
@@ -173,11 +162,10 @@ export async function fetchAllHealthStatus(): Promise<
       const timer = setTimeout(() => controller.abort(), HEALTHCHECK_TIMEOUT_MS);
 
       try {
-        const headers: Record<string, string> = { Accept: "application/json" };
-        const storedAuth = getStoredWebCredentials();
-        if (storedAuth) {
-          headers.Authorization = `Basic ${storedAuth}`;
-        }
+        const headers: Record<string, string> = {
+          Accept: "application/json",
+          ...buildWebAuthHeadersForUrl(RELAY_PULSE_API),
+        };
         const response = await fetch(RELAY_PULSE_API, {
           headers,
           signal: controller.signal,

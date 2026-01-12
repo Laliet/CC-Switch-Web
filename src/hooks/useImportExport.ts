@@ -3,7 +3,11 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { settingsApi } from "@/lib/api";
 import { syncCurrentProvidersLiveSafe } from "@/utils/postChangeSync";
-import { buildWebApiUrl, isWeb, WEB_AUTH_STORAGE_KEY } from "@/lib/api/adapter";
+import {
+  buildWebApiUrl,
+  buildWebAuthHeadersForUrl,
+  isWeb,
+} from "@/lib/api/adapter";
 
 export type ImportStatus =
   | "idle"
@@ -203,16 +207,12 @@ export function useImportExport(
         const defaultName = `cc-switch-config-${
           new Date().toISOString().split("T")[0]
         }.json`;
-        const headers: Record<string, string> = { Accept: "application/json" };
-        try {
-          const storedAuth = window.sessionStorage?.getItem(
-            WEB_AUTH_STORAGE_KEY,
-          );
-          if (storedAuth) {
-            headers.Authorization = `Basic ${storedAuth}`;
-          }
-        } catch {}
-        const response = await fetch(buildWebApiUrl("/config/export"), {
+        const exportUrl = buildWebApiUrl("/config/export");
+        const headers: Record<string, string> = {
+          Accept: "application/json",
+          ...buildWebAuthHeadersForUrl(exportUrl),
+        };
+        const response = await fetch(exportUrl, {
           credentials: "include",
           headers,
         });
@@ -228,7 +228,7 @@ export function useImportExport(
         link.href = url;
         link.download = defaultName;
         link.click();
-        URL.revokeObjectURL(url);
+        window.setTimeout(() => URL.revokeObjectURL(url), 0);
         toast.success(
           t("settings.configExported", {
             defaultValue: "配置已导出",
