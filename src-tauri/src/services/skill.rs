@@ -1485,8 +1485,7 @@ impl SkillService {
                     }
                 }
 
-                total_uncompressed_bytes =
-                    total_uncompressed_bytes.saturating_add(file_size);
+                total_uncompressed_bytes = total_uncompressed_bytes.saturating_add(file_size);
                 if total_uncompressed_bytes > limits.max_total_uncompressed_bytes {
                     return Err(anyhow!(format_skill_error(
                         "ZIP_TOTAL_TOO_LARGE",
@@ -1502,8 +1501,7 @@ impl SkillService {
                     fs::create_dir_all(parent)?;
                 }
                 let mut outfile = fs::File::create(&outpath)?;
-                let mut limited_reader =
-                    file.take(limits.max_single_file_bytes.saturating_add(1));
+                let mut limited_reader = file.take(limits.max_single_file_bytes.saturating_add(1));
                 let written = std::io::copy(&mut limited_reader, &mut outfile)?;
                 if written > limits.max_single_file_bytes {
                     return Err(anyhow!(format_skill_error(

@@ -2,7 +2,7 @@
 
 use std::{
     env, fs,
-    net::IpAddr,
+    net::{IpAddr, Ipv4Addr, Ipv6Addr},
     path::{Path as StdPath, PathBuf},
     sync::Arc,
     time::{Duration, Instant},
@@ -239,10 +239,38 @@ fn is_private_origin(origin: &HeaderValue) -> bool {
     is_private_ip(ip)
 }
 
+fn ipv4_is_private(ip: Ipv4Addr) -> bool {
+    let [a, b, _, _] = ip.octets();
+    a == 10 || (a == 172 && (b & 0xf0) == 16) || (a == 192 && b == 168)
+}
+
+fn ipv4_is_loopback(ip: Ipv4Addr) -> bool {
+    ip.octets()[0] == 127
+}
+
+fn ipv4_is_link_local(ip: Ipv4Addr) -> bool {
+    let [a, b, _, _] = ip.octets();
+    a == 169 && b == 254
+}
+
+fn ipv6_is_loopback(ip: Ipv6Addr) -> bool {
+    ip.segments() == [0, 0, 0, 0, 0, 0, 0, 1]
+}
+
+fn ipv6_is_unique_local(ip: Ipv6Addr) -> bool {
+    (ip.segments()[0] & 0xfe00) == 0xfc00
+}
+
+fn ipv6_is_link_local(ip: Ipv6Addr) -> bool {
+    (ip.segments()[0] & 0xffc0) == 0xfe80
+}
+
 fn is_private_ip(ip: IpAddr) -> bool {
     match ip {
-        IpAddr::V4(v4) => v4.is_private() || v4.is_loopback() || v4.is_link_local(),
-        IpAddr::V6(v6) => v6.is_unique_local() || v6.is_loopback() || v6.is_unicast_link_local(),
+        IpAddr::V4(v4) => ipv4_is_private(v4) || ipv4_is_loopback(v4) || ipv4_is_link_local(v4),
+        IpAddr::V6(v6) => {
+            ipv6_is_unique_local(v6) || ipv6_is_loopback(v6) || ipv6_is_link_local(v6)
+        }
     }
 }
 
@@ -283,11 +311,15 @@ fn web_api_prefix() -> String {
 }
 
 fn parse_env_usize(name: &str) -> Option<usize> {
-    env::var(name).ok().and_then(|value| value.trim().parse().ok())
+    env::var(name)
+        .ok()
+        .and_then(|value| value.trim().parse().ok())
 }
 
 fn parse_env_u64(name: &str) -> Option<u64> {
-    env::var(name).ok().and_then(|value| value.trim().parse().ok())
+    env::var(name)
+        .ok()
+        .and_then(|value| value.trim().parse().ok())
 }
 
 struct RateLimitState {
@@ -338,11 +370,10 @@ pub fn create_router(state: SharedState, password: String) -> Router {
     let auth_validator = AuthValidator::new(password, Some(tokens.csrf_token.clone()));
 
     let body_limit = parse_env_usize("WEB_MAX_BODY_BYTES").unwrap_or(DEFAULT_WEB_BODY_LIMIT_BYTES);
-    let global_concurrency = parse_env_usize("WEB_GLOBAL_CONCURRENCY")
-        .unwrap_or(DEFAULT_WEB_GLOBAL_CONCURRENCY);
+    let global_concurrency =
+        parse_env_usize("WEB_GLOBAL_CONCURRENCY").unwrap_or(DEFAULT_WEB_GLOBAL_CONCURRENCY);
     let rate_limit_num = parse_env_u64("WEB_RATE_LIMIT_NUM").filter(|value| *value > 0);
-    let rate_limit_window =
-        parse_env_u64("WEB_RATE_LIMIT_WINDOW_SECS").filter(|value| *value > 0);
+    let rate_limit_window = parse_env_u64("WEB_RATE_LIMIT_WINDOW_SECS").filter(|value| *value > 0);
 
     let mut router = routes::create_router(state)
         .fallback(api_not_found)

@@ -5,7 +5,7 @@ use serde_json::Value;
 use std::{
     collections::HashMap,
     env,
-    net::IpAddr,
+    net::{IpAddr, Ipv4Addr, Ipv6Addr},
     time::{Duration, Instant},
 };
 use tokio::net::lookup_host;
@@ -221,7 +221,7 @@ async fn send_http_request(config: &RequestConfig, timeout_secs: u64) -> Result<
 
     let max_body_bytes = parse_env_usize("USAGE_SCRIPT_MAX_BODY_BYTES", 65_536);
     if let Some(body) = &config.body {
-        if body.as_bytes().len() > max_body_bytes {
+        if body.len() > max_body_bytes {
             return Err(AppError::localized(
                 "usage_script.request_body_too_large",
                 format!("请求体过大，最大允许 {max_body_bytes} 字节"),
@@ -234,7 +234,11 @@ async fn send_http_request(config: &RequestConfig, timeout_secs: u64) -> Result<
     if config.headers.len() > max_header_count {
         return Err(AppError::localized(
             "usage_script.header_count_exceeded",
-            format!("请求头数量超过限制: {} / {}", config.headers.len(), max_header_count),
+            format!(
+                "请求头数量超过限制: {} / {}",
+                config.headers.len(),
+                max_header_count
+            ),
             format!(
                 "Request header count exceeds limit: {} / {}",
                 config.headers.len(),
@@ -369,10 +373,7 @@ async fn send_http_request(config: &RequestConfig, timeout_secs: u64) -> Result<
     Ok(text)
 }
 
-async fn read_response_body(
-    resp: reqwest::Response,
-    max_bytes: usize,
-) -> Result<String, AppError> {
+async fn read_response_body(resp: reqwest::Response, max_bytes: usize) -> Result<String, AppError> {
     let mut stream = resp.bytes_stream();
     let mut buf = Vec::new();
     let mut total = 0usize;
@@ -552,23 +553,70 @@ fn ensure_ip_allowed(ip: IpAddr, policy: EgressPolicy) -> Result<(), AppError> {
     Ok(())
 }
 
+fn ipv4_is_private(ip: Ipv4Addr) -> bool {
+    let [a, b, _, _] = ip.octets();
+    a == 10 || (a == 172 && (b & 0xf0) == 16) || (a == 192 && b == 168)
+}
+
+fn ipv4_is_loopback(ip: Ipv4Addr) -> bool {
+    ip.octets()[0] == 127
+}
+
+fn ipv4_is_link_local(ip: Ipv4Addr) -> bool {
+    let [a, b, _, _] = ip.octets();
+    a == 169 && b == 254
+}
+
+fn ipv4_is_multicast(ip: Ipv4Addr) -> bool {
+    (ip.octets()[0] & 0xf0) == 224
+}
+
+fn ipv4_is_broadcast(ip: Ipv4Addr) -> bool {
+    ip.octets() == [255, 255, 255, 255]
+}
+
+fn ipv4_is_unspecified(ip: Ipv4Addr) -> bool {
+    ip.octets() == [0, 0, 0, 0]
+}
+
+fn ipv6_is_loopback(ip: Ipv6Addr) -> bool {
+    ip.segments() == [0, 0, 0, 0, 0, 0, 0, 1]
+}
+
+fn ipv6_is_unspecified(ip: Ipv6Addr) -> bool {
+    ip.segments() == [0, 0, 0, 0, 0, 0, 0, 0]
+}
+
+fn ipv6_is_multicast(ip: Ipv6Addr) -> bool {
+    (ip.segments()[0] & 0xff00) == 0xff00
+}
+
+fn ipv6_is_unique_local(ip: Ipv6Addr) -> bool {
+    (ip.segments()[0] & 0xfe00) == 0xfc00
+}
+
+fn ipv6_is_link_local(ip: Ipv6Addr) -> bool {
+    (ip.segments()[0] & 0xffc0) == 0xfe80
+}
+
 fn is_disallowed_ip(ip: IpAddr, policy: EgressPolicy) -> bool {
     match ip {
         IpAddr::V4(v4) => {
-            let blocked = v4.is_link_local()
-                || v4.is_unspecified()
-                || v4.is_multicast()
-                || v4.is_broadcast();
+            let blocked = ipv4_is_link_local(v4)
+                || ipv4_is_unspecified(v4)
+                || ipv4_is_multicast(v4)
+                || ipv4_is_broadcast(v4);
             if matches!(policy, EgressPolicy::Strict) {
-                blocked || v4.is_loopback() || v4.is_private()
+                blocked || ipv4_is_loopback(v4) || ipv4_is_private(v4)
             } else {
                 blocked
             }
         }
         IpAddr::V6(v6) => {
-            let blocked = v6.is_unicast_link_local() || v6.is_unspecified() || v6.is_multicast();
+            let blocked =
+                ipv6_is_link_local(v6) || ipv6_is_unspecified(v6) || ipv6_is_multicast(v6);
             if matches!(policy, EgressPolicy::Strict) {
-                blocked || v6.is_loopback() || v6.is_unique_local()
+                blocked || ipv6_is_loopback(v6) || ipv6_is_unique_local(v6)
             } else {
                 blocked
             }

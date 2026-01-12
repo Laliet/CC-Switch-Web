@@ -4,7 +4,7 @@ use std::{
     env,
     fs::{self, OpenOptions},
     io::{self, Write},
-    net::{IpAddr, SocketAddr},
+    net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -100,10 +100,60 @@ fn env_truthy(name: &str) -> bool {
     env::var(name).is_ok_and(|v| matches!(v.as_str(), "1" | "true" | "TRUE" | "yes" | "on"))
 }
 
+fn ipv4_is_private(ip: Ipv4Addr) -> bool {
+    let [a, b, _, _] = ip.octets();
+    a == 10 || (a == 172 && (b & 0xf0) == 16) || (a == 192 && b == 168)
+}
+
+fn ipv4_is_loopback(ip: Ipv4Addr) -> bool {
+    ip.octets()[0] == 127
+}
+
+fn ipv4_is_link_local(ip: Ipv4Addr) -> bool {
+    let [a, b, _, _] = ip.octets();
+    a == 169 && b == 254
+}
+
+fn ipv4_is_unspecified(ip: Ipv4Addr) -> bool {
+    ip.octets() == [0, 0, 0, 0]
+}
+
+fn ipv6_is_loopback(ip: Ipv6Addr) -> bool {
+    ip.segments() == [0, 0, 0, 0, 0, 0, 0, 1]
+}
+
+fn ipv6_is_unique_local(ip: Ipv6Addr) -> bool {
+    (ip.segments()[0] & 0xfe00) == 0xfc00
+}
+
+fn ipv6_is_link_local(ip: Ipv6Addr) -> bool {
+    (ip.segments()[0] & 0xffc0) == 0xfe80
+}
+
+fn ipv6_is_unspecified(ip: Ipv6Addr) -> bool {
+    ip.segments() == [0, 0, 0, 0, 0, 0, 0, 0]
+}
+
+fn ip_is_loopback(ip: IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(v4) => ipv4_is_loopback(v4),
+        IpAddr::V6(v6) => ipv6_is_loopback(v6),
+    }
+}
+
+fn ip_is_unspecified(ip: IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(v4) => ipv4_is_unspecified(v4),
+        IpAddr::V6(v6) => ipv6_is_unspecified(v6),
+    }
+}
+
 fn is_lan_bind_ip(ip: IpAddr) -> bool {
     match ip {
-        IpAddr::V4(v4) => v4.is_private() || v4.is_loopback() || v4.is_link_local(),
-        IpAddr::V6(v6) => v6.is_unique_local() || v6.is_loopback() || v6.is_unicast_link_local(),
+        IpAddr::V4(v4) => ipv4_is_private(v4) || ipv4_is_loopback(v4) || ipv4_is_link_local(v4),
+        IpAddr::V6(v6) => {
+            ipv6_is_unique_local(v6) || ipv6_is_loopback(v6) || ipv6_is_link_local(v6)
+        }
     }
 }
 
@@ -159,7 +209,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let bind_ip = addr.ip();
     let allow_insecure = env_truthy("ALLOW_HTTP_BASIC_OVER_HTTP");
-    let is_public_bind = bind_ip.is_unspecified() || !bind_ip.is_loopback();
+    let is_public_bind = ip_is_unspecified(bind_ip) || !ip_is_loopback(bind_ip);
     if is_public_bind {
         let egress_policy = env::var("USAGE_SCRIPT_EGRESS_POLICY").ok();
         let should_set_egress = egress_policy
@@ -199,7 +249,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app = create_router(state, password.clone());
 
     if is_public_bind && !allow_insecure {
-        if bind_ip.is_unspecified() {
+        if ip_is_unspecified(bind_ip) {
             error!(
                 "当前以 HTTP 监听 0.0.0.0，Basic/Bearer 凭证可能被截获。如需公开，请在反向代理中终止 TLS 并设置 ALLOW_HTTP_BASIC_OVER_HTTP=1"
             );
