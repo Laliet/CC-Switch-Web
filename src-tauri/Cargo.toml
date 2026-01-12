@@ -62,7 +62,7 @@ tauri-plugin-deep-link = { version = "2", optional = true }
 dirs = "5.0"
 toml = "0.8"
 toml_edit = "0.22"
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "signal"] }
 futures = "0.3"
 regex = "1.10"
