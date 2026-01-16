@@ -1624,7 +1624,7 @@ impl SkillService {
                 Some(path) => {
                     let skills_leaf = path.rsplit('/').next().unwrap_or("");
                     let directory_leaf = directory
-                        .rsplit(|c| c == '/' || c == '\\')
+                        .rsplit(|c| matches!(c, '/' | '\\'))
                         .next()
                         .unwrap_or("");
                     if !skills_leaf.is_empty()
