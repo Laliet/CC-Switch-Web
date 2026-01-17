@@ -797,7 +797,22 @@ impl SkillService {
         skills: &mut Vec<Skill>,
         depth: usize,
     ) -> Result<()> {
-        if let Some(components) = Self::relative_path_components(scan_root, current_dir) {
+        let (components, root_skill) = if current_dir == scan_root {
+            if let Some(skills_path) = normalized_skills_path {
+                let leaf = skills_path.rsplit('/').next().unwrap_or("").trim();
+                if !leaf.is_empty() && leaf != "." {
+                    (Some(vec![leaf.to_string()]), true)
+                } else {
+                    (None, false)
+                }
+            } else {
+                (None, false)
+            }
+        } else {
+            (Self::relative_path_components(scan_root, current_dir), false)
+        };
+
+        if let Some(components) = components {
             let skill_md = current_dir.join("SKILL.md");
             match fs::symlink_metadata(&skill_md) {
                 Ok(metadata) => {
@@ -808,42 +823,48 @@ impl SkillService {
                             Ok(meta) => {
                                 let (directory, parent_path, depth, leaf_name) =
                                     Self::build_path_info(&components);
-                                let readme_path = if let Some(skills_path) = normalized_skills_path
-                                {
-                                    format!("{}/{}", skills_path, directory)
-                                } else {
-                                    directory.clone()
-                                };
-                                let commands = match self.scan_workflow_commands(current_dir) {
-                                    Ok(commands) => commands,
-                                    Err(e) => {
-                                        log::warn!(
-                                            "扫描 {} workflows 失败: {}",
-                                            current_dir.display(),
-                                            e
-                                        );
-                                        Vec::new()
-                                    }
-                                };
+                                if !directory.is_empty() {
+                                    let readme_path =
+                                        if let Some(skills_path) = normalized_skills_path {
+                                            if root_skill {
+                                                skills_path.to_string()
+                                            } else {
+                                                format!("{}/{}", skills_path, directory)
+                                            }
+                                        } else {
+                                            directory.clone()
+                                        };
+                                    let commands = match self.scan_workflow_commands(current_dir) {
+                                        Ok(commands) => commands,
+                                        Err(e) => {
+                                            log::warn!(
+                                                "扫描 {} workflows 失败: {}",
+                                                current_dir.display(),
+                                                e
+                                            );
+                                            Vec::new()
+                                        }
+                                    };
 
-                                skills.push(Skill {
-                                    key: format!("{}/{}:{}", repo.owner, repo.name, directory),
-                                    name: meta.name.unwrap_or_else(|| leaf_name.clone()),
-                                    description: meta.description.unwrap_or_default(),
-                                    directory,
-                                    parent_path,
-                                    depth,
-                                    readme_url: Some(format!(
-                                        "https://github.com/{}/{}/tree/{}/{}",
-                                        repo.owner, repo.name, repo.branch, readme_path
-                                    )),
-                                    installed: false,
-                                    repo_owner: Some(repo.owner.clone()),
-                                    repo_name: Some(repo.name.clone()),
-                                    repo_branch: Some(repo.branch.clone()),
-                                    skills_path: repo.skills_path.clone(),
-                                    commands,
-                                });
+                                    skills.push(Skill {
+                                        key: format!("{}/{}:{}", repo.owner, repo.name, directory),
+                                        name: meta.name.unwrap_or_else(|| leaf_name.clone()),
+                                        description: meta.description.unwrap_or_default(),
+                                        directory,
+                                        parent_path,
+                                        depth,
+                                        readme_url: Some(format!(
+                                            "https://github.com/{}/{}/tree/{}/{}",
+                                            repo.owner, repo.name, repo.branch, readme_path
+                                        )),
+                                        installed: false,
+                                        repo_owner: Some(repo.owner.clone()),
+                                        repo_name: Some(repo.name.clone()),
+                                        repo_branch: Some(repo.branch.clone()),
+                                        skills_path: repo.skills_path.clone(),
+                                        commands,
+                                    });
+                                }
                             }
                             Err(e) => log::warn!("解析 {} 元数据失败: {}", skill_md.display(), e),
                         }
@@ -1358,32 +1379,53 @@ impl SkillService {
             )));
         }
 
-        let root_name = if entry_count > 0 {
-            let first_file = archive.by_index(0)?;
-            let name = first_file.name();
-            name.split('/').next().unwrap_or("").to_string()
-        } else {
+        if entry_count == 0 {
             return Err(anyhow::anyhow!(format_skill_error(
                 "EMPTY_ARCHIVE",
                 &[],
                 Some("checkRepoUrl"),
             )));
-        };
+        }
+
+        let mut common_root: Option<String> = None;
+        for i in 0..entry_count {
+            let file = archive.by_index(i)?;
+            let name = file.name();
+            let first_component = name.split('/').next().unwrap_or("");
+            if first_component.is_empty() {
+                common_root = None;
+                break;
+            }
+            match &common_root {
+                None => common_root = Some(first_component.to_string()),
+                Some(root) => {
+                    if root != first_component {
+                        common_root = None;
+                        break;
+                    }
+                }
+            }
+        }
 
         let mut total_uncompressed_bytes: u64 = 0;
+        let mut extracted_count: usize = 0;
 
         // 解压所有文件
         for i in 0..entry_count {
             let file = archive.by_index(i)?;
             let file_path = file.name();
 
-            // 跳过根目录，直接提取内容
-            let relative_path =
-                if let Some(stripped) = file_path.strip_prefix(&format!("{root_name}/")) {
+            let relative_path = if let Some(root) = common_root.as_deref() {
+                if let Some(stripped) = file_path.strip_prefix(&format!("{root}/")) {
                     stripped
+                } else if file_path == root {
+                    ""
                 } else {
-                    continue;
-                };
+                    file_path
+                }
+            } else {
+                file_path
+            };
 
             if relative_path.is_empty() {
                 continue;
@@ -1440,6 +1482,7 @@ impl SkillService {
 
             if file.is_dir() {
                 fs::create_dir_all(&outpath)?;
+                extracted_count = extracted_count.saturating_add(1);
             } else {
                 let file_size = file.size();
                 if file_size > limits.max_single_file_bytes {
@@ -1514,7 +1557,16 @@ impl SkillService {
                         Some("checkRepoUrl"),
                     )));
                 }
+                extracted_count = extracted_count.saturating_add(1);
             }
+        }
+
+        if extracted_count == 0 {
+            return Err(anyhow!(format_skill_error(
+                "ZIP_NO_ENTRIES_EXTRACTED",
+                &[],
+                Some("checkRepoUrl"),
+            )));
         }
 
         Ok(())
@@ -1569,7 +1621,21 @@ impl SkillService {
                 }
             };
             match normalized_skills_path {
-                Some(path) => temp_path.join(path).join(&directory),
+                Some(path) => {
+                    let skills_leaf = path.rsplit('/').next().unwrap_or("");
+                    let directory_leaf = directory
+                        .rsplit(|c| ['/', '\\'].contains(&c))
+                        .next()
+                        .unwrap_or("");
+                    if !skills_leaf.is_empty()
+                        && !directory_leaf.is_empty()
+                        && skills_leaf.eq_ignore_ascii_case(directory_leaf)
+                    {
+                        temp_path.join(path)
+                    } else {
+                        temp_path.join(path).join(&directory)
+                    }
+                }
                 None => temp_path.join(&directory),
             }
         } else {
@@ -1661,6 +1727,8 @@ impl SkillService {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Write;
+    use zip::write::FileOptions;
 
     fn build_service_with_install_dir(dir: PathBuf) -> SkillService {
         SkillService {
@@ -1752,5 +1820,80 @@ description: Useful skill
         assert_eq!(skills.len(), 2);
         assert!(skills.iter().any(|s| s.key == "owner/name:skill"));
         assert!(skills.iter().any(|s| s.key == "local:unique"));
+    }
+
+    #[test]
+    fn test_scan_root_skill_md() {
+        let temp_dir = tempfile::tempdir().expect("temp dir should exist");
+        let skill_dir = temp_dir.path().join("skills").join("foo");
+        fs::create_dir_all(&skill_dir).expect("should create skill dir");
+        let skill_md = skill_dir.join("SKILL.md");
+        let content = r#"---
+name: Root Skill
+description: Root level skill
+---
+"#;
+        fs::write(&skill_md, content).expect("should write skill metadata");
+        let service = build_service_with_install_dir(temp_dir.path().to_path_buf());
+        let repo = SkillRepo {
+            owner: "owner".to_string(),
+            name: "repo".to_string(),
+            branch: "main".to_string(),
+            enabled: true,
+            skills_path: Some("skills/foo".to_string()),
+        };
+        let mut skills = Vec::new();
+
+        service
+            .scan_skills_recursive(
+                &skill_dir,
+                &skill_dir,
+                &repo,
+                Some("skills/foo"),
+                &mut skills,
+            )
+            .expect("scan should succeed");
+
+        assert_eq!(skills.len(), 1);
+        assert_eq!(skills[0].directory, "foo");
+        let readme_url = skills[0]
+            .readme_url
+            .as_deref()
+            .expect("readme url should exist");
+        assert!(readme_url.contains("/skills/foo"));
+    }
+
+    #[test]
+    fn test_extract_zip_without_common_root() {
+        let mut buffer = Vec::new();
+        {
+            let cursor = std::io::Cursor::new(&mut buffer);
+            let mut zip_writer = zip::ZipWriter::new(cursor);
+            let options: FileOptions<'_, ()> = FileOptions::default();
+            zip_writer
+                .start_file("skills/SKILL.md", options)
+                .expect("start skill file");
+            zip_writer
+                .write_all(b"---\nname: Skill\n---\n")
+                .expect("write skill file");
+            zip_writer
+                .start_file("README.md", options)
+                .expect("start readme file");
+            zip_writer
+                .write_all(b"readme")
+                .expect("write readme file");
+            zip_writer.finish().expect("finish zip");
+        }
+
+        let dest_dir = tempfile::tempdir().expect("temp dir should exist");
+        SkillService::extract_zip_to_dir(
+            buffer,
+            dest_dir.path().to_path_buf(),
+            SkillService::zip_limits(),
+        )
+        .expect("extract should succeed");
+
+        assert!(dest_dir.path().join("skills/SKILL.md").is_file());
+        assert!(dest_dir.path().join("README.md").is_file());
     }
 }
