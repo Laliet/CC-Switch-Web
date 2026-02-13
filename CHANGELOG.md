@@ -5,6 +5,20 @@ All notable changes to CC Switch will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.1] - 2026-02-13
+
+### Fixes / 修复
+
+- Web 一键部署脚本增强：`deploy-web.sh --prebuilt` 支持按 `glibc/musl` 自动选择并回退下载，低版本 glibc 场景更稳。
+- 修复 UUID 兼容边界：当 `crypto.randomUUID` 不可用或不是函数时安全降级，不再导致添加供应商时报错。
+- 设置页增强 WSL 体验：新增一键填充 WSL 配置目录模板路径（Claude/Codex/Gemini）。
+- 文档补充：新增 glibc 常见故障快速处理、Docker 兜底方案、WSL 配置指引。
+
+### CI / 发布
+
+- Release workflow 的 Web Server 构建基线切回 Ubuntu 20.04。
+- 新增 Linux musl 目标产物（x86_64/aarch64）用于旧 glibc/Alpine 兼容分发。
+
 ## [0.8.0] - 2026-01-11
 
 ### Migration Notes / 迁移说明

@@ -33,6 +33,12 @@ If you have any questions, you can contact me here https://linux.do/t/topic/1217
 
 ## What's New
 
+### v0.8.1 - Deployment and Compatibility Fixes
+- Improved `deploy-web.sh --prebuilt` with automatic `glibc/musl` fallback for better Linux compatibility
+- Fixed UUID fallback path when `crypto.randomUUID` is unavailable or malformed
+- Added one-click WSL template path filler in Settings for Claude/Codex/Gemini config overrides
+- Updated release workflow to build additional `musl` web-server binaries
+
 ### v0.7.1 - CI and Typecheck Fixes
 - Fixed GitHub Actions CI workflow configurations
 - Resolved TypeScript type checking issues
@@ -97,10 +103,10 @@ Download precompiled server binary—no compilation required:
 
 | Architecture | Download |
 |--------------|----------|
-| **Linux x86_64 (glibc)** | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/cc-switch-server-linux-x86_64) |
-| **Linux aarch64 (glibc)** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/cc-switch-server-linux-aarch64) |
-| **Linux x86_64 (musl)** | [cc-switch-server-linux-x86_64-musl](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/cc-switch-server-linux-x86_64-musl) |
-| **Linux aarch64 (musl)** | [cc-switch-server-linux-aarch64-musl](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/cc-switch-server-linux-aarch64-musl) |
+| **Linux x86_64 (glibc)** | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.8.1/cc-switch-server-linux-x86_64) |
+| **Linux aarch64 (glibc)** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.8.1/cc-switch-server-linux-aarch64) |
+| **Linux x86_64 (musl)** | [cc-switch-server-linux-x86_64-musl](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.8.1/cc-switch-server-linux-x86_64-musl) |
+| **Linux aarch64 (musl)** | [cc-switch-server-linux-aarch64-musl](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.8.1/cc-switch-server-linux-aarch64-musl) |
 
 > **Note (glibc)**: GNU builds are produced on Ubuntu 20.04 (glibc 2.31+).  
 > If you see `GLIBC_2.xx not found`, use the **musl** build, Docker, or build from source.  
@@ -211,11 +217,11 @@ Full-featured desktop app with graphical interface, built with Tauri.
 
 | Platform | Download | Description |
 |----------|----------|-------------|
-| **Windows** | [CC-Switch-v0.7.1-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/CC-Switch-v0.7.1-Windows.msi) | Installer (recommended) |
-| | [CC-Switch-v0.7.1-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/CC-Switch-v0.7.1-Windows-Portable.zip) | Portable (no install) |
-| **macOS** | [CC-Switch-v0.7.1-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/CC-Switch-v0.7.1-macOS.zip) | Universal binary (Intel + Apple Silicon) |
-| **Linux** | [CC-Switch-v0.7.1-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/CC-Switch-v0.7.1-Linux.AppImage) | AppImage (universal) |
-| | [CC-Switch-v0.7.1-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/CC-Switch-v0.7.1-Linux.deb) | Debian/Ubuntu package |
+| **Windows** | [CC-Switch-v0.8.1-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.8.1/CC-Switch-v0.8.1-Windows.msi) | Installer (recommended) |
+| | [CC-Switch-v0.8.1-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.8.1/CC-Switch-v0.8.1-Windows-Portable.zip) | Portable (no install) |
+| **macOS** | [CC-Switch-v0.8.1-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.8.1/CC-Switch-v0.8.1-macOS.zip) | Universal binary (Intel + Apple Silicon) |
+| **Linux** | [CC-Switch-v0.8.1-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.8.1/CC-Switch-v0.8.1-Linux.AppImage) | AppImage (universal) |
+| | [CC-Switch-v0.8.1-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.8.1/CC-Switch-v0.8.1-Linux.deb) | Debian/Ubuntu package |
 
 **macOS Note**: If you see "damaged" warning, run: `xattr -cr "/Applications/CC Switch.app"`
 
@@ -237,7 +243,7 @@ This script will:
 **Advanced options**:
 ```bash
 # Install specific version
-VERSION=v0.7.1 curl -fsSL https://...install.sh | bash
+VERSION=v0.8.1 curl -fsSL https://...install.sh | bash
 
 # Skip checksum verification
 NO_CHECKSUM=1 curl -fsSL https://...install.sh | bash
@@ -355,7 +361,7 @@ pnpm test
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) — Current version: **v0.7.1**
+See [CHANGELOG.md](CHANGELOG.md) — Current version: **v0.8.1**
 
 ---
 

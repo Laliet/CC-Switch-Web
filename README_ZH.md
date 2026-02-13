@@ -32,6 +32,12 @@
 
 ## 更新内容
 
+### v0.8.1 - 部署与兼容性修复
+- 增强 `deploy-web.sh --prebuilt`：支持按 `glibc/musl` 自动回退，提升 Linux 兼容性
+- 修复 `crypto.randomUUID` 不可用或异常时的 UUID 降级路径，避免添加供应商时报错
+- 设置页新增 WSL 模板路径一键填充（Claude/Codex/Gemini）
+- Release 工作流新增 `musl` Web Server 二进制构建产物
+
 ### v0.7.1 - CI 和类型检查修复
 - 修复 GitHub Actions CI 工作流配置
 - 解决 TypeScript 类型检查问题
@@ -96,10 +102,10 @@
 
 | 架构 | 下载链接 |
 |------|----------|
-| **Linux x86_64 (glibc)** | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/cc-switch-server-linux-x86_64) |
-| **Linux aarch64 (glibc)** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/cc-switch-server-linux-aarch64) |
-| **Linux x86_64 (musl)** | [cc-switch-server-linux-x86_64-musl](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/cc-switch-server-linux-x86_64-musl) |
-| **Linux aarch64 (musl)** | [cc-switch-server-linux-aarch64-musl](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/cc-switch-server-linux-aarch64-musl) |
+| **Linux x86_64 (glibc)** | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.8.1/cc-switch-server-linux-x86_64) |
+| **Linux aarch64 (glibc)** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.8.1/cc-switch-server-linux-aarch64) |
+| **Linux x86_64 (musl)** | [cc-switch-server-linux-x86_64-musl](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.8.1/cc-switch-server-linux-x86_64-musl) |
+| **Linux aarch64 (musl)** | [cc-switch-server-linux-aarch64-musl](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.8.1/cc-switch-server-linux-aarch64-musl) |
 
 > **glibc 说明**：GNU 版在 Ubuntu 20.04 构建（glibc 2.31+）。  
 > 如果报 `GLIBC_2.xx not found`，请改用 **musl** 版、Docker 或源码构建。  
@@ -210,11 +216,11 @@ HOST=0.0.0.0 PORT=3000 ./target/release/examples/server
 
 | 平台 | 下载链接 | 说明 |
 |------|----------|------|
-| **Windows** | [CC-Switch-v0.7.1-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/CC-Switch-v0.7.1-Windows.msi) | 安装版（推荐） |
-| | [CC-Switch-v0.7.1-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/CC-Switch-v0.7.1-Windows-Portable.zip) | 绿色版（免安装） |
-| **macOS** | [CC-Switch-v0.7.1-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/CC-Switch-v0.7.1-macOS.zip) | 通用二进制（Intel + Apple Silicon） |
-| **Linux** | [CC-Switch-v0.7.1-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/CC-Switch-v0.7.1-Linux.AppImage) | AppImage（通用） |
-| | [CC-Switch-v0.7.1-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/CC-Switch-v0.7.1-Linux.deb) | Debian/Ubuntu 包 |
+| **Windows** | [CC-Switch-v0.8.1-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.8.1/CC-Switch-v0.8.1-Windows.msi) | 安装版（推荐） |
+| | [CC-Switch-v0.8.1-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.8.1/CC-Switch-v0.8.1-Windows-Portable.zip) | 绿色版（免安装） |
+| **macOS** | [CC-Switch-v0.8.1-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.8.1/CC-Switch-v0.8.1-macOS.zip) | 通用二进制（Intel + Apple Silicon） |
+| **Linux** | [CC-Switch-v0.8.1-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.8.1/CC-Switch-v0.8.1-Linux.AppImage) | AppImage（通用） |
+| | [CC-Switch-v0.8.1-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.8.1/CC-Switch-v0.8.1-Linux.deb) | Debian/Ubuntu 包 |
 
 **macOS 提示**：如遇"已损坏"警告，在终端执行：`xattr -cr "/Applications/CC Switch.app"`
 
@@ -236,7 +242,7 @@ curl -fsSL https://raw.githubusercontent.com/Laliet/CC-Switch-Web/main/scripts/i
 **高级选项**：
 ```bash
 # 安装指定版本
-VERSION=v0.7.1 curl -fsSL https://...install.sh | bash
+VERSION=v0.8.1 curl -fsSL https://...install.sh | bash
 
 # 跳过校验
 NO_CHECKSUM=1 curl -fsSL https://...install.sh | bash
@@ -354,7 +360,7 @@ pnpm test
 
 ## 更新日志
 
-参见 [CHANGELOG.md](CHANGELOG.md) — 当前版本：**v0.7.1**
+参见 [CHANGELOG.md](CHANGELOG.md) — 当前版本：**v0.8.1**
 
 ---
 
