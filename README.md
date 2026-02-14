@@ -11,7 +11,7 @@
 
 **All-in-One Assistant for Claude Code, Codex & Gemini CLI**
 
-English | [中文](README_ZH.md) | [Changelog](CHANGELOG.md)（过几天更）
+English | [中文](README_ZH.md) | [Changelog](CHANGELOG.md)（五天更一次）
 
 ## About / 项目简介
 
