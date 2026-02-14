@@ -479,4 +479,4 @@ Web Server 模式的代码位于：
 
 ## License
 
-MIT © Jason Young
+MIT © Laliet

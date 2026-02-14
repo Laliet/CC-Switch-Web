@@ -1,6 +1,6 @@
 # CC-Switch-Web
 
-<sub>🙏 本项目是 [farion1231/cc-switch](https://github.com/farion1231/cc-switch)（Jason Young）的 fork 版本。感谢原作者的出色工作。本 fork 添加了 Web 服务器模式，支持云端/无头部署。</sub>
+<sub>🙏 本项目由 Laliet 维护，基于 [farion1231/cc-switch](https://github.com/farion1231/cc-switch) 开发。本 fork 添加了 Web 服务器模式，支持云端/无头部署。</sub>
 
 [![Release](https://img.shields.io/github/v/release/Laliet/CC-Switch-Web?style=flat-square&logo=github&label=Release)](https://github.com/Laliet/CC-Switch-Web/releases/latest)
 [![License](https://img.shields.io/github/license/Laliet/CC-Switch-Web?style=flat-square)](LICENSE)
@@ -344,6 +344,16 @@ pnpm test
 
 ---
 
+## 构建与发布策略
+
+- **不要**在当前服务器上构建发布产物。
+- 生产构建统一通过 **GitHub Actions CI/Release 工作流**完成。
+- 本地构建输出（如 `target/`、`dist-web/`、二进制文件、coverage 目录）禁止提交到仓库。
+
+长期策略文档见：`docs/BUILD_RELEASE_POLICY.md`。
+
+---
+
 ## 技术栈
 
 - **前端**：React 18、TypeScript、Vite、Tailwind CSS、TanStack Query、Radix UI、CodeMirror
@@ -360,7 +370,7 @@ pnpm test
 
 ## 致谢
 
-本项目基于 Jason Young (farion1231) 的开源项目 **[cc-switch](https://github.com/farion1231/cc-switch)** 二次开发。衷心感谢原作者创建了如此优秀的开源项目，为本项目奠定了坚实基础。没有上游项目的开拓性工作，就不会有 CC-Switch-Web 的诞生。
+本项目由 **Laliet** 维护，基于上游开源项目 **[cc-switch](https://github.com/farion1231/cc-switch)** 二次开发。衷心感谢上游项目为本项目奠定了坚实基础。
 
 上游 Tauri 桌面应用统一了供应商切换、MCP 管理、技能和提示词功能，具备完善的国际化和安全特性。CC-Switch-Web 在此基础上增加了 Web/服务器运行模式、CORS 控制、Basic Auth、更多模板，以及云端/无头部署文档。
 

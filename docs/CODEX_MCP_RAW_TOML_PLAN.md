@@ -1292,7 +1292,7 @@ pnpm add @codemirror/lang-toml
 **文档版本**：2.0
 **创建时间**：2025-11-18
 **最后更新**：2025-11-18
-**负责人**：Jason Young
+**负责人**：Laliet
 
 ---
 

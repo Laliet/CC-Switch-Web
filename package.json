@@ -17,7 +17,7 @@
     "test:unit:watch": "vitest watch"
   },
   "keywords": [],
-  "author": "Jason Young",
+  "author": "Laliet",
   "license": "MIT",
   "devDependencies": {
     "@tauri-apps/cli": "^2.8.0",

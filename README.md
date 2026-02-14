@@ -1,6 +1,6 @@
 # CC-Switch-Web
 
-<sub>🙏 This project is a fork of [farion1231/cc-switch](https://github.com/farion1231/cc-switch) by Jason Young. Thanks to the original author for the excellent work. This fork adds Web Server mode for cloud/headless deployment.</sub>
+<sub>🙏 Maintained by Laliet. This project is based on [farion1231/cc-switch](https://github.com/farion1231/cc-switch), and this fork adds Web Server mode for cloud/headless deployment.</sub>
 
 [![Release](https://img.shields.io/github/v/release/Laliet/CC-Switch-Web?style=flat-square&logo=github&label=Release)](https://github.com/Laliet/CC-Switch-Web/releases/latest)
 [![License](https://img.shields.io/github/license/Laliet/CC-Switch-Web?style=flat-square)](LICENSE)
@@ -345,6 +345,16 @@ pnpm test
 
 ---
 
+## Build & Release Policy
+
+- Do **not** build release artifacts on this server.
+- All production artifacts must be produced by **GitHub Actions CI/Release workflows**.
+- Local build outputs (for example `target/`, `dist-web/`, binaries, coverage files) must not be committed.
+
+See `docs/BUILD_RELEASE_POLICY.md` for the persistent team policy.
+
+---
+
 ## Tech Stack
 
 - **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, TanStack Query, Radix UI, CodeMirror
@@ -361,7 +371,7 @@ See [CHANGELOG.md](CHANGELOG.md) — Current version: **v0.7.1**
 
 ## Credits
 
-This project is a fork of **[cc-switch](https://github.com/farion1231/cc-switch)** by Jason Young (farion1231). We sincerely thank the original author for creating such an excellent foundation. Without the upstream project's pioneering work, CC-Switch-Web would not exist.
+This project is maintained by **Laliet** and is based on the upstream **[cc-switch](https://github.com/farion1231/cc-switch)**. We sincerely thank the upstream project for providing such a solid foundation for CC-Switch-Web.
 
 The upstream Tauri desktop app unified provider switching, MCP management, skills, and prompts with strong i18n and safety. CC-Switch-Web adds web/server runtime, CORS controls, Basic Auth, more templates, and documentation for cloud/headless deployment.
 
