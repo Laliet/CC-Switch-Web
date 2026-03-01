@@ -33,6 +33,7 @@ export interface UseSettingsResult {
   browseAppConfigDir: () => Promise<void>;
   resetDirectory: (app: AppId) => Promise<void>;
   resetAppConfigDir: () => Promise<void>;
+  applyWslTemplate: (distro?: string) => void;
   saveSettings: () => Promise<SaveResult | null>;
   resetSettings: () => void;
   acknowledgeRestart: () => void;
@@ -81,6 +82,7 @@ export function useSettings(): UseSettingsResult {
     resetDirectory,
     resetAppConfigDir,
     resetAllDirectories,
+    applyWslTemplate,
   } = useDirectorySettings({
     settings,
     onUpdateSettings: updateSettings,
@@ -226,6 +228,7 @@ export function useSettings(): UseSettingsResult {
     browseAppConfigDir,
     resetDirectory,
     resetAppConfigDir,
+    applyWslTemplate,
     saveSettings,
     resetSettings,
     acknowledgeRestart,

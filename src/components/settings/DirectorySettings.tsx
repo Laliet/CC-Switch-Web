@@ -18,6 +18,7 @@ interface DirectorySettingsProps {
   onDirectoryChange: (app: AppId, value?: string) => void;
   onBrowseDirectory: (app: AppId) => Promise<void>;
   onResetDirectory: (app: AppId) => Promise<void>;
+  onApplyWslTemplate: (distro?: string) => void;
 }
 
 export function DirectorySettings({
@@ -32,8 +33,22 @@ export function DirectorySettings({
   onDirectoryChange,
   onBrowseDirectory,
   onResetDirectory,
+  onApplyWslTemplate,
 }: DirectorySettingsProps) {
   const { t } = useTranslation();
+
+  const handleApplyWslTemplate = () => {
+    const distro = window.prompt(
+      t("settings.wslDistroPrompt", {
+        defaultValue: "请输入 WSL 发行版名称（例如 Ubuntu）",
+      }),
+      t("settings.wslDefaultDistro", {
+        defaultValue: "Ubuntu",
+      }),
+    );
+    if (distro === null) return;
+    onApplyWslTemplate(distro);
+  };
 
   return (
     <>
@@ -87,7 +102,7 @@ export function DirectorySettings({
 
         <DirectoryInput
           label={t("settings.claudeConfigDir")}
-          description={undefined}
+          description={t("settings.claudeConfigDirDescription")}
           value={claudeDir}
           resolvedValue={resolvedDirs.claude}
           placeholder={t("settings.browsePlaceholderClaude")}
@@ -98,7 +113,7 @@ export function DirectorySettings({
 
         <DirectoryInput
           label={t("settings.codexConfigDir")}
-          description={undefined}
+          description={t("settings.codexConfigDirDescription")}
           value={codexDir}
           resolvedValue={resolvedDirs.codex}
           placeholder={t("settings.browsePlaceholderCodex")}
@@ -109,7 +124,7 @@ export function DirectorySettings({
 
         <DirectoryInput
           label={t("settings.geminiConfigDir")}
-          description={undefined}
+          description={t("settings.geminiConfigDirDescription")}
           value={geminiDir}
           resolvedValue={resolvedDirs.gemini}
           placeholder={t("settings.browsePlaceholderGemini")}
@@ -117,6 +132,23 @@ export function DirectorySettings({
           onBrowse={() => onBrowseDirectory("gemini")}
           onReset={() => onResetDirectory("gemini")}
         />
+
+        <p className="text-xs text-muted-foreground">
+          {t("settings.wslShareHint")}
+        </p>
+        <div className="pt-1">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleApplyWslTemplate}
+            className="text-xs"
+          >
+            {t("settings.fillWslTemplate", {
+              defaultValue: "填充 WSL 模板路径",
+            })}
+          </Button>
+        </div>
       </section>
     </>
   );

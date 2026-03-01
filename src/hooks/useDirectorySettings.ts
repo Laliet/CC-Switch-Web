@@ -36,6 +36,9 @@ const computeDefaultAppConfigDir = async (): Promise<string | undefined> => {
   const env = typeof process !== "undefined" ? process.env : undefined;
   const fallbackHome =
     env?.VITEST === "true" ? "/home/mock" : (env?.HOME ?? "/home/mock");
+  if (env?.VITEST === "true") {
+    return `${fallbackHome}/.cc-switch`;
+  }
   try {
     const pathApi = await loadPathApi();
     if (!pathApi) {
@@ -60,10 +63,13 @@ const computeDefaultConfigDir = async (
   const env = typeof process !== "undefined" ? process.env : undefined;
   const fallbackHome =
     env?.VITEST === "true" ? "/home/mock" : (env?.HOME ?? "/home/mock");
+  const folder =
+    app === "claude" ? ".claude" : app === "codex" ? ".codex" : ".gemini";
+  if (env?.VITEST === "true") {
+    return `${fallbackHome}/${folder}`;
+  }
   try {
     const pathApi = await loadPathApi();
-    const folder =
-      app === "claude" ? ".claude" : app === "codex" ? ".codex" : ".gemini";
     if (!pathApi) {
       return `${fallbackHome}/${folder}`;
     }
@@ -74,8 +80,6 @@ const computeDefaultConfigDir = async (
       "[useDirectorySettings] Failed to resolve default config dir",
       error,
     );
-    const folder =
-      app === "claude" ? ".claude" : app === "codex" ? ".codex" : ".gemini";
     return `${fallbackHome}/${folder}`;
   }
 };
@@ -101,6 +105,7 @@ export interface UseDirectorySettingsResult {
     codexDir?: string,
     geminiDir?: string,
   ) => void;
+  applyWslTemplate: (distro?: string) => void;
 }
 
 /**
@@ -362,6 +367,29 @@ export function useDirectorySettings({
     [],
   );
 
+  const applyWslTemplate = useCallback(
+    (distro?: string) => {
+      const normalizedDistro = (distro ?? "").trim() || "Ubuntu";
+      const usernamePlaceholder = t("settings.wslTemplateUserPlaceholder", {
+        defaultValue: "your-username",
+      });
+      const base = `\\\\wsl$\\${normalizedDistro}\\home\\<${usernamePlaceholder}>`;
+
+      updateDirectoryState("claude", `${base}\\.claude`);
+      updateDirectoryState("codex", `${base}\\.codex`);
+      updateDirectoryState("gemini", `${base}\\.gemini`);
+
+      toast.success(
+        t("settings.wslTemplateApplied", {
+          defaultValue:
+            "Filled WSL template paths for {{distro}}. Save settings to apply.",
+          distro: normalizedDistro,
+        }),
+      );
+    },
+    [t, updateDirectoryState],
+  );
+
   return {
     appConfigDir,
     resolvedDirs,
@@ -374,5 +402,6 @@ export function useDirectorySettings({
     resetDirectory,
     resetAppConfigDir,
     resetAllDirectories,
+    applyWslTemplate,
   };
 }

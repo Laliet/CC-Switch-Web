@@ -1,6 +1,6 @@
 # CC-Switch-Web
 
-<sub>🙏 This project is a fork of [farion1231/cc-switch](https://github.com/farion1231/cc-switch) by Jason Young. Thanks to the original author for the excellent work. This fork adds Web Server mode for cloud/headless deployment.</sub>
+<sub>🙏 Maintained by Laliet. This project is based on [farion1231/cc-switch](https://github.com/farion1231/cc-switch), and this fork adds Web Server mode for cloud/headless deployment.</sub>
 
 [![Release](https://img.shields.io/github/v/release/Laliet/CC-Switch-Web?style=flat-square&logo=github&label=Release)](https://github.com/Laliet/CC-Switch-Web/releases/latest)
 [![License](https://img.shields.io/github/license/Laliet/CC-Switch-Web?style=flat-square)](LICENSE)
@@ -97,18 +97,32 @@ Download precompiled server binary—no compilation required:
 
 | Architecture | Download |
 |--------------|----------|
-| **Linux x86_64** | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/cc-switch-server-linux-x86_64) |
-| **Linux aarch64** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/cc-switch-server-linux-aarch64) |
+| **Linux x86_64 (glibc)** | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/cc-switch-server-linux-x86_64) |
+| **Linux aarch64 (glibc)** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/cc-switch-server-linux-aarch64) |
+| **Linux x86_64 (musl)** | [cc-switch-server-linux-x86_64-musl](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/cc-switch-server-linux-x86_64-musl) |
+| **Linux aarch64 (musl)** | [cc-switch-server-linux-aarch64-musl](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/cc-switch-server-linux-aarch64-musl) |
+
+> **Note (glibc)**: GNU builds are produced on Ubuntu 20.04 (glibc 2.31+).  
+> If you see `GLIBC_2.xx not found`, use the **musl** build, Docker, or build from source.  
+> Check your glibc with `ldd --version`.
 
 **One-Line Deploy**:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Laliet/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
 ```
 
+**Quick fixes**:
+- `GLIBC_2.xx not found`: the script now auto-prefers compatible prebuilt variants under `LIBC_VARIANT=auto`; you can also force `LIBC_VARIANT=musl`.
+- Need container-first deployment: run `docker run -p 3000:3000 ghcr.io/laliet/cc-switch-web:latest`.
+- Windows + WSL shared configs: Settings now provides a one-click WSL template path filler in Advanced tab.
+
 **Advanced options**:
 ```bash
 # Custom install directory and port
 INSTALL_DIR=/opt/cc-switch PORT=8080 curl -fsSL https://raw.githubusercontent.com/Laliet/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
+
+# Force musl prebuilt (Alpine/older glibc)
+LIBC_VARIANT=musl curl -fsSL https://raw.githubusercontent.com/Laliet/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
 
 # Create systemd service for auto-start
 CREATE_SERVICE=1 curl -fsSL https://raw.githubusercontent.com/Laliet/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
@@ -233,6 +247,22 @@ NO_CHECKSUM=1 curl -fsSL https://...install.sh | bash
 
 ## Usage Guide
 
+### WSL Configuration Sharing (Windows + WSL)
+
+If you run Claude/Codex/Gemini CLI inside WSL but use CC Switch on Windows, point the directory overrides to the WSL filesystem so both environments share the same provider data.
+
+1. Open **Settings → Configuration Directory Override (Advanced)**.
+2. Set each directory to the WSL path, for example:
+   - Claude: `\\wsl$\Ubuntu\home\<your-username>\.claude`
+   - Codex: `\\wsl$\Ubuntu\home\<your-username>\.codex`
+   - Gemini: `\\wsl$\Ubuntu\home\<your-username>\.gemini`
+3. You can also click **"Fill WSL Template Paths"** in Settings to prefill templates, then adjust distro/username.
+
+Notes:
+- Replace `Ubuntu` with your distro name.
+- Ensure the WSL distro is running; otherwise the path will not resolve.
+- If `\\wsl$` is blocked, try `\\wsl.localhost\\Distro\\home\\user\\.claude`.
+
 ### 1. Adding a Provider
 
 1. Launch CC-Switch and select your target app (Claude Code / Codex / Gemini)
@@ -315,6 +345,16 @@ pnpm test
 
 ---
 
+## Build & Release Policy
+
+- Do **not** build release artifacts on this server.
+- All production artifacts must be produced by **GitHub Actions CI/Release workflows**.
+- Local build outputs (for example `target/`, `dist-web/`, binaries, coverage files) must not be committed.
+
+See `docs/BUILD_RELEASE_POLICY.md` for the persistent team policy.
+
+---
+
 ## Tech Stack
 
 - **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, TanStack Query, Radix UI, CodeMirror
@@ -331,7 +371,7 @@ See [CHANGELOG.md](CHANGELOG.md) — Current version: **v0.7.1**
 
 ## Credits
 
-This project is a fork of **[cc-switch](https://github.com/farion1231/cc-switch)** by Jason Young (farion1231). We sincerely thank the original author for creating such an excellent foundation. Without the upstream project's pioneering work, CC-Switch-Web would not exist.
+This project is maintained by **Laliet** and is based on the upstream **[cc-switch](https://github.com/farion1231/cc-switch)**. We sincerely thank the upstream project for providing such a solid foundation for CC-Switch-Web.
 
 The upstream Tauri desktop app unified provider switching, MCP management, skills, and prompts with strong i18n and safety. CC-Switch-Web adds web/server runtime, CORS controls, Basic Auth, more templates, and documentation for cloud/headless deployment.
 

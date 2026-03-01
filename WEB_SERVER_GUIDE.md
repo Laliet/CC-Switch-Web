@@ -228,6 +228,26 @@ screen -r cc-switch
 
 ---
 
+## WSL 配置共享（Windows + WSL）
+
+如果 CLI 在 WSL 中运行，而你在 Windows 上访问 Web 界面，需要把配置目录覆盖指向 WSL 文件系统，以保证供应商配置一致。
+
+示例路径（Windows 端填写）：
+
+- Claude: `\\wsl$\Ubuntu\home\<你的用户名>\.claude`
+- Codex: `\\wsl$\Ubuntu\home\<你的用户名>\.codex`
+- Gemini: `\\wsl$\Ubuntu\home\<你的用户名>\.gemini`
+
+也可以在设置页点击 **“填充 WSL 模板路径”**，先自动填充后再改发行版与用户名。
+
+注意：
+
+- 将 `Ubuntu` 替换为你的发行版名称。
+- 确保 WSL 发行版已启动，否则路径无法解析。
+- 如果 `\\wsl$` 不可用，可尝试 `\\wsl.localhost\\发行版\\home\\user\\.claude`。
+
+---
+
 ## 特性说明
 
 ### 完整功能映射
@@ -325,6 +345,23 @@ lsof -i:3000
 
 # 查看日志
 RUST_LOG=debug ./cc-switch-server
+```
+
+### 预编译二进制提示 GLIBC_2.xx not found
+
+GNU 版在 **Ubuntu 20.04 (glibc 2.31+)** 构建。  
+如果系统 glibc 版本过低，请改用 **musl** 版、Docker 或源码构建。  
+`deploy-web.sh --prebuilt` 在 `LIBC_VARIANT=auto` 下会优先尝试更兼容的预编译变体（musl/gnu 自动回退）。
+
+```bash
+# 查看 glibc 版本
+ldd --version
+
+# 强制使用 musl 预编译（旧 glibc / Alpine）
+LIBC_VARIANT=musl curl -fsSL https://raw.githubusercontent.com/Laliet/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
+
+# Docker 兜底
+docker run -p 3000:3000 ghcr.io/laliet/cc-switch-web:latest
 ```
 
 ### 浏览器无法访问
@@ -442,4 +479,4 @@ Web Server 模式的代码位于：
 
 ## License
 
-MIT © Jason Young
+MIT © Laliet

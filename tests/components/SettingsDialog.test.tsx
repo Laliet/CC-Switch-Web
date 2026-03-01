@@ -33,6 +33,7 @@ interface SettingsMock {
   browseAppConfigDir: ReturnType<typeof vi.fn>;
   resetDirectory: ReturnType<typeof vi.fn>;
   resetAppConfigDir: ReturnType<typeof vi.fn>;
+  applyWslTemplate: ReturnType<typeof vi.fn>;
   saveSettings: ReturnType<typeof vi.fn>;
   resetSettings: ReturnType<typeof vi.fn>;
   acknowledgeRestart: ReturnType<typeof vi.fn>;
@@ -55,6 +56,7 @@ const createSettingsMock = (overrides: Partial<SettingsMock> = {}) => {
     resolvedDirs: {
       claude: "/claude",
       codex: "/codex",
+      gemini: "/gemini",
     },
     requiresRestart: false,
     updateSettings: vi.fn(),
@@ -64,6 +66,7 @@ const createSettingsMock = (overrides: Partial<SettingsMock> = {}) => {
     browseAppConfigDir: vi.fn(),
     resetDirectory: vi.fn(),
     resetAppConfigDir: vi.fn(),
+    applyWslTemplate: vi.fn(),
     saveSettings: vi.fn().mockResolvedValue({ requiresRestart: false }),
     resetSettings: vi.fn(),
     acknowledgeRestart: vi.fn(),

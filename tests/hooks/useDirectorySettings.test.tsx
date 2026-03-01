@@ -10,6 +10,7 @@ const setAppConfigDirOverrideMock = vi.hoisted(() => vi.fn());
 const homeDirMock = vi.hoisted(() => vi.fn<() => Promise<string>>());
 const joinMock = vi.hoisted(() => vi.fn(async (...segments: string[]) => segments.join("/")));
 const toastErrorMock = vi.hoisted(() => vi.fn());
+const toastSuccessMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/api", () => ({
   settingsApi: {
@@ -28,6 +29,7 @@ vi.mock("@tauri-apps/api/path", () => ({
 vi.mock("sonner", () => ({
   toast: {
     error: (...args: unknown[]) => toastErrorMock(...args),
+    success: (...args: unknown[]) => toastSuccessMock(...args),
   },
 }));
 
@@ -52,6 +54,7 @@ describe("useDirectorySettings", () => {
   const onUpdateSettings = vi.fn();
 
   beforeEach(() => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     vi.clearAllMocks();
 
     homeDirMock.mockResolvedValue("/home/mock");
@@ -207,5 +210,33 @@ describe("useDirectorySettings", () => {
 
     expect(result.current.resolvedDirs.claude).toBe("/server/claude");
     expect(result.current.resolvedDirs.codex).toBe("/server/codex");
+  });
+
+  it("applies WSL template directories with custom distro", async () => {
+    const { result } = renderHook(() =>
+      useDirectorySettings({
+        settings: createSettings({
+          claudeConfigDir: undefined,
+          codexConfigDir: undefined,
+        }),
+        onUpdateSettings,
+      }),
+    );
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => {
+      result.current.applyWslTemplate("Debian");
+    });
+
+    expect(onUpdateSettings).toHaveBeenCalledWith({
+      claudeConfigDir: "\\\\wsl$\\Debian\\home\\<your-username>\\.claude",
+    });
+    expect(onUpdateSettings).toHaveBeenCalledWith({
+      codexConfigDir: "\\\\wsl$\\Debian\\home\\<your-username>\\.codex",
+    });
+    expect(onUpdateSettings).toHaveBeenCalledWith({
+      geminiConfigDir: "\\\\wsl$\\Debian\\home\\<your-username>\\.gemini",
+    });
+    expect(toastSuccessMock).toHaveBeenCalled();
   });
 });

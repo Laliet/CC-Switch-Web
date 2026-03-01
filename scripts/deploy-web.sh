@@ -9,9 +9,10 @@
 #   curl -fsSL .../deploy-web.sh | bash
 #
 # 环境变量：
-#   HOST      - 监听地址，默认 0.0.0.0
-#   PORT      - 监听端口，默认 3000
-#   INSTALL_DIR - 安装目录，默认 ~/cc-switch-web
+#   HOST         - 监听地址，默认 0.0.0.0
+#   PORT         - 监听端口，默认 3000
+#   INSTALL_DIR  - 安装目录，默认 ~/cc-switch-web
+#   LIBC_VARIANT - 预编译二进制 libc 变体：auto/gnu/musl（默认 auto）
 
 set -euo pipefail
 
@@ -34,6 +35,26 @@ need_cmd() {
     return 1
   fi
   return 0
+}
+
+version_ge() {
+  [ "$1" = "$2" ] && return 0
+  printf '%s\n%s\n' "$2" "$1" | sort -V -C
+}
+
+get_glibc_version() {
+  if ! need_cmd ldd; then
+    return 1
+  fi
+
+  local line
+  line=$(ldd --version 2>/dev/null | head -1 || true)
+  if echo "$line" | grep -qi "musl"; then
+    echo "musl"
+    return 0
+  fi
+
+  echo "$line" | grep -Eo '[0-9]+\.[0-9]+' | head -1
 }
 
 # 检查并安装依赖
@@ -213,16 +234,89 @@ download_prebuilt() {
       ;;
   esac
 
-  local download_url="https://github.com/Laliet/CC-Switch-Web/releases/latest/download/cc-switch-server-linux-${arch}"
   local target_path="$INSTALL_DIR/src-tauri/target/release/examples/server"
+  local glibc_version
+  local requested_variant="${LIBC_VARIANT:-auto}"
+  local chosen_variant=""
+  local -a candidates=()
+  local -a attempted_urls=()
+  local download_url=""
+
+  glibc_version=$(get_glibc_version || true)
+
+  case "$requested_variant" in
+    auto|"")
+      if [[ "$glibc_version" == "musl" ]]; then
+        candidates=(musl)
+      elif [[ -z "$glibc_version" ]]; then
+        warn "未检测到 glibc 版本，优先尝试 musl 预编译以提高兼容性。"
+        candidates=(musl gnu)
+      elif version_ge "$glibc_version" "2.31"; then
+        candidates=(gnu musl)
+      else
+        warn "检测到 glibc $glibc_version (< 2.31)，优先尝试 musl 预编译。"
+        candidates=(musl gnu)
+      fi
+      ;;
+    gnu|glibc)
+      candidates=(gnu)
+      ;;
+    musl)
+      candidates=(musl)
+      ;;
+    *)
+      err "LIBC_VARIANT 仅支持 auto/gnu/musl，当前：${LIBC_VARIANT}"
+      exit 1
+      ;;
+  esac
 
   mkdir -p "$(dirname "$target_path")"
 
-  log "从 $download_url 下载..."
-  curl -fL "$download_url" -o "$target_path"
-  chmod +x "$target_path"
+  for candidate in "${candidates[@]}"; do
+    if [[ "$candidate" == "gnu" ]]; then
+      if [[ "$glibc_version" == "musl" ]]; then
+        if [[ "$requested_variant" == "gnu" || "$requested_variant" == "glibc" ]]; then
+          err "检测到 musl libc（如 Alpine），无法使用 gnu 预编译。请改用 LIBC_VARIANT=musl。"
+          exit 1
+        fi
+        warn "当前系统为 musl，跳过 gnu 预编译。"
+        continue
+      fi
+      if [[ -n "$glibc_version" ]] && ! version_ge "$glibc_version" "2.31"; then
+        if [[ "$requested_variant" == "gnu" || "$requested_variant" == "glibc" ]]; then
+          err "当前 glibc 版本为 $glibc_version，gnu 预编译需要 glibc >= 2.31。请改用 LIBC_VARIANT=musl。"
+          exit 1
+        fi
+        warn "当前 glibc 版本为 $glibc_version，跳过 gnu 预编译。"
+        continue
+      fi
+    fi
 
-  success "预编译服务器已下载: $target_path"
+    local suffix=""
+    if [[ "$candidate" == "musl" ]]; then
+      suffix="-musl"
+    fi
+    download_url="https://github.com/Laliet/CC-Switch-Web/releases/latest/download/cc-switch-server-linux-${arch}${suffix}"
+    attempted_urls+=("$download_url")
+    log "尝试下载 ${candidate} 预编译: $download_url"
+
+    if curl -fL "$download_url" -o "$target_path"; then
+      chosen_variant="$candidate"
+      chmod +x "$target_path"
+      break
+    fi
+
+    warn "下载失败：$download_url"
+    rm -f "$target_path"
+  done
+
+  if [[ -z "$chosen_variant" ]]; then
+    err "预编译二进制下载失败（已尝试：${attempted_urls[*]:-无}）。"
+    err "建议改用 Docker（ghcr.io/laliet/cc-switch-web:latest）或源码构建（不加 --prebuilt）。"
+    exit 1
+  fi
+
+  success "预编译服务器已下载(${chosen_variant}): $target_path"
 }
 
 # 创建 systemd 服务（可选）

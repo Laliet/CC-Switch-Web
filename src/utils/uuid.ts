@@ -29,17 +29,15 @@ function generateMathRandomUuidV4(): string {
 export function generateUUID(): string {
   const cryptoObject = globalThis.crypto as Crypto | undefined;
 
-  const randomUUID = (cryptoObject as any)?.randomUUID?.bind(
-    cryptoObject,
-  ) as (() => string) | undefined;
+  const randomUUID = (cryptoObject as any)?.randomUUID;
   if (typeof randomUUID === "function") {
-    return randomUUID();
+    return randomUUID.call(cryptoObject);
   }
 
-  const getRandomValues = cryptoObject?.getRandomValues?.bind(cryptoObject);
+  const getRandomValues = cryptoObject?.getRandomValues;
   if (typeof getRandomValues === "function") {
     const bytes = new Uint8Array(16);
-    getRandomValues(bytes);
+    getRandomValues.call(cryptoObject, bytes);
     return formatUuidV4FromBytes(bytes);
   }
 

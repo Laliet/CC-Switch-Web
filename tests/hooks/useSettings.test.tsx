@@ -80,6 +80,7 @@ const createDirectorySettingsMock = (overrides: Record<string, unknown> = {}) =>
     appConfig: "/home/mock/.cc-switch",
     claude: "/default/claude",
     codex: "/default/codex",
+    gemini: "/default/gemini",
   },
   isLoading: false,
   initialAppConfigDir: undefined,
@@ -90,6 +91,7 @@ const createDirectorySettingsMock = (overrides: Record<string, unknown> = {}) =>
   resetDirectory: vi.fn(),
   resetAppConfigDir: vi.fn(),
   resetAllDirectories: vi.fn(),
+  applyWslTemplate: vi.fn(),
   ...overrides,
 });
 
@@ -104,6 +106,8 @@ const createMetadataMock = (overrides: Record<string, unknown> = {}) => ({
 
 describe("useSettings hook", () => {
   beforeEach(() => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => {});
     mutateAsyncMock.mockReset();
     useSettingsQueryMock.mockReset();
     setAppConfigDirOverrideMock.mockReset();

@@ -48,6 +48,7 @@ export function SettingsDialog({
     browseAppConfigDir,
     resetDirectory,
     resetAppConfigDir,
+    applyWslTemplate,
     saveSettings,
     resetSettings,
     requiresRestart,
@@ -230,6 +231,7 @@ export function SettingsDialog({
                       onDirectoryChange={updateDirectory}
                       onBrowseDirectory={browseDirectory}
                       onResetDirectory={resetDirectory}
+                      onApplyWslTemplate={applyWslTemplate}
                     />
                     <ImportExportSection
                       status={importStatus}

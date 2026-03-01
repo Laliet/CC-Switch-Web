@@ -1,6 +1,6 @@
 # CC-Switch-Web
 
-<sub>🙏 本项目是 [farion1231/cc-switch](https://github.com/farion1231/cc-switch)（Jason Young）的 fork 版本。感谢原作者的出色工作。本 fork 添加了 Web 服务器模式，支持云端/无头部署。</sub>
+<sub>🙏 本项目由 Laliet 维护，基于 [farion1231/cc-switch](https://github.com/farion1231/cc-switch) 开发。本 fork 添加了 Web 服务器模式，支持云端/无头部署。</sub>
 
 [![Release](https://img.shields.io/github/v/release/Laliet/CC-Switch-Web?style=flat-square&logo=github&label=Release)](https://github.com/Laliet/CC-Switch-Web/releases/latest)
 [![License](https://img.shields.io/github/license/Laliet/CC-Switch-Web?style=flat-square)](LICENSE)
@@ -96,18 +96,32 @@
 
 | 架构 | 下载链接 |
 |------|----------|
-| **Linux x86_64** | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/cc-switch-server-linux-x86_64) |
-| **Linux aarch64** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/cc-switch-server-linux-aarch64) |
+| **Linux x86_64 (glibc)** | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/cc-switch-server-linux-x86_64) |
+| **Linux aarch64 (glibc)** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/cc-switch-server-linux-aarch64) |
+| **Linux x86_64 (musl)** | [cc-switch-server-linux-x86_64-musl](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/cc-switch-server-linux-x86_64-musl) |
+| **Linux aarch64 (musl)** | [cc-switch-server-linux-aarch64-musl](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.7.1/cc-switch-server-linux-aarch64-musl) |
+
+> **glibc 说明**：GNU 版在 Ubuntu 20.04 构建（glibc 2.31+）。  
+> 如果报 `GLIBC_2.xx not found`，请改用 **musl** 版、Docker 或源码构建。  
+> 可用 `ldd --version` 查看 glibc 版本。
 
 **一键部署**：
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Laliet/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
 ```
 
+**常见问题速查**：
+- 报 `GLIBC_2.xx not found`：脚本会在 `LIBC_VARIANT=auto` 下优先尝试兼容版本；也可手动指定 `LIBC_VARIANT=musl`。
+- 想直接容器化运行：使用 `docker run -p 3000:3000 ghcr.io/laliet/cc-switch-web:latest`。
+- Windows + WSL 共用配置：设置页支持一键填充 WSL 模板路径（高级设置页中的“填充 WSL 模板路径”）。
+
 **高级选项**：
 ```bash
 # 自定义安装目录和端口
 INSTALL_DIR=/opt/cc-switch PORT=8080 curl -fsSL https://raw.githubusercontent.com/Laliet/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
+
+# 强制使用 musl 预编译（Alpine/旧 glibc）
+LIBC_VARIANT=musl curl -fsSL https://raw.githubusercontent.com/Laliet/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
 
 # 创建 systemd 服务（开机自启）
 CREATE_SERVICE=1 curl -fsSL https://raw.githubusercontent.com/Laliet/CC-Switch-Web/main/scripts/deploy-web.sh | bash -s -- --prebuilt
@@ -232,6 +246,22 @@ NO_CHECKSUM=1 curl -fsSL https://...install.sh | bash
 
 ## 使用指南
 
+### WSL 配置共享（Windows + WSL）
+
+如果 CLI 在 WSL 内运行，而 CC Switch 在 Windows 上运行，请将配置目录覆盖指向 WSL 文件系统，保证供应商配置一致。
+
+1. 打开 **设置 → 配置目录覆盖（高级）**。
+2. 将目录设置为 WSL 路径，例如：
+   - Claude: `\\wsl$\Ubuntu\home\<你的用户名>\.claude`
+   - Codex: `\\wsl$\Ubuntu\home\<你的用户名>\.codex`
+   - Gemini: `\\wsl$\Ubuntu\home\<你的用户名>\.gemini`
+3. 也可点击 **“填充 WSL 模板路径”** 按钮自动写入模板，再按你的发行版/用户名微调。
+
+注意：
+- 将 `Ubuntu` 替换为你的发行版名称。
+- 确保 WSL 发行版正在运行，否则路径无法解析。
+- 如果 `\\wsl$` 无法访问，可尝试 `\\wsl.localhost\\发行版\\home\\user\\.claude`。
+
 ### 1. 添加供应商
 
 1. 启动 CC-Switch，选择目标应用（Claude Code / Codex / Gemini）
@@ -314,6 +344,16 @@ pnpm test
 
 ---
 
+## 构建与发布策略
+
+- **不要**在当前服务器上构建发布产物。
+- 生产构建统一通过 **GitHub Actions CI/Release 工作流**完成。
+- 本地构建输出（如 `target/`、`dist-web/`、二进制文件、coverage 目录）禁止提交到仓库。
+
+长期策略文档见：`docs/BUILD_RELEASE_POLICY.md`。
+
+---
+
 ## 技术栈
 
 - **前端**：React 18、TypeScript、Vite、Tailwind CSS、TanStack Query、Radix UI、CodeMirror
@@ -330,7 +370,7 @@ pnpm test
 
 ## 致谢
 
-本项目基于 Jason Young (farion1231) 的开源项目 **[cc-switch](https://github.com/farion1231/cc-switch)** 二次开发。衷心感谢原作者创建了如此优秀的开源项目，为本项目奠定了坚实基础。没有上游项目的开拓性工作，就不会有 CC-Switch-Web 的诞生。
+本项目由 **Laliet** 维护，基于上游开源项目 **[cc-switch](https://github.com/farion1231/cc-switch)** 二次开发。衷心感谢上游项目为本项目奠定了坚实基础。
 
 上游 Tauri 桌面应用统一了供应商切换、MCP 管理、技能和提示词功能，具备完善的国际化和安全特性。CC-Switch-Web 在此基础上增加了 Web/服务器运行模式、CORS 控制、Basic Auth、更多模板，以及云端/无头部署文档。
 

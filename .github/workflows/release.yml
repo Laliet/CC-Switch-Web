@@ -258,7 +258,7 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           name: CC Switch ${{ github.ref_name }}
-          prerelease: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
           body: |
             ## CC Switch ${{ github.ref_name }}
 
@@ -460,6 +460,23 @@ jobs:
           OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           echo "image_name=ghcr.io/${OWNER_LC}/cc-switch-web" >> "$GITHUB_OUTPUT"
 
+      - name: Set Docker tags
+        id: docker-tags
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE_NAME="${{ steps.vars.outputs.image_name }}"
+          VERSION="${{ steps.vars.outputs.version }}"
+          {
+            echo "tags<<EOF"
+            # 所有 tag 都推送版本标签；稳定版额外推送 latest
+            echo "${IMAGE_NAME}:${VERSION}"
+            if [[ "${GITHUB_REF_NAME}" != *-* ]]; then
+              echo "${IMAGE_NAME}:latest"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -504,9 +521,7 @@ jobs:
           file: Dockerfile.release
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: |
-            ${{ steps.vars.outputs.image_name }}:latest
-            ${{ steps.vars.outputs.image_name }}:${{ steps.vars.outputs.version }}
+          tags: ${{ steps.docker-tags.outputs.tags }}
           labels: |
             org.opencontainers.image.source=${{ github.repository }}
             org.opencontainers.image.title=cc-switch-web
