@@ -69,7 +69,10 @@ pub fn set_provider(id: &str, config: Value) -> Result<(), AppError> {
 pub fn remove_provider(id: &str) -> Result<(), AppError> {
     let mut config = read_opencode_config()?;
 
-    if let Some(providers) = config.get_mut("provider").and_then(|value| value.as_object_mut()) {
+    if let Some(providers) = config
+        .get_mut("provider")
+        .and_then(|value| value.as_object_mut())
+    {
         providers.remove(id);
     }
 
@@ -92,7 +95,10 @@ pub fn set_mcp_server(id: &str, config: Value) -> Result<(), AppError> {
         full_config["mcp"] = json!({});
     }
 
-    if let Some(mcp) = full_config.get_mut("mcp").and_then(|value| value.as_object_mut()) {
+    if let Some(mcp) = full_config
+        .get_mut("mcp")
+        .and_then(|value| value.as_object_mut())
+    {
         mcp.insert(id.to_string(), config);
     }
 
@@ -102,7 +108,10 @@ pub fn set_mcp_server(id: &str, config: Value) -> Result<(), AppError> {
 pub fn remove_mcp_server(id: &str) -> Result<(), AppError> {
     let mut config = read_opencode_config()?;
 
-    if let Some(mcp) = config.get_mut("mcp").and_then(|value| value.as_object_mut()) {
+    if let Some(mcp) = config
+        .get_mut("mcp")
+        .and_then(|value| value.as_object_mut())
+    {
         mcp.remove(id);
     }
 

@@ -248,7 +248,10 @@ impl AppType {
     }
 
     pub fn is_supported(&self) -> bool {
-        matches!(self, AppType::Claude | AppType::Codex | AppType::Gemini | AppType::Opencode)
+        matches!(
+            self,
+            AppType::Claude | AppType::Codex | AppType::Gemini | AppType::Opencode
+        )
     }
 
     pub fn ensure_supported(&self) -> Result<(), AppError> {

@@ -306,18 +306,23 @@ impl SkillService {
     }
 
     fn installed_apps_for_directory(directory: &str) -> Vec<String> {
-        [AppType::Claude, AppType::Codex, AppType::Gemini, AppType::Opencode]
-            .into_iter()
-            .filter_map(|app| {
-                let install_dir = Self::get_install_dir_for_app(&app).ok()?;
-                let skill_md = install_dir.join(directory).join("SKILL.md");
-                if skill_md.is_file() {
-                    Some(app.as_str().to_string())
-                } else {
-                    None
-                }
-            })
-            .collect()
+        [
+            AppType::Claude,
+            AppType::Codex,
+            AppType::Gemini,
+            AppType::Opencode,
+        ]
+        .into_iter()
+        .filter_map(|app| {
+            let install_dir = Self::get_install_dir_for_app(&app).ok()?;
+            let skill_md = install_dir.join(directory).join("SKILL.md");
+            if skill_md.is_file() {
+                Some(app.as_str().to_string())
+            } else {
+                None
+            }
+        })
+        .collect()
     }
 }
 
