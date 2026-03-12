@@ -14,7 +14,7 @@
 English | [中文](README_ZH.md) | [Changelog](CHANGELOG.md)
 
 > Recommended stable release: [v0.8.0](https://github.com/Laliet/CC-Switch-Web/releases/tag/v0.8.0)  
-> The `v0.9.x` line remains available for regression fixes and ongoing debugging.
+> Latest `0.9.x` bugfix preview: [v0.9.1](https://github.com/Laliet/CC-Switch-Web/releases/tag/v0.9.1)
 
 ## About / 项目简介
 
@@ -39,11 +39,12 @@ If you have any questions, you can contact me here https://linux.do/t/topic/1217
 
 ## What's New
 
-### v0.9.1 - Preview / Bugfix Track
+### v0.9.1 - 0.9.x Bugfix Release
 
-- Unified Claude Code / Codex / Gemini management remains available for validation
-- This line is currently being debugged for regressions reported after release
-- Use `v0.8.0` if you need the most conservative production recommendation today
+- Fix current-provider save/apply so live config is rewritten immediately
+- Preserve Codex MCP entries such as `relay-pulse` when updating the current provider
+- Support the current relay-pulse health payload based on `groups[].layers[]`
+- `v0.9.1` remains a preview bugfix release; `v0.8.0` is still the recommended stable release
 
 ### v0.8.0 - Recommended Stable Release
 

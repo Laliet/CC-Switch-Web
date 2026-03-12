@@ -14,7 +14,7 @@
 [English](README.md) | 中文 | [更新日志](CHANGELOG.md)
 
 > 当前推荐稳定版本：[v0.8.0](https://github.com/Laliet/CC-Switch-Web/releases/tag/v0.8.0)  
-> `v0.9.x` 版本线继续保留，用于回归问题修复和持续调试。
+> `0.9.x` 最新修正预览版：[v0.9.1](https://github.com/Laliet/CC-Switch-Web/releases/tag/v0.9.1)
 
 ---
 
@@ -37,11 +37,12 @@
 
 ## 更新内容
 
-### v0.9.1 - 预览 / 修正版本线
+### v0.9.1 - 0.9.x 修正版本
 
-- Claude Code / Codex / Gemini 统一管理能力继续保留用于验证
-- 当前版本线正在集中修复已发现的发布后回归问题
-- 如需更保守的生产环境推荐，请优先使用 `v0.8.0`
+- 修复当前生效 provider 保存/应用后未立即写入 live 配置的问题
+- 修复更新当前 Codex provider 时 `relay-pulse` 等 MCP 配置被覆盖的问题
+- 兼容 relay-pulse 当前 `groups[].layers[]` 健康状态返回结构
+- `v0.9.1` 仍定位为修正预览版；如需更保守的生产环境推荐，请优先使用 `v0.8.0`
 
 ### v0.8.0 - 当前推荐稳定版
 
