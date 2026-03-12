@@ -30,6 +30,6 @@ This release focuses on **regression fixes for the `0.9.x` line**, especially ar
 ### 📌 Release Positioning
 
 - **Recommended stable release**: `v0.8.0`
-- **Bugfix preview release**: `v0.9.1`
+- **Latest bugfix release**: `v0.9.1`
 - Stay on `v0.8.0` if you want the most conservative production recommendation
 - Upgrade to `v0.9.1` if you are already testing or using the `0.9.x` line

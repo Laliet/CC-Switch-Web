@@ -14,7 +14,7 @@
 English | [中文](README_ZH.md) | [Changelog](CHANGELOG.md)
 
 > Recommended stable release: [v0.8.0](https://github.com/Laliet/CC-Switch-Web/releases/tag/v0.8.0)  
-> Latest `0.9.x` bugfix preview: [v0.9.1](https://github.com/Laliet/CC-Switch-Web/releases/tag/v0.9.1)
+> Latest `0.9.x` bugfix release: [v0.9.1](https://github.com/Laliet/CC-Switch-Web/releases/tag/v0.9.1)
 
 ## About / 项目简介
 
@@ -44,7 +44,7 @@ If you have any questions, you can contact me here https://linux.do/t/topic/1217
 - Fix current-provider save/apply so live config is rewritten immediately
 - Preserve Codex MCP entries such as `relay-pulse` when updating the current provider
 - Support the current relay-pulse health payload based on `groups[].layers[]`
-- `v0.9.1` remains a preview bugfix release; `v0.8.0` is still the recommended stable release
+- `v0.9.1` is the latest `0.9.x` bugfix release; `v0.8.0` remains the more conservative stable recommendation
 
 ### v0.8.0 - Recommended Stable Release
 
