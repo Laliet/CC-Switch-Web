@@ -81,7 +81,9 @@ pub fn remove_provider(id: &str) -> Result<(), AppError> {
 pub fn add_plugin(plugin_name: &str) -> Result<(), AppError> {
     let mut config = read_opencode_config()?;
 
-    let plugins = config.get_mut("plugin").and_then(|value| value.as_array_mut());
+    let plugins = config
+        .get_mut("plugin")
+        .and_then(|value| value.as_array_mut());
 
     match plugins {
         Some(arr) => {
@@ -101,7 +103,10 @@ pub fn add_plugin(plugin_name: &str) -> Result<(), AppError> {
 pub fn remove_plugin_by_prefix(prefix: &str) -> Result<(), AppError> {
     let mut config = read_opencode_config()?;
 
-    if let Some(arr) = config.get_mut("plugin").and_then(|value| value.as_array_mut()) {
+    if let Some(arr) = config
+        .get_mut("plugin")
+        .and_then(|value| value.as_array_mut())
+    {
         arr.retain(|value| {
             value
                 .as_str()

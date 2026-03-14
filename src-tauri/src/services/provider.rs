@@ -2046,7 +2046,7 @@ impl ProviderService {
         Ok(())
     }
 
-    fn write_opencode_live(provider: &Provider) -> Result<(), AppError> {
+    pub(crate) fn write_opencode_live(provider: &Provider) -> Result<(), AppError> {
         let settings = provider.settings_config.as_object().ok_or_else(|| {
             AppError::localized(
                 "provider.opencode.settings.not_object",
@@ -2069,7 +2069,7 @@ impl ProviderService {
         Ok(())
     }
 
-    fn write_omo_live(provider: &Provider) -> Result<(), AppError> {
+    pub(crate) fn write_omo_live(provider: &Provider) -> Result<(), AppError> {
         if !provider.settings_config.is_object() {
             return Err(AppError::localized(
                 "provider.omo.settings.not_object",

@@ -485,10 +485,7 @@ pub fn load_web_username() -> String {
 pub fn load_or_generate_web_credentials() -> Result<(SharedWebAuth, PathBuf), AppError> {
     let (password, password_path) = load_or_generate_web_password()?;
     let username = load_web_username();
-    Ok((
-        build_shared_web_auth(username, password),
-        password_path,
-    ))
+    Ok((build_shared_web_auth(username, password), password_path))
 }
 
 pub fn build_shared_web_auth(username: String, password: String) -> SharedWebAuth {
@@ -520,8 +517,7 @@ pub fn create_router_with_auth_state(state: SharedState, auth_state: SharedWebAu
         .map(|v| matches!(v.as_str(), "1" | "true" | "TRUE" | "yes" | "on"))
         .unwrap_or(true);
 
-    let auth_validator =
-        AuthValidator::new(auth_state.clone(), Some(tokens.csrf_token.clone()));
+    let auth_validator = AuthValidator::new(auth_state.clone(), Some(tokens.csrf_token.clone()));
 
     let body_limit = parse_env_usize("WEB_MAX_BODY_BYTES").unwrap_or(DEFAULT_WEB_BODY_LIMIT_BYTES);
     let global_concurrency =

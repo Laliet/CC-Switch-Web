@@ -19,9 +19,11 @@ const deleteUnifiedServerMock = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/api/mcp", () => ({
   mcpApi: {
     getAllServers: (...args: unknown[]) => getAllServersMock(...args),
-    upsertUnifiedServer: (...args: unknown[]) => upsertUnifiedServerMock(...args),
+    upsertUnifiedServer: (...args: unknown[]) =>
+      upsertUnifiedServerMock(...args),
     toggleApp: (...args: unknown[]) => toggleAppMock(...args),
-    deleteUnifiedServer: (...args: unknown[]) => deleteUnifiedServerMock(...args),
+    deleteUnifiedServer: (...args: unknown[]) =>
+      deleteUnifiedServerMock(...args),
   },
 }));
 
@@ -56,6 +58,7 @@ function createServer(overrides: Partial<McpServer> = {}): McpServer {
       claude: true,
       codex: false,
       gemini: false,
+      opencode: false,
     },
     ...overrides,
   };
@@ -115,7 +118,11 @@ describe("useMcp hooks", () => {
       await result.current.mutateAsync(payload);
     });
 
-    expect(toggleAppMock).toHaveBeenCalledWith(payload.serverId, payload.app, payload.enabled);
+    expect(toggleAppMock).toHaveBeenCalledWith(
+      payload.serverId,
+      payload.app,
+      payload.enabled,
+    );
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["mcp", "all"] });
   });
 

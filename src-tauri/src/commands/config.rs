@@ -52,7 +52,9 @@ pub async fn get_config_status(app: String) -> Result<ConfigStatus, String> {
         AppType::Omo => {
             let config_path = crate::omo_config::resolve_omo_config_path();
             let exists = config_path.exists();
-            let path = crate::omo_config::get_omo_dir().to_string_lossy().to_string();
+            let path = crate::omo_config::get_omo_dir()
+                .to_string_lossy()
+                .to_string();
 
             Ok(ConfigStatus { exists, path })
         }
@@ -86,7 +88,9 @@ pub async fn get_config_dir_info(app: String) -> Result<ConfigDirInfo, String> {
         AppType::Claude => config::get_claude_config_dir_info().map_err(|e| e.to_string()),
         AppType::Codex => codex_config::get_codex_config_dir_info().map_err(|e| e.to_string()),
         AppType::Gemini => crate::gemini_config::get_gemini_dir_info().map_err(|e| e.to_string()),
-        AppType::Opencode => crate::opencode_config::get_opencode_dir_info().map_err(|e| e.to_string()),
+        AppType::Opencode => {
+            crate::opencode_config::get_opencode_dir_info().map_err(|e| e.to_string())
+        }
         AppType::Omo => crate::opencode_config::get_opencode_dir_info().map_err(|e| e.to_string()),
     }
 }

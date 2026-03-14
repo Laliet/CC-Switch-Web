@@ -46,14 +46,6 @@ pub fn write_omo_config(config: &Value) -> Result<(), AppError> {
     Ok(())
 }
 
-pub fn remove_omo_config() -> Result<(), AppError> {
-    let path = resolve_omo_config_path();
-    if path.exists() {
-        std::fs::remove_file(&path).map_err(|e| AppError::io(&path, e))?;
-    }
-    Ok(())
-}
-
 fn strip_jsonc_comments(input: &str) -> String {
     let mut result = String::with_capacity(input.len());
     let mut chars = input.chars().peekable();
@@ -136,6 +128,9 @@ mod tests {
     fn resolve_omo_config_path_returns_supported_filename() {
         let path = resolve_omo_config_path();
         let file_name = path.file_name().and_then(|value| value.to_str());
-        assert!(matches!(file_name, Some(OMO_CONFIG_JSONC | OMO_CONFIG_JSON)));
+        assert!(matches!(
+            file_name,
+            Some(OMO_CONFIG_JSONC | OMO_CONFIG_JSON)
+        ));
     }
 }

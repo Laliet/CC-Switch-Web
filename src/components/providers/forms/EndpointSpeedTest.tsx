@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/dialog";
 import type { CustomEndpoint, EndpointCandidate } from "@/types";
 
+type SpeedTestAppId = Extract<AppId, "claude" | "codex" | "gemini">;
+
 // 端点测速超时配置（秒）
 const ENDPOINT_TIMEOUT_SECS = {
   codex: 12,
@@ -30,7 +32,7 @@ interface TestResult {
 }
 
 interface EndpointSpeedTestProps {
-  appId: AppId;
+  appId: SpeedTestAppId;
   providerId?: string;
   value: string;
   onChange: (url: string) => void;

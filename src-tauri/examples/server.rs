@@ -1,8 +1,7 @@
 #![cfg(feature = "web-server")]
 
 use std::{
-    env,
-    io,
+    env, io,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
     sync::Arc,
 };

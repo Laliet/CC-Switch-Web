@@ -250,7 +250,10 @@ function AppContent() {
             return;
           }
           const nextValue = stored ? `${stored}|${warningKey}` : warningKey;
-          window.sessionStorage.setItem(CONFIG_DIR_WARNING_SHOWN_KEY, nextValue);
+          window.sessionStorage.setItem(
+            CONFIG_DIR_WARNING_SHOWN_KEY,
+            nextValue,
+          );
         } catch {
           // ignore session storage failures
         }
@@ -735,7 +738,7 @@ function AppContent() {
             void saveUsageScript(usageProvider, script);
           }}
         />
-      )}
+      ) : null}
 
       <ConfirmDialog
         isOpen={Boolean(confirmDelete)}
