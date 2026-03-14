@@ -5,6 +5,26 @@ All notable changes to CC Switch will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-03-14
+
+### Features / 新特性
+
+- Add OpenCode provider management, config-directory support, and live config synchronization
+- Add oh-my-opencode (OMO) configuration management with shared directory handling and plugin installation sync
+- Allow updating Web-mode Basic Auth username/password directly from Settings
+
+### Fixes / 修复
+
+- Prevent OpenCode edit fallback from accidentally using the full live config object as a provider snapshot
+- Deduplicate legacy `oh-my-opencode` plugin entries before writing the latest plugin version
+- Harden Web credential updates with rollback on partial persistence failure and a minimum password length check
+- Unify OMO app parsing behavior across relevant Web API handlers
+
+### UX / 体验
+
+- Add missing i18n keys for OpenCode / OMO settings and generic “add provider for app” copy
+- Update release metadata and docs for the `0.10.0` release line
+
 ## [0.9.2] - 2026-03-12
 
 ### Fixes / 修复

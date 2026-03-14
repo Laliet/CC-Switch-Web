@@ -9,23 +9,23 @@
 [![Linux](https://img.shields.io/badge/Linux-FCC624?style=flat-square&logo=linux&logoColor=black)](https://github.com/Laliet/CC-Switch-Web/releases/latest)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white)](https://github.com/Laliet/CC-Switch-Web/pkgs/container/cc-switch-web)
 
-**All-in-One Assistant for Claude Code, Codex & Gemini CLI**
+**All-in-One Assistant for Claude Code, Codex, Gemini CLI, OpenCode & OMO**
 
 English | [中文](README_ZH.md) | [Changelog](CHANGELOG.md)
 
-> Recommended stable release: [v0.9.2](https://github.com/Laliet/CC-Switch-Web/releases/tag/v0.9.2)  
-> Latest `0.9.x` bugfix release: [v0.9.2](https://github.com/Laliet/CC-Switch-Web/releases/tag/v0.9.2)
+> Recommended stable release: [v0.10.0](https://github.com/Laliet/CC-Switch-Web/releases/tag/v0.10.0)  
+> Current release line: `0.10.x`
 
 ## About / 项目简介
 
-**CC-Switch-Web** is a unified configuration management tool for **Claude Code**, **Codex**, and **Gemini CLI**. It provides both a desktop application and a web server mode for managing AI CLI providers, MCP servers, skills, and system prompts.
+**CC-Switch-Web** is a unified configuration management tool for **Claude Code**, **Codex**, **Gemini CLI**, **OpenCode**, and **oh-my-opencode (OMO)**. It provides both a desktop application and a web server mode for managing AI CLI providers, MCP servers, skills, and system prompts.
 
 This project is a free and open-source project shared for informational and community use only. Any legal issues arising from the use of this project are not related to the project developer.
 
 Whether you're working locally or in a headless cloud environment, CC-Switch-Web offers a seamless experience for:
 
 - **One-click provider switching** between OpenAI-compatible API endpoints
-- **Unified MCP server management** across all three CLI tools
+- **Unified MCP server management** across Claude/Codex/Gemini/OpenCode
 - **Skills marketplace** to browse and install Claude skills from GitHub
 - **System prompt editor** with syntax highlighting
 - **Configuration backup/restore** with version history
@@ -39,13 +39,13 @@ If you have any questions, you can contact me here https://linux.do/t/topic/1217
 
 ## What's New
 
-### v0.9.2 - Recommended Stable Release
+### v0.10.0 - Recommended Stable Release
 
-- Fix current-provider save/apply so live config is rewritten immediately
-- Preserve Codex MCP entries such as `relay-pulse` when updating the current provider
-- Support the current relay-pulse health payload based on `groups[].layers[]`
-- Harden config-dir compatibility fallback for mixed `0.9.x` deployments
-- `v0.9.2` is now the recommended stable release and the latest `0.9.x` bugfix release
+- Add OpenCode provider management and automatic OpenCode config writing
+- Add oh-my-opencode (OMO) configuration management and plugin sync support
+- Allow updating Web-mode login username/password directly from Settings
+- Improve rollback safety for OMO/OpenCode linked writes and current-provider edits
+- `v0.10.0` is now the recommended stable release for the `0.10.x` line
 
 ### v0.8.0 - Previous Stable Baseline
 
@@ -80,7 +80,7 @@ _Configure Provider_
 ### Core Features
 
 - **Multi-Provider Management**: Switch between different AI providers (OpenAI-compatible endpoints) with one click
-- **Unified MCP Management**: Configure Model Context Protocol servers across Claude/Codex/Gemini
+- **Unified MCP Management**: Configure Model Context Protocol servers across Claude/Codex/Gemini/OpenCode
 - **Skills Marketplace**: Browse and install Claude skills from GitHub repositories
 - **Prompt Management**: Create and manage system prompts with a built-in CodeMirror editor
 
@@ -106,8 +106,8 @@ Download precompiled server binary—no compilation required:
 
 | Architecture              | Download                                                                                                                          |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| **Linux x86_64 (glibc)**  | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.9.2/cc-switch-server-linux-x86_64)   |
-| **Linux aarch64 (glibc)** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.9.2/cc-switch-server-linux-aarch64) |
+| **Linux x86_64 (glibc)**  | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.10.0/cc-switch-server-linux-x86_64)   |
+| **Linux aarch64 (glibc)** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.10.0/cc-switch-server-linux-aarch64) |
 
 > **Note (glibc)**: Binaries are built on Ubuntu 22.04 (glibc baseline).  
 > If you see `GLIBC_2.xx not found`, use Docker or build from source.  
@@ -222,11 +222,11 @@ Full-featured desktop app with graphical interface, built with Tauri.
 
 | Platform    | Download                                                                                                                                        | Description                              |
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| **Windows** | [CC-Switch-v0.9.2-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.9.2/CC-Switch-v0.9.2-Windows.msi)                   | Installer (current stable)               |
-|             | [CC-Switch-v0.9.2-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.9.2/CC-Switch-v0.9.2-Windows-Portable.zip) | Portable (no install)                    |
-| **macOS**   | [CC-Switch-v0.9.2-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.9.2/CC-Switch-v0.9.2-macOS.zip)                       | Universal binary (Intel + Apple Silicon) |
-| **Linux**   | [CC-Switch-v0.9.2-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.9.2/CC-Switch-v0.9.2-Linux.AppImage)             | AppImage (universal)                     |
-|             | [CC-Switch-v0.9.2-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.9.2/CC-Switch-v0.9.2-Linux.deb)                       | Debian/Ubuntu package                    |
+| **Windows** | [CC-Switch-v0.10.0-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.10.0/CC-Switch-v0.10.0-Windows.msi)                   | Installer (current stable)               |
+|             | [CC-Switch-v0.10.0-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.10.0/CC-Switch-v0.10.0-Windows-Portable.zip) | Portable (no install)                    |
+| **macOS**   | [CC-Switch-v0.10.0-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.10.0/CC-Switch-v0.10.0-macOS.zip)                       | Universal binary (Intel + Apple Silicon) |
+| **Linux**   | [CC-Switch-v0.10.0-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.10.0/CC-Switch-v0.10.0-Linux.AppImage)             | AppImage (universal)                     |
+|             | [CC-Switch-v0.10.0-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.10.0/CC-Switch-v0.10.0-Linux.deb)                       | Debian/Ubuntu package                    |
 
 **macOS Note**: If you see "damaged" warning, run: `xattr -cr "/Applications/CC Switch.app"`
 
@@ -250,7 +250,7 @@ This script will:
 
 ```bash
 # Install current stable version
-VERSION=v0.9.2 curl -fsSL https://...install.sh | bash
+VERSION=v0.10.0 curl -fsSL https://...install.sh | bash
 
 # Skip checksum verification
 NO_CHECKSUM=1 curl -fsSL https://...install.sh | bash
@@ -262,7 +262,7 @@ NO_CHECKSUM=1 curl -fsSL https://...install.sh | bash
 
 ### 1. Adding a Provider
 
-1. Launch CC-Switch and select your target app (Claude Code / Codex / Gemini)
+1. Launch CC-Switch and select your target app (Claude Code / Codex / Gemini / OpenCode / OMO)
 2. Click **"Add Provider"** button
 3. Choose a preset (e.g., OpenRouter, DeepSeek, GLM) or select "Custom"
 4. Fill in:
@@ -352,7 +352,7 @@ pnpm test:unit
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) — Recommended stable version: **v0.9.2**
+See [CHANGELOG.md](CHANGELOG.md) — Recommended stable version: **v0.10.0**
 
 ---
 

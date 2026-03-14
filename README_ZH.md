@@ -9,25 +9,25 @@
 [![Linux](https://img.shields.io/badge/Linux-FCC624?style=flat-square&logo=linux&logoColor=black)](https://github.com/Laliet/CC-Switch-Web/releases/latest)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white)](https://github.com/Laliet/CC-Switch-Web/pkgs/container/cc-switch-web)
 
-**Claude Code / Codex / Gemini CLI 一站式配置管理助手**
+**Claude Code / Codex / Gemini CLI / OpenCode / OMO 一站式配置管理助手**
 
 [English](README.md) | 中文 | [更新日志](CHANGELOG.md)
 
-> 当前推荐稳定版本：[v0.9.2](https://github.com/Laliet/CC-Switch-Web/releases/tag/v0.9.2)  
-> `0.9.x` 最新修正版本：[v0.9.2](https://github.com/Laliet/CC-Switch-Web/releases/tag/v0.9.2)
+> 当前推荐稳定版本：[v0.10.0](https://github.com/Laliet/CC-Switch-Web/releases/tag/v0.10.0)  
+> 当前发布线：`0.10.x`
 
 ---
 
 ## 项目简介
 
-**CC-Switch-Web** 是一个统一的 AI CLI 配置管理工具，支持 **Claude Code**、**Codex** 和 **Gemini CLI**。提供桌面应用和 Web 服务器两种运行模式，用于管理 AI 供应商、MCP 服务器、技能和系统提示词。
+**CC-Switch-Web** 是一个统一的 AI CLI 配置管理工具，支持 **Claude Code**、**Codex**、**Gemini CLI**、**OpenCode** 和 **oh-my-opencode（OMO）**。提供桌面应用和 Web 服务器两种运行模式，用于管理 AI 供应商、MCP 服务器、技能和系统提示词。
 
 本项目是仅供分享使用的免费开源项目，使用本项目的时候出现任何法律问题与本项目开发者无关。
 
 无论你是在本地开发还是在无图形界面的云端环境，CC-Switch-Web 都能提供流畅的体验：
 
 - **一键切换供应商** — 支持 OpenAI 兼容 API 端点
-- **统一 MCP 管理** — 跨 Claude/Codex/Gemini 三大 CLI 工具
+- **统一 MCP 管理** — 跨 Claude/Codex/Gemini/OpenCode 统一管理
 - **技能市场** — 从 GitHub 浏览并安装 Claude 技能
 - **提示词编辑器** — 内置语法高亮
 - **配置备份/恢复** — 支持版本历史
@@ -37,13 +37,13 @@
 
 ## 更新内容
 
-### v0.9.2 - 当前推荐稳定版
+### v0.10.0 - 当前推荐稳定版
 
-- 修复当前生效 provider 保存/应用后未立即写入 live 配置的问题
-- 修复更新当前 Codex provider 时 `relay-pulse` 等 MCP 配置被覆盖的问题
-- 兼容 relay-pulse 当前 `groups[].layers[]` 健康状态返回结构
-- 加强混合 `0.9.x` 部署场景下的配置目录兼容回退逻辑
-- `v0.9.2` 现已作为当前推荐稳定版本，同时也是最新的 `0.9.x` 修正版本
+- 新增 OpenCode 供应商管理与自动写入 OpenCode 配置
+- 新增 oh-my-opencode（OMO）配置管理与插件联动支持
+- 支持在设置页直接修改 Web 模式登录用户名和密码
+- 改进 OMO / OpenCode 联动写入与当前供应商编辑时的回滚安全性
+- `v0.10.0` 现已作为 `0.10.x` 发布线的推荐稳定版本
 
 ### v0.8.0 - 之前的稳定基线
 
@@ -78,7 +78,7 @@ _配置供应商_
 ### 核心功能
 
 - **多供应商管理**：一键切换不同 AI 供应商（OpenAI 兼容端点）
-- **统一 MCP 管理**：跨 Claude/Codex/Gemini 配置 Model Context Protocol 服务器
+- **统一 MCP 管理**：跨 Claude/Codex/Gemini/OpenCode 配置 Model Context Protocol 服务器
 - **技能市场**：从 GitHub 仓库浏览并安装 Claude 技能
 - **提示词管理**：内置 CodeMirror 编辑器创建和管理系统提示词
 
@@ -104,8 +104,8 @@ _配置供应商_
 
 | 架构                      | 下载链接                                                                                                                          |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| **Linux x86_64 (glibc)**  | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.9.2/cc-switch-server-linux-x86_64)   |
-| **Linux aarch64 (glibc)** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.9.2/cc-switch-server-linux-aarch64) |
+| **Linux x86_64 (glibc)**  | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.10.0/cc-switch-server-linux-x86_64)   |
+| **Linux aarch64 (glibc)** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.10.0/cc-switch-server-linux-aarch64) |
 
 > **glibc 说明**：预编译二进制基于 Ubuntu 22.04 构建。  
 > 如果报 `GLIBC_2.xx not found`，请改用 Docker 或源码构建。  
@@ -220,11 +220,11 @@ HOST=0.0.0.0 PORT=3000 ./target/release/examples/server
 
 | 平台        | 下载链接                                                                                                                                        | 说明                                |
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
-| **Windows** | [CC-Switch-v0.9.2-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.9.2/CC-Switch-v0.9.2-Windows.msi)                   | 安装版（当前稳定版）                |
-|             | [CC-Switch-v0.9.2-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.9.2/CC-Switch-v0.9.2-Windows-Portable.zip) | 绿色版（免安装）                    |
-| **macOS**   | [CC-Switch-v0.9.2-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.9.2/CC-Switch-v0.9.2-macOS.zip)                       | 通用二进制（Intel + Apple Silicon） |
-| **Linux**   | [CC-Switch-v0.9.2-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.9.2/CC-Switch-v0.9.2-Linux.AppImage)             | AppImage（通用）                    |
-|             | [CC-Switch-v0.9.2-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.9.2/CC-Switch-v0.9.2-Linux.deb)                       | Debian/Ubuntu 包                    |
+| **Windows** | [CC-Switch-v0.10.0-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.10.0/CC-Switch-v0.10.0-Windows.msi)                   | 安装版（当前稳定版）                |
+|             | [CC-Switch-v0.10.0-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.10.0/CC-Switch-v0.10.0-Windows-Portable.zip) | 绿色版（免安装）                    |
+| **macOS**   | [CC-Switch-v0.10.0-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.10.0/CC-Switch-v0.10.0-macOS.zip)                       | 通用二进制（Intel + Apple Silicon） |
+| **Linux**   | [CC-Switch-v0.10.0-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.10.0/CC-Switch-v0.10.0-Linux.AppImage)             | AppImage（通用）                    |
+|             | [CC-Switch-v0.10.0-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.10.0/CC-Switch-v0.10.0-Linux.deb)                       | Debian/Ubuntu 包                    |
 
 **macOS 提示**：如遇"已损坏"警告，在终端执行：`xattr -cr "/Applications/CC Switch.app"`
 
@@ -248,7 +248,7 @@ curl -fsSL https://raw.githubusercontent.com/Laliet/CC-Switch-Web/main/scripts/i
 
 ```bash
 # 安装当前稳定版本
-VERSION=v0.9.2 curl -fsSL https://...install.sh | bash
+VERSION=v0.10.0 curl -fsSL https://...install.sh | bash
 
 # 跳过校验
 NO_CHECKSUM=1 curl -fsSL https://...install.sh | bash
@@ -260,7 +260,7 @@ NO_CHECKSUM=1 curl -fsSL https://...install.sh | bash
 
 ### 1. 添加供应商
 
-1. 启动 CC-Switch，选择目标应用（Claude Code / Codex / Gemini）
+1. 启动 CC-Switch，选择目标应用（Claude Code / Codex / Gemini / OpenCode / OMO）
 2. 点击 **"添加供应商"** 按钮
 3. 选择预设（如 OpenRouter、DeepSeek、智谱 GLM）或选择"自定义"
 4. 填写配置：
@@ -350,7 +350,7 @@ pnpm test:unit
 
 ## 更新日志
 
-参见 [CHANGELOG.md](CHANGELOG.md) — 当前推荐稳定版本：**v0.9.2**
+参见 [CHANGELOG.md](CHANGELOG.md) — 当前推荐稳定版本：**v0.10.0**
 
 ---
 
