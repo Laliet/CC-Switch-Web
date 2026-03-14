@@ -1,5 +1,7 @@
 # cc-switch-web
 
+> 面向 Claude Code、Codex、Gemini CLI、OpenCode 与 OMO 的 Web 版 CC Switch。
+
 <sub>🙏 本项目是 [farion1231/cc-switch](https://github.com/farion1231/cc-switch)（Jason Young）的 fork 版本。感谢原作者的出色工作。本 fork 添加了 Web 服务器模式，支持云端/无头部署。</sub>
 
 [![Release](https://img.shields.io/github/v/release/Laliet/cc-switch-web?style=flat-square&logo=github&label=Release)](https://github.com/Laliet/cc-switch-web/releases/latest)
@@ -20,7 +22,7 @@
 
 ## 项目简介
 
-**cc-switch-web** 是一个基于 **CC Switch** 的跨平台 Web 版一站式 AI CLI 助手，支持 **Claude Code**、**Codex**、**Gemini CLI**、**OpenCode** 和 **oh-my-opencode（OMO）**。提供桌面应用和 Web 服务器两种运行模式，用于管理 AI 供应商、MCP 服务器、技能和系统提示词。
+**cc-switch-web** 是一个面向 **Claude Code**、**Codex**、**Gemini CLI**、**OpenCode** 和 **oh-my-opencode（OMO）** 的跨平台 Web 版 **CC Switch**。它支持供应商切换、MCP 管理、技能安装、系统提示词编辑，并可同时运行在桌面环境与无头云端环境中。
 
 本项目是仅供分享使用的免费开源项目，使用本项目的时候出现任何法律问题与本项目开发者无关。
 

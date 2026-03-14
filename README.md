@@ -1,5 +1,7 @@
 # cc-switch-web
 
+> Web-based CC Switch for Claude Code, Codex, Gemini CLI, OpenCode & OMO.
+
 <sub>🙏 This project is a fork of [farion1231/cc-switch](https://github.com/farion1231/cc-switch) by Jason Young. Thanks to the original author for the excellent work. This fork adds Web Server mode for cloud/headless deployment.</sub>
 
 [![Release](https://img.shields.io/github/v/release/Laliet/cc-switch-web?style=flat-square&logo=github&label=Release)](https://github.com/Laliet/cc-switch-web/releases/latest)
@@ -18,7 +20,7 @@ English | [中文](README_ZH.md) | [Changelog](CHANGELOG.md)
 
 ## About / 项目简介
 
-**cc-switch-web** is a cross-platform web-based All-in-One assistant for **Claude Code**, **Codex**, **Gemini CLI**, **OpenCode**, and **oh-my-opencode (OMO)**, based on **CC Switch**. It provides both a desktop application and a web server mode for managing AI CLI providers, MCP servers, skills, and system prompts.
+**cc-switch-web** is a cross-platform web-based **CC Switch** for **Claude Code**, **Codex**, **Gemini CLI**, **OpenCode**, and **oh-my-opencode (OMO)**. It lets you switch providers, manage MCP servers, install skills, edit system prompts, and run the same workflow on desktop or headless cloud environments.
 
 This project is a free and open-source project shared for informational and community use only. Any legal issues arising from the use of this project are not related to the project developer.
 
