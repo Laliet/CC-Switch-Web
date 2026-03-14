@@ -13,8 +13,8 @@
 
 English | [中文](README_ZH.md) | [Changelog](CHANGELOG.md)
 
-> Recommended stable release: [v0.10.0](https://github.com/Laliet/CC-Switch-Web/releases/tag/v0.10.0)  
-> Current release line: `0.10.x`
+> Recommended stable release: [v0.9.2](https://github.com/Laliet/CC-Switch-Web/releases/tag/v0.9.2)  
+> `v0.10.0` is currently a prerelease for testing only
 
 ## About / 项目简介
 
@@ -39,13 +39,18 @@ If you have any questions, you can contact me here https://linux.do/t/topic/1217
 
 ## What's New
 
-### v0.10.0 - Recommended Stable Release
+### v0.9.2 - Current Stable Release
+
+- Recommended for daily use and production
+- Download stable builds from: [v0.9.2](https://github.com/Laliet/CC-Switch-Web/releases/tag/v0.9.2)
+
+### v0.10.0 - Current Prerelease
 
 - Add OpenCode provider management and automatic OpenCode config writing
 - Add oh-my-opencode (OMO) configuration management and plugin sync support
 - Allow updating Web-mode login username/password directly from Settings
 - Improve rollback safety for OMO/OpenCode linked writes and current-provider edits
-- `v0.10.0` is now the recommended stable release for the `0.10.x` line
+- `v0.10.0` is currently a prerelease and still needs more cross-machine validation
 
 ### v0.8.0 - Previous Stable Baseline
 
@@ -106,8 +111,8 @@ Download precompiled server binary—no compilation required:
 
 | Architecture              | Download                                                                                                                          |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| **Linux x86_64 (glibc)**  | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.10.0/cc-switch-server-linux-x86_64)   |
-| **Linux aarch64 (glibc)** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.10.0/cc-switch-server-linux-aarch64) |
+| **Linux x86_64 (glibc)**  | [cc-switch-server-linux-x86_64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.9.2/cc-switch-server-linux-x86_64)   |
+| **Linux aarch64 (glibc)** | [cc-switch-server-linux-aarch64](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.9.2/cc-switch-server-linux-aarch64) |
 
 > **Note (glibc)**: Binaries are built on Ubuntu 22.04 (glibc baseline).  
 > If you see `GLIBC_2.xx not found`, use Docker or build from source.  
@@ -222,11 +227,11 @@ Full-featured desktop app with graphical interface, built with Tauri.
 
 | Platform    | Download                                                                                                                                        | Description                              |
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| **Windows** | [CC-Switch-v0.10.0-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.10.0/CC-Switch-v0.10.0-Windows.msi)                   | Installer (current stable)               |
-|             | [CC-Switch-v0.10.0-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.10.0/CC-Switch-v0.10.0-Windows-Portable.zip) | Portable (no install)                    |
-| **macOS**   | [CC-Switch-v0.10.0-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.10.0/CC-Switch-v0.10.0-macOS.zip)                       | Universal binary (Intel + Apple Silicon) |
-| **Linux**   | [CC-Switch-v0.10.0-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.10.0/CC-Switch-v0.10.0-Linux.AppImage)             | AppImage (universal)                     |
-|             | [CC-Switch-v0.10.0-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.10.0/CC-Switch-v0.10.0-Linux.deb)                       | Debian/Ubuntu package                    |
+| **Windows** | [CC-Switch-v0.9.2-Windows.msi](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.9.2/CC-Switch-v0.9.2-Windows.msi)                   | Installer (current stable)             |
+|             | [CC-Switch-v0.9.2-Windows-Portable.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.9.2/CC-Switch-v0.9.2-Windows-Portable.zip) | Portable (no install)                  |
+| **macOS**   | [CC-Switch-v0.9.2-macOS.zip](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.9.2/CC-Switch-v0.9.2-macOS.zip)                       | Universal binary (Intel + Apple Silicon) |
+| **Linux**   | [CC-Switch-v0.9.2-Linux.AppImage](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.9.2/CC-Switch-v0.9.2-Linux.AppImage)             | AppImage (current stable)              |
+|             | [CC-Switch-v0.9.2-Linux.deb](https://github.com/Laliet/CC-Switch-Web/releases/download/v0.9.2/CC-Switch-v0.9.2-Linux.deb)                       | Debian/Ubuntu package                  |
 
 **macOS Note**: If you see "damaged" warning, run: `xattr -cr "/Applications/CC Switch.app"`
 
@@ -250,7 +255,7 @@ This script will:
 
 ```bash
 # Install current stable version
-VERSION=v0.10.0 curl -fsSL https://...install.sh | bash
+VERSION=v0.9.2 curl -fsSL https://...install.sh | bash
 
 # Skip checksum verification
 NO_CHECKSUM=1 curl -fsSL https://...install.sh | bash
@@ -352,7 +357,7 @@ pnpm test:unit
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) — Recommended stable version: **v0.10.0**
+See [CHANGELOG.md](CHANGELOG.md) — Recommended stable version: **v0.9.2**
 
 ---
 
